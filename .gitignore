@@ -1,0 +1,27 @@
+﻿# Compilados de Maven
+JJM/backend/target/
+
+# Logs
+JJM/*.log
+JJM/**/*.log
+
+# Credenciales locales
+.env
+JJM/.env
+
+# Archivos temporales
+*.tmp
+*.bak
+*.bak2
+*.bak3
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Copias de base de datos
+JJM/*.sql

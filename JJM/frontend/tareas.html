@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tareas | PMO Platform</title>
+    <link rel="stylesheet" href="css/tareas.css">
+</head>
+<body>
+
+<div class="dashboard-container">
+
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <img src="img/LOGO-J2M.png" alt="Logo PMO">
+        </div>
+
+        <nav class="sidebar-menu">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="perfil.html">Perfil</a>
+            <a href="proyectos.html">Proyectos</a>
+            <a href="proyecto-avanzado.html">Proyecto Avanzado</a>
+            <a href="cursos.html">Cursos</a>
+            <a href="tablero-tareas.html">Tablero de tareas</a>
+            <a href="tareas.html" class="active">Tareas</a>
+            <a href="equipo.html">Equipo</a>
+            <a href="organizaciones.html">Organizaciones</a>
+            <a href="control-horas.html">Control de horas</a>
+            <a href="bitacora.html">Bitácora</a>
+            <a href="alertas.html">Alertas</a>
+            <a href="reportes.html">Reportes</a>
+            <a href="encuestas.html">Encuestas</a>
+            <a href="chatbot.html">Chatbot IA</a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="login.html">Cerrar sesión</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+
+        <section class="page-header">
+            <div>
+                <h1>Tareas</h1>
+                <p>
+                    Registra y consulta tareas vinculadas a proyectos,
+                    fases y miembros del equipo.
+                </p>
+            </div>
+
+            <button type="button" class="btn-primary" id="btnNuevaTarea">
+                + Nueva Tarea
+            </button>
+        </section>
+
+        <div id="permisoTareas" class="permission-note"></div>
+
+        <section class="tasks-toolbar">
+            <div class="search-box">
+                <span>🔎</span>
+                <input
+                    type="text"
+                    id="buscarTarea"
+                    placeholder="Buscar tarea por título, proyecto, fase o asignado..."
+                >
+            </div>
+
+            <select id="filtroEstadoTabla">
+                <option value="todos">Todos los estados</option>
+                <option value="Pendiente">Pendiente</option>
+                <option value="En progreso">En progreso</option>
+                <option value="Bloqueada">Bloqueada</option>
+                <option value="Completada">Completada</option>
+            </select>
+        </section>
+
+        <section class="table-card">
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tarea</th>
+                            <th>Proyecto</th>
+                            <th>Fase</th>
+                            <th>Asignado</th>
+                            <th>Estado</th>
+                            <th>Prioridad</th>
+                            <th>Horas</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="tablaTareas">
+                        <tr>
+                            <td colspan="8" class="empty-row">
+                                Cargando tareas desde MySQL...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+</div>
+
+<div class="modal" id="modalTarea">
+    <div class="modal-content">
+
+        <div class="modal-header">
+            <h2 id="tituloModalTarea">Nueva Tarea</h2>
+            <button
+                type="button"
+                class="btn-close"
+                id="btnCerrarModalTarea"
+            >
+                ×
+            </button>
+        </div>
+
+        <form id="formTarea" class="task-form">
+
+            <input type="hidden" id="idTarea">
+
+            <div class="form-group full">
+                <label for="tituloTarea">Título de la tarea *</label>
+                <input
+                    type="text"
+                    id="tituloTarea"
+                    maxlength="200"
+                    placeholder="Nombre de la tarea"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="proyectoTarea">Proyecto *</label>
+                <select id="proyectoTarea" required>
+                    <option value="">Selecciona un proyecto</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="faseTarea">Fase del proyecto</label>
+                <select id="faseTarea">
+                    <option value="">Selecciona primero un proyecto</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="asignadoTarea">Asignado a *</label>
+                <select id="asignadoTarea" required>
+                    <option value="">Selecciona una persona del equipo</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="estadoTarea">Estado</label>
+                <select id="estadoTarea">
+                    <option value="Pendiente">Pendiente</option>
+                    <option value="En progreso">En progreso</option>
+                    <option value="Bloqueada">Bloqueada</option>
+                    <option value="Completada">Completada</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="prioridadTarea">Prioridad</label>
+                <select id="prioridadTarea">
+                    <option value="Baja">Baja</option>
+                    <option value="Media" selected>Media</option>
+                    <option value="Alta">Alta</option>
+                    <option value="Crítica">Crítica</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="horasEstimadasTarea">Horas estimadas</label>
+                <input
+                    type="number"
+                    id="horasEstimadasTarea"
+                    min="0"
+                    step="0.5"
+                    value="0"
+                >
+            </div>
+
+            <div class="form-group full">
+                <label for="descripcionTarea">Descripción</label>
+                <textarea
+                    id="descripcionTarea"
+                    rows="4"
+                    placeholder="Describe la actividad, entregable o evidencia esperada"
+                ></textarea>
+            </div>
+
+            <div class="form-group full">
+                <label for="archivosTarea">Archivos adjuntos</label>
+                <input
+                    type="file"
+                    id="archivosTarea"
+                    multiple
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.jpg,.jpeg,.png,.webp,.zip"
+                >
+                <small class="file-help">
+                    Puedes adjuntar hasta 5 archivos nuevos por guardado. Máximo 8 MB por archivo.
+                </small>
+                <div id="archivosSeleccionadosTarea" class="task-files-list"></div>
+                <div id="archivosExistentesTarea" class="task-files-list"></div>
+            </div>
+
+            <div class="form-actions">
+                <button
+                    type="button"
+                    class="btn-secondary"
+                    id="btnCancelarTarea"
+                >
+                    Cancelar
+                </button>
+
+                <button
+                    type="submit"
+                    class="btn-primary"
+                    id="btnGuardarTarea"
+                >
+                    Guardar Tarea
+                </button>
+            </div>
+
+        </form>
+
+    </div>
+</div>
+
+<div class="modal" id="modalArchivosTarea">
+    <div class="modal-content modal-files-content">
+        <div class="modal-header">
+            <h2 id="tituloArchivosTarea">Archivos de la tarea</h2>
+            <button type="button" class="btn-close" id="btnCerrarArchivosTarea">×</button>
+        </div>
+        <div id="listaArchivosTarea" class="task-files-panel">
+            Cargando archivos...
+        </div>
+    </div>
+</div>
+
+<script src="js/api-config.js?v=20260825"></script>
+<script src="js/permisos-globales.js?v=20260922-menu"></script>
+<script src="js/tareas.js?v=20260829-archivos1"></script>
+</body>
+</html>

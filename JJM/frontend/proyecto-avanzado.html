@@ -1,0 +1,255 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proyecto Avanzado | PMO Platform</title>
+    <link rel="stylesheet" href="css/proyecto-avanzado.css">
+</head>
+<body>
+
+<div class="dashboard-container">
+
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <img src="img/LOGO-J2M.png" alt="Logo PMO">
+        </div>
+
+        <nav class="sidebar-menu">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="perfil.html">Perfil</a>
+            <a href="proyectos.html">Proyectos</a>
+            <a href="proyecto-avanzado.html" class="active">Proyecto Avanzado</a>
+            <a href="cursos.html">Cursos</a>
+            <a href="tablero-tareas.html">Tablero de tareas</a>
+            <a href="tareas.html">Tareas</a>
+            <a href="equipo.html">Equipo</a>
+            <a href="organizaciones.html">Organizaciones</a>
+            <a href="control-horas.html">Control de horas</a>
+            <a href="bitacora.html">Bitácora</a>
+            <a href="alertas.html">Alertas</a>
+            <a href="reportes.html">Reportes</a>
+            <a href="encuestas.html">Encuestas</a>
+            <a href="chatbot.html">Chatbot IA</a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="login.html">Cerrar sesión</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+
+        <a href="proyectos.html" class="back-link">← Proyectos</a>
+
+        <header class="page-header">
+            <div>
+                <h1 id="tituloPagina">Alta de Proyecto Avanzado</h1>
+                <p>
+                    Gestiona el proyecto con una vista alineada a PMBOK 8 y conserva el seguimiento operativo mediante fases, entregables y evidencias.
+                </p>
+            </div>
+        </header>
+
+        <div id="permisoProyectoAvanzado" class="permission-note"></div>
+
+        <form id="formProyectoAvanzado" class="advanced-form">
+
+            <input type="hidden" id="idProyectoAvanzado">
+
+            <section class="panel">
+                <div class="panel-header">
+                    <h2>Datos Generales</h2>
+                </div>
+
+                <div class="form-grid">
+
+                    <div class="form-group full">
+                        <label for="nombreProyecto">Nombre del proyecto *</label>
+                        <input
+                            type="text"
+                            id="nombreProyecto"
+                            maxlength="180"
+                            placeholder="Nombre del proyecto"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="codigoProyecto">Código del proyecto</label>
+                        <input
+                            type="text"
+                            id="codigoProyecto"
+                            maxlength="50"
+                            placeholder="Opcional; se genera automáticamente"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="organizacionProyecto">Organización relacionada</label>
+                        <select id="organizacionProyecto">
+                            <option value="">Sin organización asignada</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group full">
+                        <label for="descripcionProyecto">Descripción</label>
+                        <textarea
+                            id="descripcionProyecto"
+                            rows="3"
+                            placeholder="Descripción general del proyecto"
+                        ></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="responsableProyecto">Responsable *</label>
+                        <select id="responsableProyecto" required>
+                            <option value="">Selecciona un responsable</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="prioridadProyecto">Prioridad</label>
+                        <select id="prioridadProyecto">
+                            <option value="Crítica">Crítica</option>
+                            <option value="Alta">Alta</option>
+                            <option value="Media" selected>Media</option>
+                            <option value="Baja">Baja</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="fechaInicio">Fecha de inicio real</label>
+                        <input type="date" id="fechaInicio">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="fechaFin">Fecha estimada de término</label>
+                        <input type="date" id="fechaFin">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="estadoProyecto">Estado actual</label>
+                        <select id="estadoProyecto">
+                            <option value="Propuesto">Propuesto</option>
+                            <option value="Inicio">Iniciación</option>
+                            <option value="Planificación">Planificación</option>
+                            <option value="Ejecución" selected>Ejecución</option>
+                            <option value="Monitoreo">Monitoreo y Control</option>
+                            <option value="Cierre">Cierre</option>
+                            <option value="Cerrado">Cerrado</option>
+                            <option value="Cancelado">Cancelado</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="clasificacionProyecto">Clasificación</label>
+                        <select id="clasificacionProyecto">
+                            <option value="Externo" selected>Externo</option>
+                            <option value="Interno">Interno</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="clienteArea">Cliente / Área</label>
+                        <input
+                            type="text"
+                            id="clienteArea"
+                            maxlength="150"
+                            placeholder="Ej. Dirección de Innovación"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label>Avance calculado por fases</label>
+                        <div class="advanced-progress-box">
+                            <strong id="avanceTexto">0%</strong>
+                            <span>El sistema lo calcula automáticamente.</span>
+                        </div>
+
+                        <div class="progress-bar">
+                            <div id="barraAvance"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-group full">
+                        <label for="observacionesProyecto">Observaciones generales</label>
+                        <textarea
+                            id="observacionesProyecto"
+                            rows="3"
+                            placeholder="Observaciones, contexto previo, acuerdos, pendientes o información relevante"
+                        ></textarea>
+                    </div>
+
+                </div>
+            </section>
+
+            <section class="panel pmbok-alignment-panel">
+                <div class="panel-header">
+                    <div>
+                        <span class="pmbok-label">PMBOK 8 · ALINEACIÓN</span>
+                        <h2>Marco de gestión del proyecto</h2>
+                        <p>Las áreas de enfoque orientan la gestión. Las fases de abajo siguen siendo tu estructura operativa y de entregables.</p>
+                    </div>
+                    <a href="pmbok-v8.html" class="pmbok-reference-link">Ver Centro PMBOK 8</a>
+                </div>
+                <div class="focus-area-strip" aria-label="Áreas de enfoque PMBOK 8">
+                    <span data-focus-value="Inicio">1 · Iniciación</span>
+                    <span data-focus-value="Planificación">2 · Planificación</span>
+                    <span data-focus-value="Ejecución">3 · Ejecución</span>
+                    <span data-focus-value="Monitoreo">4 · Monitoreo y Control</span>
+                    <span data-focus-value="Cierre">5 · Cierre</span>
+                </div>
+                <div class="pmbok-domain-mini-grid">
+                    <a href="proyecto-avanzado.html#formProyectoAvanzado"><b>Gobernanza</b><small>valor, decisiones y control</small></a>
+                    <a href="#contenedorFases"><b>Alcance</b><small>entregables y calidad</small></a>
+                    <a href="tablero-tareas.html"><b>Cronograma</b><small>fechas y trabajo</small></a>
+                    <a href="reportes.html"><b>Finanzas</b><small>valor y seguimiento</small></a>
+                    <a href="organizaciones.html"><b>Interesados</b><small>personas y relaciones</small></a>
+                    <a href="equipo.html"><b>Recursos</b><small>capacidad y equipo</small></a>
+                    <a href="alertas.html"><b>Riesgo</b><small>incertidumbre y respuesta</small></a>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <div>
+                        <h2>Seguimiento operativo y entregables</h2>
+                        <p>Indica el estado de las fases y subfases internas del proyecto. Esta estructura no sustituye las áreas de enfoque de PMBOK 8.</p>
+                    </div>
+                </div>
+
+                <div class="legend">
+                    <span><i class="dot green"></i> Completado</span>
+                    <span><i class="dot orange"></i> En proceso</span>
+                    <span><i class="dot yellow"></i> Pendiente</span>
+                    <span><i class="dot gray"></i> No iniciado</span>
+                    <span><i class="dot red"></i> No entregado</span>
+                </div>
+
+                <div id="contenedorFases" class="phases-list"></div>
+            </section>
+
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" id="btnCancelar">
+                    Cancelar
+                </button>
+
+                <button type="submit" class="btn-primary" id="btnGuardarProyectoAvanzado">
+                    💾 Guardar Proyecto y Continuar
+                </button>
+            </div>
+
+        </form>
+
+    </main>
+
+</div>
+
+<script src="js/api-config.js?v=20260825"></script>
+<script src="js/permisos-globales.js?v=20260922-menu"></script>
+<script src="js/proyecto-avanzado.js"></script>
+</body>
+</html>
+

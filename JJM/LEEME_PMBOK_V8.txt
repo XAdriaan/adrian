@@ -1,0 +1,43 @@
+MEJORA PMBOK 8 - JJM PMO PLATFORM
+
+Cambios principales:
+1. Nuevo Centro PMBOK 8: frontend/pmbok-v8.html
+   - 6 principios de gestión.
+   - 7 dominios de desempeño.
+   - 5 áreas de enfoque.
+   - Tailoring y enfoques Predictivo / Adaptativo / Híbrido.
+   - Mapeo de los módulos actuales con PMBOK 8.
+
+2. Proyectos y Proyecto Avanzado
+   - En la interfaz, Inicio se presenta como Iniciación.
+   - Monitoreo se presenta como Monitoreo y Control.
+   - Los valores internos Inicio/Monitoreo se conservan para NO romper la base de datos existente.
+   - Proyecto Avanzado incluye una sección visible de alineación PMBOK 8 con los 7 dominios.
+   - Las fases técnicas existentes siguen separadas de las áreas de enfoque PMBOK 8.
+
+3. Documentos / Expediente
+   - Vista de alumno tipo Mi expediente con datos académicos compactos.
+   - Tabla limpia de documentos y panel separado para subir documentos.
+   - Vista administrativa por alumno similar al mockup proporcionado.
+   - Botones por alumno para generar Carta de Aceptación y Carta de Terminación.
+   - Se conservaron las correcciones de PDF, Ingeniería en Software y décimo.
+
+Archivos nuevos:
+- frontend/pmbok-v8.html
+- frontend/css/pmbok-v8.css
+- frontend/js/pmbok-v8.js
+
+Archivos modificados:
+- frontend/documentos.html
+- frontend/css/documentos.css
+- frontend/js/documentos.js
+- frontend/proyectos.html
+- frontend/proyecto-avanzado.html
+- frontend/css/proyecto-avanzado.css
+- frontend/js/proyecto-avanzado.js
+- frontend/js/permisos-globales.js
+
+IMPORTANTE:
+- Esta versión no requiere cambios de esquema SQL.
+- No se cambiaron los valores ENUM actuales de proyectos, por compatibilidad con el servidor.
+- El Centro PMBOK 8 es una capa de gestión y organización sobre los módulos existentes; no debe presentarse como certificación oficial de PMI.

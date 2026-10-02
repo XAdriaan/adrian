@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cursos | PMO Platform</title>
+    <link rel="stylesheet" href="css/cursos.css">
+</head>
+<body>
+
+<div class="dashboard-container">
+
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <img src="img/LOGO-J2M.png" alt="Logo PMO">
+        </div>
+
+        <nav class="sidebar-menu">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="perfil.html">Perfil</a>
+            <a href="proyectos.html">Proyectos</a>
+            <a href="proyecto-avanzado.html">Proyecto Avanzado</a>
+            <a href="cursos.html" class="active">Cursos</a>
+            <a href="tablero-tareas.html">Tablero de tareas</a>
+            <a href="tareas.html">Tareas</a>
+            <a href="equipo.html">Equipo</a>
+            <a href="organizaciones.html">Organizaciones</a>
+            <a href="control-horas.html">Control de horas</a>
+            <a href="bitacora.html">Bitácora</a>
+            <a href="alertas.html">Alertas</a>
+            <a href="reportes.html">Reportes</a>
+            <a href="encuestas.html">Encuestas</a>
+            <a href="chatbot.html">Chatbot IA</a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="login.html">Cerrar sesión</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+
+        <section class="page-header">
+            <div>
+                <h1>Cursos de capacitación</h1>
+                <p>Sube el certificado de cada curso completado para actualizar el avance general.</p>
+            </div>
+        </section>
+
+        <section class="progress-section">
+
+            <div class="progress-header">
+                <div>
+                    <h2>Avance de certificaciones</h2>
+                    <p id="textoProgresoCursos">0 de 26 certificados subidos</p>
+                </div>
+
+                <div class="progress-percent" id="porcentajeCursos">0%</div>
+            </div>
+
+            <div class="progress-bar">
+                <div class="progress-fill" id="barraProgresoCursos"></div>
+            </div>
+
+        </section>
+
+        <section class="admin-course-monitor admin-only" id="panelMonitoreoCursos" style="display:none;">
+            <div class="monitor-header">
+                <div>
+                    <h2>Monitoreo de cursos por colaborador</h2>
+                    <p>Consulta quién terminó los 26 cursos y cuánto porcentaje le falta a cada usuario.</p>
+                </div>
+                <button type="button" class="btn-secondary" id="btnActualizarMonitoreoCursos">↻ Actualizar</button>
+            </div>
+            <div class="monitor-summary" id="resumenMonitoreoCursos"></div>
+            <div class="table-wrapper">
+                <table class="courses-monitor-table">
+                    <thead>
+                        <tr>
+                            <th>Colaborador</th>
+                            <th>Correo</th>
+                            <th>Completados</th>
+                            <th>Progreso</th>
+                            <th>Faltantes</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaMonitoreoCursos">
+                        <tr><td colspan="6" class="empty-row">No hay progreso registrado todavía.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="courses-toolbar">
+            <div class="search-box">
+                <span>🔎</span>
+                <input type="text" id="buscarCurso" placeholder="Buscar curso por nombre...">
+            </div>
+
+            <select id="filtroEstadoCurso">
+                <option value="todos">Todos</option>
+                <option value="completados">Completados</option>
+                <option value="pendientes">Pendientes</option>
+            </select>
+        </section>
+
+        <section class="courses-grid" id="contenedorCursos">
+            <!-- Cursos desde JS -->
+        </section>
+
+    </main>
+
+</div>
+
+<!-- MODAL CURSO -->
+<div class="modal" id="modalCurso">
+    <div class="modal-content">
+
+        <div class="modal-header">
+            <div>
+                <h2 id="tituloCursoModal">Curso</h2>
+                <p id="estadoCursoModal">Pendiente de certificado</p>
+            </div>
+
+            <button type="button" class="btn-close" id="btnCerrarModalCurso">×</button>
+        </div>
+
+        <div class="certificate-status" id="certificadoActualBox">
+            <h3>Certificado actual</h3>
+            <p id="certificadoActualTexto">No hay certificado subido para este curso.</p>
+        </div>
+
+        <form id="formCertificadoCurso" class="certificate-form">
+
+            <input type="hidden" id="idCursoSeleccionado">
+
+            <div class="form-group">
+                <label for="archivoCertificado">Subir certificado de completado</label>
+                <input type="file" id="archivoCertificado" accept=".pdf,.jpg,.jpeg,.png,.webp" required>
+                <small>Formatos permitidos: PDF, JPG, PNG o WEBP.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="fechaCertificado">Fecha de completado</label>
+                <input type="date" id="fechaCertificado" required>
+            </div>
+
+            <div class="form-group full">
+                <label for="notasCertificado">Notas</label>
+                <textarea id="notasCertificado" rows="3" placeholder="Observaciones opcionales sobre el certificado"></textarea>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" id="btnCancelarCurso">Cancelar</button>
+                <button type="button" class="btn-danger" id="btnEliminarCertificado">Eliminar certificado</button>
+                <button type="submit" class="btn-primary">Guardar certificado</button>
+            </div>
+
+        </form>
+
+    </div>
+</div>
+
+<script src="js/api-config.js?v=20260825"></script>
+<script src="js/permisos-globales.js?v=20260922-menu"></script>
+<script src="js/cursos.js"></script>
+</body>
+</html>

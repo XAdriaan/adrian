@@ -1,0 +1,21 @@
+CORRECCIÓN DOCUMENTOS - FORMATOS AUTOMÁTICOS
+
+1. Se corrigió el expediente personal para que un colaborador use /api/miembros/mi-sesion y no /api/miembros (endpoint exclusivo de administrador).
+2. Ya no debe aparecer "Alumno sin nombre" cuando la sesión y/o los datos académicos sí tienen la identidad del usuario.
+3. Se agregó el bloque "Formatos automáticos" en Documentos.
+4. Formato 1: Lista de asistencia mensual en PDF, usando los registros reales de Control de horas.
+5. Formato 2: Reporte mensual de tareas / actividades del proyecto en PDF, usando proyecto, tareas y horas reales de la PMO.
+6. Ambos formatos toman nombre, matrícula, universidad, periodo, asesor empresarial y horas comprometidas desde Datos académicos.
+7. El mes se selecciona automáticamente dentro del periodo de estadía y se puede cambiar desde la pantalla.
+
+ARCHIVOS MODIFICADOS PARA SUBIR AL CLOUD:
+- frontend/documentos.html
+- frontend/js/documentos.js
+- frontend/css/documentos.css
+
+No se modificó el esquema de base de datos ni fue necesario cambiar el backend para esta versión.
+
+ACTUALIZACIÓN POSTERIOR - CATÁLOGO SEP-DIC 2026
+------------------------------------------------
+Se añadió LEEME_CATALOGO_PROYECTOS_SEP_DIC_2026.txt con la sincronización de
+nombres oficiales y alumnos asignados según el PDF oficial de proyectos.

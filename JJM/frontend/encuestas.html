@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Encuestas | PMO Platform</title>
+    <link rel="stylesheet" href="css/encuestas.css">
+</head>
+<body>
+
+<div class="dashboard-container">
+
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <img src="img/LOGO-J2M.png" alt="Logo PMO">
+        </div>
+
+        <nav class="sidebar-menu">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="perfil.html">Perfil</a>
+            <a href="proyectos.html">Proyectos</a>
+            <a href="proyecto-avanzado.html">Proyecto Avanzado</a>
+            <a href="cursos.html">Cursos</a>
+            <a href="tablero-tareas.html">Tablero de tareas</a>
+            <a href="tareas.html">Tareas</a>
+            <a href="equipo.html">Equipo</a>
+            <a href="organizaciones.html">Organizaciones</a>
+            <a href="control-horas.html">Control de horas</a>
+            <a href="bitacora.html">Bitácora</a>
+            <a href="alertas.html">Alertas</a>
+            <a href="reportes.html">Reportes</a>
+            <a href="encuestas.html" class="active">Encuestas</a>
+            <a href="chatbot.html">Chatbot IA</a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="login.html">Cerrar sesión</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+
+        <header class="page-header">
+            <div>
+                <h1>Encuestas de Satisfacción</h1>
+                <p>Evaluaciones de clientes, equipo y organizaciones</p>
+            </div>
+
+            <div class="header-actions">
+                <div class="rating-summary">
+                    <span class="star">★</span>
+                    <strong id="promedioCalificacion">—</strong>
+                    <span>promedio</span>
+                </div>
+
+                <button class="btn-primary" id="btnNuevaEncuesta">+ Nueva Encuesta</button>
+            </div>
+        </header>
+
+        <section id="contenedorEncuestas" class="surveys-grid">
+            <div class="empty-state">
+                <h3>No hay encuestas registradas</h3>
+                <p>Cuando se registren evaluaciones de satisfacción, aparecerán en este apartado.</p>
+            </div>
+        </section>
+
+    </main>
+
+</div>
+
+<div class="modal" id="modalEncuesta">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Nueva Encuesta</h2>
+            <button class="btn-close" id="btnCerrarModal">×</button>
+        </div>
+
+        <form id="formEncuesta" class="survey-form">
+
+            <div class="form-group full">
+                <label for="proyectoEncuesta">Proyecto *</label>
+                <input type="text" id="proyectoEncuesta" placeholder="Nombre del proyecto" required>
+            </div>
+
+            <div class="form-group">
+                <label for="tipoEncuesta">Tipo</label>
+                <select id="tipoEncuesta">
+                    <option value="Satisfacción Cliente">Satisfacción Cliente</option>
+                    <option value="Satisfacción Equipo">Satisfacción Equipo</option>
+                    <option value="Evaluación Organización">Evaluación Organización</option>
+                    <option value="Lecciones Aprendidas">Lecciones Aprendidas</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="calificacionEncuesta">Calificación</label>
+                <select id="calificacionEncuesta">
+                    <option value="5" selected>5 - Excelente</option>
+                    <option value="4">4 - Muy bueno</option>
+                    <option value="3">3 - Bueno</option>
+                    <option value="2">2 - Regular</option>
+                    <option value="1">1 - Deficiente</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="nombreEncuestado">Nombre</label>
+                <input type="text" id="nombreEncuestado" placeholder="Nombre de quien responde">
+            </div>
+
+            <div class="form-group">
+                <label for="emailEncuestado">Email</label>
+                <input type="email" id="emailEncuestado" placeholder="correo@empresa.com">
+            </div>
+
+            <div class="form-group full">
+                <label for="comentarioEncuesta">Comentario</label>
+                <textarea id="comentarioEncuesta" rows="3" placeholder="Comentarios generales de la encuesta"></textarea>
+            </div>
+
+            <div class="video-section full">
+                <div class="video-title">
+                    <span>🎥</span>
+                    <strong>Video adjunto opcional</strong>
+                </div>
+
+                <div class="form-group full">
+                    <label for="videoUrl">Enlace de video</label>
+                    <input type="url" id="videoUrl" placeholder="https://youtube.com/... o enlace de Drive">
+                </div>
+
+                <div id="videoPreviewBox" class="video-preview-box">
+                    <iframe id="videoPreview" src="" allowfullscreen></iframe>
+                </div>
+
+                <div id="consentimientoBox" class="consent-box">
+                    <p class="consent-title">Consentimiento de difusión</p>
+
+                    <p class="consent-text">
+                        Autorizo que el video adjunto pueda ser utilizado y difundido en las redes sociales oficiales de la empresa con fines de evidencia, promoción, comunicación institucional o difusión del proyecto.
+                    </p>
+
+                    <div class="consent-actions">
+                        <button type="button" id="btnAutoriza" class="btn-consent">
+                            ✅ Sí, autorizo la difusión
+                        </button>
+
+                        <button type="button" id="btnNoAutoriza" class="btn-consent">
+                            ❌ No autorizo
+                        </button>
+                    </div>
+
+                    <input type="hidden" id="videoConsentimiento" value="">
+                    <p id="mensajeConsentimiento" class="consent-message"></p>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" id="btnCancelar">Cancelar</button>
+                <button type="submit" class="btn-primary">Guardar Encuesta</button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<script src="js/api-config.js?v=20260825"></script>
+<script src="js/permisos-globales.js?v=20260922-menu"></script>
+<script src="js/encuestas.js"></script>
+</body>
+</html>

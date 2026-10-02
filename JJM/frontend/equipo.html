@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Equipo | PMO Platform</title>
+
+    <link
+        rel="stylesheet"
+        href="css/equipo.css?v=20260830-equipo2"
+    >
+</head>
+
+<body>
+
+<div class="dashboard-container">
+
+    <!-- =====================================================
+         BARRA LATERAL
+    ====================================================== -->
+    <aside class="sidebar">
+
+        <div class="sidebar-logo">
+            <img
+                src="img/LOGO-J2M.png"
+                alt="Logo PMO"
+            >
+        </div>
+
+        <nav class="sidebar-menu">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="perfil.html">Perfil</a>
+            <a href="proyectos.html">Proyectos</a>
+            <a href="proyecto-avanzado.html">Proyecto Avanzado</a>
+            <a href="cursos.html">Cursos</a>
+            <a href="tablero-tareas.html">Tablero de tareas</a>
+            <a href="tareas.html">Tareas</a>
+
+            <a
+                href="equipo.html"
+                class="active"
+            >
+                Equipo
+            </a>
+
+            <a href="organizaciones.html">Organizaciones</a>
+            <a href="control-horas.html">Control de horas</a>
+            <a href="bitacora.html">Bitácora</a>
+            <a href="alertas.html">Alertas</a>
+            <a href="reportes.html">Reportes</a>
+            <a href="encuestas.html">Encuestas</a>
+            <a href="chatbot.html">Chatbot IA</a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="login.html">Cerrar sesión</a>
+        </div>
+
+    </aside>
+
+    <!-- =====================================================
+         CONTENIDO PRINCIPAL
+    ====================================================== -->
+    <main class="main-content">
+
+        <header class="page-header">
+
+            <div>
+                <h1>Equipo</h1>
+
+                <p>
+                    Usuarios registrados y disponibles para asignar
+                    a proyectos.
+                </p>
+            </div>
+
+            <div class="header-actions">
+                <div
+                    id="permisoEquipo"
+                    class="permission-note"
+                ></div>
+
+                <button
+                    type="button"
+                    id="btnNuevoMiembro"
+                    class="btn-primary btn-add-member"
+                    hidden
+                >
+                    + Agregar integrante
+                </button>
+            </div>
+
+        </header>
+
+        <!-- =================================================
+             FILTROS
+        ================================================== -->
+        <section class="filters-section">
+
+            <div class="search-box">
+                <span>🔍</span>
+
+                <input
+                    type="text"
+                    id="buscarMiembro"
+                    placeholder="Buscar miembro..."
+                >
+            </div>
+
+            <select id="filtroRol">
+                <option value="todos">Todos los roles</option>
+                <option value="Administrador">Administrador</option>
+                <option value="Admin PMO">Admin PMO</option>
+                <option value="Director">Director</option>
+                <option value="Líder de Proyecto">
+                    Líder de Proyecto
+                </option>
+                <option value="Colaborador">Colaborador</option>
+                <option value="QA">QA</option>
+                <option value="Cliente">Cliente</option>
+                <option value="Enlace Universidad">
+                    Enlace Universidad
+                </option>
+            </select>
+
+            <select id="filtroEstado">
+                <option value="todos">Todos los estados</option>
+                <option value="Activo">Activo</option>
+                <option value="Inactivo">Inactivo</option>
+                <option value="Baja">Baja</option>
+            </select>
+
+            <div class="status-legend" aria-label="Significado de estados">
+                <span class="legend-chip active">● Activo</span>
+                <span class="legend-chip inactive">● Inactivo</span>
+                <span class="legend-chip baja">● Baja</span>
+            </div>
+
+        </section>
+
+        <!-- =================================================
+             TARJETAS DE EQUIPO
+        ================================================== -->
+        <section
+            id="contenedorEquipo"
+            class="team-grid"
+        >
+            <div class="empty-state">
+                <h3>Cargando miembros...</h3>
+
+                <p>
+                    Espera mientras se consulta la información
+                    desde la base de datos.
+                </p>
+            </div>
+        </section>
+
+    </main>
+
+</div>
+
+<!-- =========================================================
+     MODAL: AGREGAR / EDITAR INTEGRANTE
+========================================================= -->
+<div
+    class="modal"
+    id="modalMiembro"
+>
+    <div class="modal-content">
+
+        <div class="modal-header">
+
+            <h2 id="tituloModal">
+                Editar miembro
+            </h2>
+
+            <button
+                type="button"
+                class="btn-close"
+                id="btnCerrarModal"
+                title="Cerrar"
+            >
+                ×
+            </button>
+
+        </div>
+
+        <form
+            id="formMiembro"
+            class="team-form"
+        >
+
+            <input
+                type="hidden"
+                id="idMiembro"
+            >
+
+            <div id="avisoCuentaMiembro" class="member-account-note full" hidden></div>
+
+            <div class="form-group full">
+                <label for="nombreMiembro">
+                    Nombre completo
+                </label>
+
+                <input
+                    type="text"
+                    id="nombreMiembro"
+                    maxlength="180"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="correoMiembro">
+                    Correo electrónico
+                </label>
+
+                <input
+                    type="email"
+                    id="correoMiembro"
+                    maxlength="150"
+                    placeholder="Opcional si aún no tiene cuenta"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="telefonoMiembro">
+                    Teléfono
+                </label>
+
+                <input
+                    type="text"
+                    id="telefonoMiembro"
+                    maxlength="25"
+                    placeholder="Opcional"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="rolMiembro">
+                    Rol operativo
+                </label>
+
+                <select id="rolMiembro">
+                    <option value="Administrador">
+                        Administrador
+                    </option>
+
+                    <option value="Admin PMO">
+                        Admin PMO
+                    </option>
+
+                    <option value="Director">
+                        Director
+                    </option>
+
+                    <option value="Líder de Proyecto">
+                        Líder de Proyecto
+                    </option>
+
+                    <option value="Colaborador">
+                        Colaborador
+                    </option>
+
+                    <option value="Asesor Empresarial">
+                        Asesor Empresarial
+                    </option>
+
+                    <option value="Asesor Académico">
+                        Asesor Académico
+                    </option>
+
+                    <option value="Estudiante">
+                        Estudiante
+                    </option>
+
+                    <option value="QA">
+                        QA
+                    </option>
+
+                    <option value="Cliente">
+                        Cliente
+                    </option>
+
+                    <option value="Enlace Universidad">
+                        Enlace Universidad
+                    </option>
+                </select>
+            </div>
+
+            <div class="form-group" id="grupoRolSistema">
+                <label for="rolSistemaMiembro">
+                    Rol de acceso a la plataforma
+                </label>
+
+                <select id="rolSistemaMiembro">
+                    <option value="">Cargando roles...</option>
+                </select>
+
+                <small id="notaRolSistema" style="display:block;margin-top:6px;opacity:.75">
+                    Este rol controla qué módulos y acciones puede utilizar el usuario.
+                </small>
+            </div>
+
+            <div class="form-group">
+                <label for="seniorityMiembro">
+                    Seniority
+                </label>
+
+                <select id="seniorityMiembro">
+                    <option value="Junior">Junior</option>
+                    <option value="Semi Senior">
+                        Semi Senior
+                    </option>
+                    <option value="Senior">Senior</option>
+                    <option value="Líder">Líder</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="horasMiembro">
+                    Horas disponibles por semana
+                </label>
+
+                <input
+                    type="number"
+                    id="horasMiembro"
+                    min="0"
+                    step="0.5"
+                    value="0"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="estadoMiembro">
+                    Estado
+                </label>
+
+                <select id="estadoMiembro">
+                    <option value="Activo">Activo</option>
+                    <option value="Inactivo">Inactivo</option>
+                    <option value="Baja">Baja</option>
+                </select>
+            </div>
+
+            <div class="form-group full">
+                <label for="habilidadesMiembro">
+                    Habilidades
+                </label>
+
+                <textarea
+                    id="habilidadesMiembro"
+                    rows="3"
+                    placeholder="Ej. Desarrollo web, documentación, pruebas, soporte técnico"
+                ></textarea>
+            </div>
+
+            <div class="form-group full">
+                <label for="notasMiembro">
+                    Notas administrativas
+                </label>
+
+                <textarea
+                    id="notasMiembro"
+                    rows="3"
+                    placeholder="Observaciones adicionales"
+                ></textarea>
+            </div>
+
+            <div class="form-actions">
+
+                <button
+                    type="button"
+                    class="btn-secondary"
+                    id="btnCancelar"
+                >
+                    Cancelar
+                </button>
+
+                <button
+                    type="submit"
+                    class="btn-primary"
+                    id="btnGuardarMiembro"
+                >
+                    Guardar cambios
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+</div>
+
+<script src="js/api-config.js?v=20260825"></script>
+<script src="js/permisos-globales.js?v=20260922-menu"></script>
+<script src="js/equipo.js?v=20260830-equipo2"></script>
+
+</body>
+</html>

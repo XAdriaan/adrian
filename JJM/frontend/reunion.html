@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reunión | Oficina de Proyectos</title>
+    <link rel="stylesheet" href="css/reunion.css?v=20260828-3">
+</head>
+<body>
+<div class="meeting-app">
+    <header class="meeting-topbar">
+        <div class="meeting-title">
+            <span class="meeting-live-dot" aria-hidden="true"></span>
+            <div>
+                <h1>Reunión del proyecto</h1>
+                <p id="nombreProyectoReunion">Cargando proyecto...</p>
+            </div>
+        </div>
+
+        <div class="meeting-actions">
+            <span class="meeting-pill" id="meetingTimer">00:00:00</span>
+            <span class="meeting-pill" id="contadorParticipantes">0 participantes</span>
+            <button type="button" class="meeting-btn record" id="btnGrabar">● Grabar</button>
+            <button type="button" class="meeting-btn warning" id="btnDetenerGrabacion" hidden>■ Detener</button>
+            <button type="button" class="meeting-btn" id="btnCopiarEnlace">Copiar invitación</button>
+            <button type="button" class="meeting-btn danger" id="btnFinalizarReunion" hidden>Finalizar reunión</button>
+            <button type="button" class="meeting-btn secondary" id="btnVolverProyecto">Volver al proyecto</button>
+        </div>
+    </header>
+
+    <main class="meeting-main">
+        <section class="meeting-stage" aria-label="Videollamada de proyecto">
+            <div id="jitsiContainer" class="jitsi-container"></div>
+
+            <div class="meeting-loading" id="meetingLoading">
+                <div class="meeting-spinner" aria-hidden="true"></div>
+                <h2>Preparando videollamada...</h2>
+                <p id="meetingLoadingMessage">Comprobando la reunión activa y conectando audio y video.</p>
+                <small>
+                    Si la conexión se interrumpe, Oficina de Proyectos intentará volver a la misma sala.
+                </small>
+            </div>
+
+            <div class="meeting-reconnect" id="meetingReconnect" hidden>
+                <strong>Se perdió la conexión con la sala.</strong>
+                <span>La reunión sigue activa y puedes volver a la misma sala.</span>
+                <button type="button" class="meeting-btn" id="btnReconectar">Reconectar</button>
+            </div>
+        </section>
+
+        <aside class="recordings-panel">
+            <div class="recordings-head">
+                <div>
+                    <h2>Grabaciones</h2>
+                    <p>Guárdalas dentro del proyecto.</p>
+                </div>
+            </div>
+
+            <div class="recording-help" id="recordingHelp">
+                <strong>¿Cómo funciona?</strong>
+                <p>
+                    Pulsa <b>Grabar</b> y, cuando el navegador lo solicite, selecciona <b>Esta pestaña</b> y activa <b>Compartir audio</b>.
+                    Al detener, Oficina de Proyectos subirá automáticamente el video al proyecto. El botón inferior queda como respaldo para subir un archivo manualmente.
+                </p>
+            </div>
+
+            <input type="file" id="archivoGrabacion" accept="video/webm,video/mp4,video/*" hidden>
+            <button type="button" class="upload-recording-btn" id="btnSeleccionarGrabacion">
+                Guardar grabación en el proyecto
+            </button>
+            <div class="upload-progress" id="uploadProgress" hidden>
+                <div class="upload-progress-bar"><span id="uploadProgressFill"></span></div>
+                <small id="uploadProgressText">Subiendo grabación...</small>
+            </div>
+
+            <div id="listaGrabaciones" class="recordings-list">
+                <p class="recordings-empty">Todavía no hay grabaciones guardadas.</p>
+            </div>
+        </aside>
+    </main>
+
+    <footer class="meeting-footer">
+        <span id="estadoReunion">Comprobando reunión...</span>
+        <span class="meeting-provider">Videollamada integrada con Jitsi Meet</span>
+    </footer>
+</div>
+
+<script src="js/api-config.js?v=20260828-3"></script>
+<script src="https://meet.jit.si/external_api.js"></script>
+<script src="js/reunion.js?v=20260828-3"></script>
+</body>
+</html>

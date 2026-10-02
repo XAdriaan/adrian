@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Datos de registro | PMO Platform</title>
+
+<link rel="stylesheet" href="css/datos-academicos.css">
+
+<style>
+.registro-toolbar{
+    display:flex;
+    gap:14px;
+    flex-wrap:wrap;
+    margin-bottom:20px
+}
+
+.registro-toolbar .form-group{
+    flex:1;
+    min-width:240px
+}
+
+.tipo-tabs{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+    margin:18px 0
+}
+
+.tipo-tab{
+    border:1px solid #d0d5dd;
+    background:#fff;
+    border-radius:12px;
+    padding:13px;
+    font-weight:700;
+    cursor:pointer
+}
+
+.tipo-tab.active{
+    background:#eef4ff;
+    border-color:#155eef;
+    color:#155eef
+}
+
+.registro-section{
+    margin-top:22px;
+    padding-top:18px;
+    border-top:1px solid #eaecf0
+}
+
+.registro-section h2{
+    margin:0 0 5px
+}
+
+.registro-section p{
+    color:#667085;
+    font-size:13px
+}
+
+.hidden{
+    display:none!important
+}
+
+.registro-tipo-info{
+    margin:18px 0 0;
+    padding:12px 16px;
+    border:1px solid #d0d5dd;
+    border-radius:12px;
+    background:#f8fafc;
+    color:#344054;
+    font-weight:700
+}
+
+@media(max-width:760px){
+    .tipo-tabs{
+        grid-template-columns:1fr
+    }
+
+    .form-grid{
+        grid-template-columns:1fr!important
+    }
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="dashboard-container">
+
+```
+<aside class="sidebar">
+
+    <div class="sidebar-logo">
+        <img src="img/LOGO-J2M.png" alt="Logo PMO">
+    </div>
+
+    <nav class="sidebar-menu">
+        <a href="dashboard.html">Dashboard</a>
+        <a href="perfil.html">Perfil</a>
+        <a href="datos-academicos.html" class="active">Datos de registro</a>
+        <a href="proyectos.html">Proyectos</a>
+        <a href="proyecto-avanzado.html">Proyecto Avanzado</a>
+        <a href="cursos.html">Cursos</a>
+        <a href="tablero-tareas.html">Tablero de tareas</a>
+        <a href="tareas.html">Tareas</a>
+        <a href="equipo.html">Equipo</a>
+        <a href="organizaciones.html">Organizaciones</a>
+        <a href="control-horas.html">Control de horas</a>
+        <a href="bitacora.html">Bitácora</a>
+        <a href="alertas.html">Alertas</a>
+        <a href="reportes.html">Reportes</a>
+        <a href="encuestas.html">Encuestas</a>
+        <a href="documentos.html">Documentos</a>
+        <a href="mi-estadia.html">Mi seguimiento de estadía</a>
+        <a href="chatbot.html">Chatbot IA</a>
+    </nav>
+
+    <div class="sidebar-footer">
+        <a href="login.html">Cerrar sesión</a>
+    </div>
+
+</aside>
+
+<main class="main-content">
+
+    <header class="page-header">
+        <div>
+            <h1>Datos de registro</h1>
+            <p>
+                Registra la información que se utilizará en cartas,
+                formatos, estadías y datos de asesoría.
+            </p>
+        </div>
+    </header>
+
+    <section class="academic-card">
+
+        <!-- SELECTOR PARA ADMINISTRADORES -->
+        <div id="adminSelector" class="registro-toolbar hidden">
+
+            <div class="form-group">
+
+                <label for="personaRegistro">
+                    Persona
+                </label>
+
+                <select id="personaRegistro">
+                    <option value="">
+                        Selecciona una persona...
+                    </option>
+                </select>
+
+            </div>
+
+        </div>
+
+        <!-- INFORMACIÓN DEL TIPO DE REGISTRO -->
+        <div id="tipoRegistroInfo"
+             class="registro-tipo-info hidden">
+        </div>
+
+        <!-- TIPOS DE REGISTRO -->
+        <div class="tipo-tabs">
+
+            <button
+                type="button"
+                class="tipo-tab"
+                data-tipo="Alumno">
+                Alumno / Estudiante
+            </button>
+
+            <button
+                type="button"
+                class="tipo-tab"
+                data-tipo="Asesor Académico">
+                Asesor Académico
+            </button>
+
+            <button
+                type="button"
+                class="tipo-tab"
+                data-tipo="Asesor Empresarial">
+                Asesor Empresarial
+            </button>
+
+        </div>
+
+        <form id="formDatosRegistro" class="academic-form">
+
+            <input
+                type="hidden"
+                id="tipoPersona">
+
+            <!-- ========================= -->
+            <!-- DATOS DEL ALUMNO -->
+            <!-- ========================= -->
+
+            <section
+                id="seccionAlumno"
+                class="registro-section hidden">
+
+                <h2>
+                    Datos del alumno / estudiante
+                </h2>
+
+                <p>
+                    Información utilizada para cartas
+                    y documentación de estadía.
+                </p>
+
+                <div class="form-grid">
+
+                    <div class="form-group full">
+                        <label>
+                            Nombre completo *
+                        </label>
+
+                        <input
+                            id="nombreCompleto"
+                            required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            Matrícula *
+                        </label>
+
+                        <input
+                            id="matricula"
+                            required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            Cuatrimestre *
+                        </label>
+
+                        <input
+                            id="cuatrimestre"
+                            required>
+                    </div>
+
+                    <div class="form-group full">
+                        <label>
+                            Universidad / Institución *
+                        </label>
+
+                        <input
+                            id="universidad"
+                            required>
+                    </div>
+
+                    <div class="form-group full">
+                        <label>
+                            Carrera *
+                        </label>
+
+                        <input
+                            id="carrera"
+                            required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            Grupo
+                        </label>
+
+                        <input id="grupo">
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            Correo institucional
+                        </label>
+
+                        <input
+                            id="correoInstitucional"
+                            type="email">
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            Teléfono
+                        </label>
+
+                        <input id="telefono">
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            Área
+                        </label>
+
+                        <input
+                            id="area"
+                            value="Oficina de Proyectos">
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            Periodo de estadía
+                        </label>
+
+                        <input id="periodoEstadia">
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            Fecha de inicio
+                        </label>
+
+                        <input
+                            id="fechaInicio"
+                            type="date">
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            Fecha de término
+                        </label>
+
+                        <input
+                            id="fechaFin"
+                            type="date">
+                    </div>
+
+                    <div class="form-group full">
+                        <label>
+                            Responsable / CEO
+                        </label>
+
+                        <input id="responsableEmpresa">
+                    </div>
+
+                </div>
+
+            </section>
+
+            <!-- ========================= -->
+            <!-- DATOS DEL ASESOR -->
+            <!-- ========================= -->
+
+            <section
+                id="seccionAsesor"
+                class="registro-section hidden">
+
+                <h2 id="tituloAsesor">
+                    Datos del asesor
+                </h2>
+
+                <p>
+                    Información que quedará asociada
+                    al rol seleccionado.
+                </p>
+
+                <div class="form-grid">
+
+                    <div class="form-group">
+                        <label>
+                            Título
+                        </label>
+
+                        <input
+                            id="titulo"
+                            placeholder="Ing., Lic., M. en C., Dr., etc.">
+                    </div>
+
+                    <div class="form-group full">
+                        <label>
+                            Nombre completo *
+                        </label>
+
+                        <input id="nombreCompletoAsesor">
+                    </div>
+
+                    <div class="form-group full">
+                        <label>
+                            Puesto y/o Cargo
+                        </label>
+
+                        <input id="puestoCargo">
+                    </div>
+
+                    <div class="form-group full">
+                        <label>
+                            Institución *
+                        </label>
+
+                        <input id="institucion">
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            Teléfono Conmutador Trabajo
+                        </label>
+
+                        <input id="telefonoConmutadorTrabajo">
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            Extensión del Trabajo
+                        </label>
+
+                        <input id="extensionTrabajo">
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            Teléfono Directo
+                        </label>
+
+                        <input id="telefonoDirecto">
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            # Celular
+                        </label>
+
+                        <input id="celular">
+                    </div>
+
+                    <div class="form-group full">
+                        <label>
+                            E-mail
+                        </label>
+
+                        <input
+                            id="email"
+                            type="email">
+                    </div>
+
+                    <div class="form-group full">
+                        <label>
+                            Horario de disponibilidad
+                        </label>
+
+                        <input
+                            id="horarioDisponibilidad"
+                            placeholder="Ej. Lunes a viernes, 09:00 a 14:00">
+                    </div>
+
+                </div>
+
+            </section>
+
+            <!-- BOTONES -->
+
+            <div class="form-actions">
+
+                <button
+                    type="button"
+                    class="btn-secondary"
+                    id="btnVolver">
+                    Volver
+                </button>
+
+                <button
+                    type="submit"
+                    class="btn-primary">
+                    Guardar datos de registro
+                </button>
+
+            </div>
+
+        </form>
+
+    </section>
+
+</main>
+```
+
+</div>
+
+<script src="js/api-config.js?v=20260831"></script>
+
+<script src="js/permisos-globales.js?v=20260922-menu"></script>
+
+<script src="js/datos-academicos.js?v=20260831"></script>
+
+</body>
+</html>

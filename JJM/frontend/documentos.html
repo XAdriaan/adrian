@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentos | PMO Platform</title>
+    <link rel="stylesheet" href="css/documentos.css?v=20261002-formatos-automaticos-v1">
+</head>
+<body>
+<div class="dashboard-container">
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <img src="img/LOGO-J2M.png" alt="Logo PMO">
+        </div>
+        <nav class="sidebar-menu">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="perfil.html">Perfil</a>
+            <a href="proyectos.html">Proyectos</a>
+            <a href="proyecto-avanzado.html">Proyecto Avanzado</a>
+            <a href="cursos.html">Cursos</a>
+            <a href="tablero-tareas.html">Tablero de tareas</a>
+            <a href="tareas.html">Tareas</a>
+            <a href="equipo.html">Equipo</a>
+            <a href="organizaciones.html">Organizaciones</a>
+            <a href="control-horas.html">Control de horas</a>
+            <a href="bitacora.html">Bitácora</a>
+            <a href="alertas.html">Alertas</a>
+            <a href="reportes.html">Reportes</a>
+            <a href="encuestas.html">Encuestas</a>
+            <a href="documentos.html" class="active">Documentos</a>
+            <a href="chatbot.html">Chatbot IA</a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="login.html">Cerrar sesión</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header class="page-header">
+            <div>
+                <h1 id="tituloDocumentosPagina">Documentos y expediente</h1>
+                <p id="descripcionDocumentosPagina">Gestiona cartas de presentación, validaciones administrativas, cartas de término y reportes de desempeño.</p>
+            </div>
+            <div class="header-actions">
+                <span class="role-indicator" id="indicadorRolDocumentos">Verificando permisos...</span>
+                <button type="button" class="btn-secondary" id="btnActualizarDocumentos">↻ Actualizar</button>
+                <button type="button" class="btn-primary admin-only" id="btnAbrirLiberacion">+ Generar / liberar documento</button>
+            </div>
+        </header>
+
+        <section class="personal-record-card student-only" id="resumenExpedientePersonal">
+            <div class="record-loading">Cargando tu expediente...</div>
+        </section>
+
+        <section class="notice-card">
+            <strong>Flujo documental:</strong>
+            <span>El colaborador puede subir su carta de presentación, carta de aceptación y carta de término. El administrador valida la presentación y libera las cartas de aceptación y término cuando corresponda.</span>
+        </section>
+
+        <section class="summary-grid">
+            <article class="summary-card">
+                <span class="summary-icon blue">📄</span>
+                <div><h2 id="totalDocumentos">0</h2><p>Documentos</p></div>
+            </article>
+            <article class="summary-card">
+                <span class="summary-icon yellow">⌛</span>
+                <div><h2 id="totalPendientes">0</h2><p>Pendientes</p></div>
+            </article>
+            <article class="summary-card">
+                <span class="summary-icon green">✓</span>
+                <div><h2 id="totalAceptados">0</h2><p>Aceptados</p></div>
+            </article>
+            <article class="summary-card">
+                <span class="summary-icon purple">🎓</span>
+                <div><h2 id="totalLiberaciones">0</h2><p>Cartas liberadas</p></div>
+            </article>
+        </section>
+
+
+        <section class="document-filter-bar admin-only" id="filtroPersonaDocumentosContenedor">
+            <div class="document-filter-field">
+                <label for="filtroPersonaDocumentos">Seleccionar periodo</label>
+                <select id="filtroPersonaDocumentos">
+                    <option value="">Todos los periodos</option>
+                </select>
+            </div>
+            <button type="button" class="btn-secondary" id="btnLimpiarFiltroPersonaDocumentos">Limpiar filtro</button>
+        </section>
+
+        <section class="document-card admin-only" id="expedientesPorPeriodo">
+            <div class="card-header"><div><h2>Alumnos y expedientes</h2>
+                <p>Selecciona un periodo y abre el expediente del alumno para consultar sus datos y documentos.</p>
+            </div></div>
+            <p id="avisoCargaExpedientes" role="status" hidden></p>
+            <div id="listaExpedientesPeriodo" aria-live="polite"></div>
+        </section>
+
+        <section class="document-tabs">
+            <button type="button" class="tab-btn active" data-tab="mis-documentos">Mis documentos</button>
+            <button type="button" class="tab-btn admin-only" data-tab="revision">Revisión administrativa</button>
+            <button type="button" class="tab-btn" data-tab="liberaciones">Cartas de liberación</button>
+        </section>
+
+        <section class="tab-content active" id="tab-mis-documentos">
+            <div class="document-card">
+                <div class="card-header">
+                    <div>
+                        <h2>Mis documentos</h2>
+                        <p>Consulta tus documentos cargados y su estado de revisión.</p>
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr id="encabezadoMisDocumentos">
+                                <th>Documento</th>
+                                <th>Tipo</th>
+                                <th>Estado</th>
+                                <th>Fecha de carga</th>
+                                <th>Observaciones</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaMisDocumentos">
+                            <tr><td colspan="6" class="empty-row">Cargando documentos...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section class="upload-record-card student-only" id="panelSubirDocumentos">
+            <div class="upload-record-copy">
+                <span class="upload-icon">☁</span>
+                <div><h2>Subir documentos</h2><p>Agrega al expediente los documentos que correspondan a tu proceso de estadía.</p></div>
+            </div>
+            <div class="upload-record-actions">
+                <button type="button" class="btn-primary" id="btnAbrirSubidaPresentacion">+ Presentación</button>
+                <button type="button" class="btn-primary" id="btnAbrirSubidaAceptacion">+ Aceptación firmada</button>
+                <button type="button" class="btn-primary" id="btnAbrirSubidaTermino">+ Término</button>
+            </div>
+        </section>
+
+        <section class="automatic-formats-card student-only" id="panelFormatosAutomaticos">
+            <div class="automatic-formats-heading">
+                <span class="automatic-format-icon">▤</span>
+                <div>
+                    <h2>Formatos automáticos</h2>
+                    <p>El sistema toma tus datos, asistencias, horas, proyecto y tareas registradas para crear los PDF.</p>
+                </div>
+            </div>
+            <div class="automatic-formats-controls">
+                <label for="mesFormatoAutomatico">Mes del formato</label>
+                <select id="mesFormatoAutomatico" aria-label="Mes para generar los formatos"></select>
+                <button type="button" class="btn-auto-format attendance" id="btnGenerarFormatoAsistencia">Generar lista de asistencia PDF</button>
+                <button type="button" class="btn-auto-format activities" id="btnGenerarFormatoActividades">Generar tareas / actividades PDF</button>
+            </div>
+            <p class="automatic-format-status" id="estadoFormatosAutomaticos" aria-live="polite"></p>
+        </section>
+
+        <section class="tab-content" id="tab-revision">
+            <div class="document-card">
+                <div class="card-header">
+                    <div>
+                        <h2>Revisión administrativa</h2>
+                        <p>Valida cartas de presentación y libera cartas de aceptación y término cargadas por los colaboradores.</p>
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Colaborador</th>
+                                <th>Documento</th>
+                                <th>Archivo</th>
+                                <th>Estado</th>
+                                <th>Fecha de subida</th>
+                                <th>Observaciones</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaRevisionDocumentos">
+                            <tr><td colspan="6" class="empty-row">Cargando documentos...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section class="tab-content" id="tab-liberaciones">
+            <div class="document-card">
+                <div class="card-header">
+                    <div>
+                        <h2>Documentos liberados</h2>
+                        <p>Consulta y descarga la carta de término y el reporte de desempeño liberados por administración.</p>
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Colaborador</th>
+                                <th>Documento</th>
+                                <th>Archivo</th>
+                                <th>Estado</th>
+                                <th>Fecha de liberación</th>
+                                <th>Observaciones</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaLiberaciones">
+                            <tr><td colspan="7" class="empty-row">Cargando documentos liberados...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<div class="modal" id="modalSubirPresentacion">
+    <div class="modal-content">
+        <div class="modal-header">
+            <div>
+                <h2>Subir carta de presentación</h2>
+                <p>Adjunta tu carta en PDF para que sea revisada por administración.</p>
+            </div>
+            <button type="button" class="btn-close" id="btnCerrarPresentacion">×</button>
+        </div>
+        <form id="formSubirPresentacion" class="document-form">
+            <div class="form-group">
+                <label for="archivoPresentacion">Archivo PDF *</label>
+                <input type="file" id="archivoPresentacion" accept="application/pdf" required>
+            </div>
+            <div class="form-group full">
+                <label for="comentarioPresentacion">Comentario opcional</label>
+                <textarea id="comentarioPresentacion" rows="3" placeholder="Agrega una nota para el administrador..."></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" id="btnCancelarPresentacion">Cancelar</button>
+                <button type="submit" class="btn-primary">Guardar documento</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal" id="modalSubirAceptacion">
+    <div class="modal-content">
+        <div class="modal-header">
+            <div>
+                <h2>Subir carta de aceptación</h2>
+                <p>Adjunta tu carta de aceptación en PDF para que administración pueda revisarla y liberarla.</p>
+            </div>
+            <button type="button" class="btn-close" id="btnCerrarAceptacion">×</button>
+        </div>
+        <form id="formSubirAceptacion" class="document-form">
+            <div class="form-group">
+                <label for="archivoAceptacion">Archivo PDF *</label>
+                <input type="file" id="archivoAceptacion" accept="application/pdf" required>
+            </div>
+            <div class="form-group full">
+                <label for="comentarioAceptacion">Comentario opcional</label>
+                <textarea id="comentarioAceptacion" rows="3" placeholder="Agrega una nota para el administrador..."></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" id="btnCancelarAceptacion">Cancelar</button>
+                <button type="submit" class="btn-primary">Guardar carta de aceptación</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal" id="modalSubirTermino">
+    <div class="modal-content">
+        <div class="modal-header">
+            <div>
+                <h2>Subir carta de término</h2>
+                <p>Adjunta tu carta de término en PDF para que administración pueda revisarla y liberarla.</p>
+            </div>
+            <button type="button" class="btn-close" id="btnCerrarTermino">×</button>
+        </div>
+        <form id="formSubirTermino" class="document-form">
+            <div class="form-group">
+                <label for="archivoTermino">Archivo PDF *</label>
+                <input type="file" id="archivoTermino" accept="application/pdf" required>
+            </div>
+            <div class="form-group full">
+                <label for="comentarioTermino">Comentario opcional</label>
+                <textarea id="comentarioTermino" rows="3" placeholder="Agrega una nota para el administrador..."></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" id="btnCancelarTermino">Cancelar</button>
+                <button type="submit" class="btn-primary">Guardar carta de término</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal" id="modalLiberacion">
+    <div class="modal-content">
+        <div class="modal-header">
+            <div>
+                <h2>Generar y liberar documento</h2>
+                <p>Selecciona un colaborador y el sistema generará el documento con sus datos. No es necesario subir un archivo.</p>
+            </div>
+            <button type="button" class="btn-close" id="btnCerrarLiberacion">×</button>
+        </div>
+        <form id="formLiberacion" class="document-form">
+            <div class="form-group">
+                <label for="miembroLiberacion">Colaborador *</label>
+                <select id="miembroLiberacion" required>
+                    <option value="">Selecciona un colaborador</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="tipoLiberacion">Documento a liberar *</label>
+                <select id="tipoLiberacion" required>
+                    <option value="">Selecciona un tipo</option>
+                    <option value="Carta de aceptación">Carta de aceptación</option>
+                    <option value="Carta de término">Carta de término</option>
+                    <option value="Reporte de desempeño">Reporte de desempeño</option>
+                </select>
+            </div>
+            <div id="datosDocumentoGenerado" class="generated-data-box">
+                <p><strong>El sistema generará el documento con los datos académicos del colaborador seleccionado.</strong></p>
+                <p class="muted">Los datos se cargan automáticamente desde el expediente del colaborador seleccionado. Si falta información obligatoria, el sistema solicitará completarla en Datos académicos.</p>
+            </div>
+            <div class="form-grid-documento">
+                <div class="form-group"><label for="docNombreCompleto">Nombre completo *</label><input type="text" id="docNombreCompleto" required readonly></div>
+                <div class="form-group"><label for="docMatricula">Matrícula *</label><input type="text" id="docMatricula" required readonly></div>
+                <div class="form-group"><label for="docUniversidad">Universidad *</label><input type="text" id="docUniversidad" required readonly></div>
+                <div class="form-group"><label for="docCarrera">Carrera *</label><input type="text" id="docCarrera" required readonly></div>
+                <div class="form-group"><label for="docCuatrimestre">Cuatrimestre *</label><input type="text" id="docCuatrimestre" required readonly></div>
+                <div class="form-group"><label for="docPeriodo">Periodo de estadía</label><input type="text" id="docPeriodo" readonly></div>
+                <div class="form-group"><label for="docFechaInicio">Fecha de inicio</label><input type="date" id="docFechaInicio" readonly></div>
+                <div class="form-group"><label for="docFechaFin">Fecha de término</label><input type="date" id="docFechaFin" readonly></div>
+                <div class="form-group"><label for="docHoras">Horas comprometidas</label><input type="number" id="docHoras" value="600" min="0" readonly></div>
+                <div class="form-group"><label for="docProyecto">Proyecto TIC asignado</label><input type="text" id="docProyecto" readonly></div>
+            </div>
+            <div class="form-group full">
+                <label for="observacionLiberacion">Observaciones</label>
+                <textarea id="observacionLiberacion" rows="3" placeholder="Observaciones de liberación..."></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" id="btnCancelarLiberacion">Cancelar</button>
+                <button type="submit" class="btn-primary">Generar y liberar documento</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal" id="modalRevision">
+    <div class="modal-content small-modal">
+        <div class="modal-header">
+            <div>
+                <h2 id="tituloRevision">Revisar documento</h2>
+                <p>Agrega observaciones para el colaborador.</p>
+            </div>
+            <button type="button" class="btn-close" id="btnCerrarRevision">×</button>
+        </div>
+        <form id="formRevision" class="document-form">
+            <input type="hidden" id="idDocumentoRevision">
+            <input type="hidden" id="estadoDocumentoRevision">
+            <div class="form-group full">
+                <label for="observacionRevision">Observaciones</label>
+                <textarea id="observacionRevision" rows="4" placeholder="Observaciones de revisión..."></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" id="btnCancelarRevision">Cancelar</button>
+                <button type="submit" class="btn-primary">Guardar revisión</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<div class="modal preview-modal" id="modalVistaPreviaDocumento" aria-hidden="true">
+    <div class="modal-content preview-modal-content">
+        <div class="modal-header preview-modal-header">
+            <div>
+                <h2 id="tituloVistaPreviaDocumento">Vista previa del documento</h2>
+                <p id="descripcionVistaPreviaDocumento">Consulta el archivo sin necesidad de descargarlo.</p>
+            </div>
+            <button type="button" class="btn-close" id="btnCerrarVistaPreviaDocumento" aria-label="Cerrar vista previa">×</button>
+        </div>
+        <div class="preview-toolbar">
+            <span class="preview-hint">PDF e imágenes se muestran directamente en el navegador.</span>
+            <button type="button" class="btn-secondary" id="btnDescargarVistaPreviaDocumento">Descargar</button>
+        </div>
+        <div class="preview-document-container" id="contenedorVistaPreviaDocumento">
+            <div class="preview-empty">Selecciona un documento para visualizarlo.</div>
+        </div>
+    </div>
+</div>
+
+<section class="document-template-note admin-only">
+    <strong>Plantillas oficiales disponibles:</strong>
+    <a href="documentos/plantillas/PLANTILLA_CARTA_TERMINACION.pdf" target="_blank">Carta de término</a>
+    <a href="documentos/plantillas/PLANTILLA_REPORTE_DE_DESEMPENO.docx" target="_blank">Reporte de desempeño</a>
+</section>
+<script src="js/api-config.js?v=20260825"></script>
+<script src="js/permisos-globales.js?v=20260922-menu"></script>
+<!-- Generación local en navegador de PDF real para cartas y formatos automáticos -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="js/documentos.js?v=20261002-formatos-automaticos-v1"></script>
+</body>
+</html>

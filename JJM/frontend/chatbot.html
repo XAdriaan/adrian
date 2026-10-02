@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ard.IA | PMO Platform</title>
+    <link rel="stylesheet" href="css/chatbot.css">
+</head>
+<body>
+
+<div class="dashboard-container">
+
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <img src="img/LOGO-J2M.png" alt="Logo PMO">
+        </div>
+
+        <nav class="sidebar-menu">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="perfil.html">Perfil</a>
+            <a href="proyectos.html">Proyectos</a>
+            <a href="proyecto-avanzado.html">Proyecto Avanzado</a>
+            <a href="cursos.html">Cursos</a>
+            <a href="tablero-tareas.html">Tablero de tareas</a>
+            <a href="tareas.html">Tareas</a>
+            <a href="equipo.html">Equipo</a>
+            <a href="organizaciones.html">Organizaciones</a>
+            <a href="control-horas.html">Control de horas</a>
+            <a href="bitacora.html">Bitácora</a>
+            <a href="alertas.html">Alertas</a>
+            <a href="reportes.html">Reportes</a>
+            <a href="encuestas.html">Encuestas</a>
+            <a href="chatbot.html" class="active">Chatbot IA</a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="login.html">Cerrar sesión</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+
+        <section class="page-header">
+            <div>
+                <h1>Ard.IA</h1>
+                <p>Asistente inteligente para consultar proyectos, tareas, alertas, horas y recomendaciones PMO.</p>
+            </div>
+        </section>
+
+        <section class="chatbot-layout">
+
+            <aside class="chatbot-panel">
+                <div class="assistant-card">
+                    <img src="img/chatbot-avatar.png" alt="Ard.IA" onerror="this.style.display='none'">
+
+                    <div>
+                        <h2>Ard.IA</h2>
+                        <p>Asistente inteligente para la gestión de proyectos.</p>
+                    </div>
+                </div>
+
+                <div class="suggestions-card">
+                    <h3>Preguntas sugeridas</h3>
+
+                    <button type="button" class="suggestion-btn">
+                        ¿Qué proyectos están en riesgo?
+                    </button>
+
+                    <button type="button" class="suggestion-btn">
+                        ¿Cuáles son las tareas vencidas?
+                    </button>
+
+                    <button type="button" class="suggestion-btn">
+                        ¿Cuál es el avance general del portafolio?
+                    </button>
+
+                    <button type="button" class="suggestion-btn">
+                        Resume el desempeño de esta semana
+                    </button>
+
+                    <button type="button" class="suggestion-btn">
+                        ¿Qué recomendaciones tienes para reducir retrasos?
+                    </button>
+                </div>
+            </aside>
+
+            <section class="chat-window">
+
+                <div class="chat-header">
+                    <div>
+                        <h2>Conversación con Ard.IA</h2>
+                        <p>Consulta información de la PMO.</p>
+                    </div>
+
+                    <button type="button" id="btnLimpiarChatbot" class="btn-clear-chat">
+                        Limpiar chat
+                    </button>
+                </div>
+
+                <div class="chat-messages" id="chatMessages">
+                    <!-- Mensajes desde JS -->
+                </div>
+
+                <form class="chat-input-area" id="formChatbot">
+                    <input type="text" id="inputChatbot" placeholder="Escribe tu pregunta..." autocomplete="off">
+                    <button type="submit">Enviar</button>
+                </form>
+
+            </section>
+
+        </section>
+
+    </main>
+
+</div>
+
+<script src="js/api-config.js?v=20260825"></script>
+<script src="js/permisos-globales.js?v=20260922-menu"></script>
+<script src="js/chatbot.js?v=20260709-1"></script>
+</body>
+</html>

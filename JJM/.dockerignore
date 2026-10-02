@@ -1,0 +1,13 @@
+.git
+.gitignore
+.idea
+.vscode
+*.log
+*.zip
+*.tmp
+*.bak
+backend/target
+backend/.mvn
+frontend/**/*.bak
+.DS_Store
+Thumbs.db

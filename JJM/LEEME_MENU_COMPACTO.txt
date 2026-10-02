@@ -1,0 +1,9 @@
+MENÚ COMPACTO
+
+Sube la carpeta frontend actualizada al cloud, conservando su estructura. Cambiaron js/permisos-globales.js, css/sidebar-global.css y las referencias de versión en 22 páginas HTML. No necesitas recompilar Java.
+
+El menú tiene grupos desplegables, abre automáticamente el grupo de la página actual y cierra el anterior al abrir otro. El buscador encuentra apartados sin recorrer toda la lista. Escape limpia la búsqueda. Las opciones mantienen sus permisos. En pantallas pequeñas el menú permite desplazamiento interno si es necesario.
+
+Después de subirlo presiona Ctrl + F5. El ZIP conserva las correcciones anteriores de expedientes y décimo. Los archivos LEEME no son necesarios para el funcionamiento.
+
+Verificación: sintaxis de JavaScript y referencias del menú. No se pudo ejecutar la prueba visual de navegador en este entorno porque no tiene Chromium instalado. Comprobar navegación y permisos tras desplegar.

@@ -1,0 +1,840 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+body {
+    background: #f8fafc;
+    color: #111827;
+}
+
+.dashboard-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* SIDEBAR */
+
+.sidebar {
+    width: 260px;
+    background: #0f172a;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    padding: 24px 18px;
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+}
+
+.sidebar-logo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 32px;
+}
+
+.sidebar-logo img {
+    max-width: 170px;
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+}
+
+.sidebar-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+}
+
+.sidebar-menu a,
+.sidebar-footer a {
+    color: #cbd5e1;
+    text-decoration: none;
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+    transition: 0.2s ease;
+}
+
+.sidebar-menu a:hover,
+.sidebar-menu a.active {
+    background: #2563eb;
+    color: white;
+}
+
+.sidebar-footer {
+    border-top: 1px solid #334155;
+    padding-top: 16px;
+}
+
+/* CONTENIDO PRINCIPAL */
+
+.main-content {
+    margin-left: 260px;
+    width: calc(100% - 260px);
+    padding: 32px;
+}
+
+.page-header {
+    margin-bottom: 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 18px;
+}
+
+.page-header h1 {
+    font-size: 32px;
+    margin-bottom: 6px;
+    color: #020617;
+}
+
+.page-header p {
+    color: #64748b;
+    font-size: 15px;
+}
+
+/* BOTONES GENERALES */
+
+.btn-primary {
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 18px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.btn-primary:hover {
+    background: #1d4ed8;
+}
+
+.btn-secondary {
+    background: #e5e7eb;
+    color: #111827;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 18px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.btn-secondary:hover {
+    background: #d1d5db;
+}
+
+/* FILTROS */
+
+.filters-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.search-box {
+    width: 100%;
+    max-width: 440px;
+    position: relative;
+}
+
+.search-box span {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #64748b;
+}
+
+.search-box input {
+    width: 100%;
+    height: 46px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    padding: 0 14px 0 42px;
+    font-size: 15px;
+    outline: none;
+    background: white;
+}
+
+.filters-section select {
+    height: 46px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    padding: 0 14px;
+    font-size: 15px;
+    background: white;
+    outline: none;
+}
+
+.search-box input:focus,
+.filters-section select:focus,
+.team-form input:focus,
+.team-form select:focus,
+.team-form textarea:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+/* GRID DE EQUIPO */
+
+.team-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
+}
+
+.team-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 18px;
+    padding: 22px;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+    transition: 0.2s ease;
+    cursor: pointer;
+}
+
+.team-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 16px 30px rgba(15, 23, 42, 0.1);
+    border-color: #93c5fd;
+}
+
+.team-card-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.team-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 14px;
+    background: #dbeafe;
+    color: #1d4ed8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 15px;
+    flex-shrink: 0;
+}
+
+.team-card-header h3 {
+    font-size: 18px;
+    color: #0f172a;
+    margin-bottom: 4px;
+}
+
+.team-card-header p {
+    color: #64748b;
+    font-size: 13px;
+    word-break: break-word;
+}
+
+.team-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.team-info p {
+    color: #475569;
+    font-size: 14px;
+}
+
+.team-info strong {
+    color: #334155;
+}
+
+.team-skills {
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 12px;
+}
+
+.team-skills strong {
+    display: block;
+    color: #334155;
+    font-size: 13px;
+    margin-bottom: 6px;
+}
+
+.team-skills p {
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+/* BOTONES DE TARJETA */
+
+.team-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid #e5e7eb;
+    flex-wrap: wrap;
+}
+
+.team-actions button {
+    border: none;
+    border-radius: 9px;
+    padding: 9px 13px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.2s ease;
+    background: #f1f5f9;
+    color: #334155;
+}
+
+.team-actions button:hover {
+    background: #e2e8f0;
+}
+
+.team-actions button:first-child {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.team-actions button:first-child:hover {
+    background: #bfdbfe;
+}
+
+.team-actions button.delete {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.team-actions button.delete:hover {
+    background: #fecaca;
+}
+
+/* ESTADO VACÍO */
+
+.empty-state {
+    grid-column: 1 / -1;
+    background: white;
+    border: 1px dashed #cbd5e1;
+    border-radius: 16px;
+    padding: 60px 24px;
+    text-align: center;
+}
+
+.empty-state h3 {
+    font-size: 22px;
+    margin-bottom: 8px;
+    color: #111827;
+}
+
+.empty-state p {
+    color: #64748b;
+    font-size: 15px;
+}
+
+/* MODAL */
+
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    z-index: 100;
+}
+
+.modal.show {
+    display: flex;
+}
+
+.modal-content {
+    width: 100%;
+    max-width: 760px;
+    max-height: 90vh;
+    overflow-y: auto;
+    background: white;
+    border-radius: 18px;
+    padding: 26px;
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.25);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 22px;
+}
+
+.modal-header h2 {
+    font-size: 24px;
+    color: #111827;
+}
+
+.btn-close {
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 10px;
+    background: #f1f5f9;
+    font-size: 24px;
+    cursor: pointer;
+    color: #111827;
+}
+
+.btn-close:hover {
+    background: #e2e8f0;
+}
+
+/* FORMULARIO */
+
+.team-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group.full {
+    grid-column: 1 / -1;
+}
+
+.form-group label {
+    font-size: 14px;
+    font-weight: 700;
+    color: #334155;
+}
+
+.team-form input,
+.team-form select,
+.team-form textarea {
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    padding: 0 14px;
+    font-size: 15px;
+    outline: none;
+    background: white;
+}
+
+.team-form input,
+.team-form select {
+    height: 46px;
+}
+
+.team-form textarea {
+    padding-top: 12px;
+    resize: vertical;
+    min-height: 90px;
+}
+
+.form-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+/* RESPONSIVE */
+
+@media screen and (max-width: 1200px) {
+    .team-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media screen and (max-width: 900px) {
+    .dashboard-container {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        position: static;
+        width: 100%;
+        height: auto;
+    }
+
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+        padding: 20px;
+    }
+
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .filters-section {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .search-box {
+        max-width: 100%;
+    }
+
+    .team-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .team-form {
+        grid-template-columns: 1fr;
+    }
+
+    .form-group.full {
+        grid-column: auto;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+
+    .form-actions button {
+        width: 100%;
+    }
+
+    /* =========================================================
+    BOTÓN DE HISTORIAL DE HORAS EN EQUIPO
+    ========================================================= */
+
+    .team-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 18px;
+    }
+
+    .team-actions button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 38px;
+        padding: 9px 12px;
+        border: none;
+        border-radius: 8px;
+        background: #2563eb;
+        color: #ffffff;
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: transform 0.15s ease, background 0.2s ease;
+    }
+
+    .team-actions button:hover {
+        background: #1d4ed8;
+        transform: translateY(-1px);
+    }
+
+    .team-actions .btn-history-member {
+        background: #e0f2fe;
+        color: #075985;
+    }
+
+    .team-actions .btn-history-member:hover {
+        background: #bae6fd;
+    }
+    /* =========================================================
+    INDICADOR GLOBAL DE ROL
+    ========================================================= */
+
+    .indicador-rol-global {
+        margin-bottom: 12px;
+        padding: 9px 10px;
+        border-radius: 8px;
+        font-size: 11px;
+        font-weight: 700;
+        text-align: center;
+        line-height: 1.3;
+    }
+
+    .indicador-rol-global.admin {
+        background: rgba(34, 197, 94, 0.18);
+        color: #bbf7d0;
+        border: 1px solid rgba(34, 197, 94, 0.35);
+    }
+
+    .indicador-rol-global.colaborador {
+        background: rgba(59, 130, 246, 0.16);
+        color: #bfdbfe;
+        border: 1px solid rgba(59, 130, 246, 0.32);
+    }
+
+    .indicador-rol-global.consulta {
+        background: rgba(251, 191, 36, 0.14);
+        color: #fde68a;
+        border: 1px solid rgba(251, 191, 36, 0.3);
+    }
+} 
+/* =========================================================
+   EQUIPO 2026-08-30: ESTADOS Y ALTA MANUAL
+========================================================= */
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.btn-add-member {
+    white-space: nowrap;
+    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
+}
+
+.permission-note span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 38px;
+    padding: 9px 12px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.permission-admin {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+
+.permission-readonly {
+    background: #f8fafc;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+
+.status-legend {
+    display: flex;
+    gap: 7px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.legend-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 999px;
+    padding: 7px 10px;
+    font-size: 12px;
+    font-weight: 800;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.legend-chip.active {
+    color: #166534;
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+.legend-chip.inactive {
+    color: #92400e;
+    background: #fffbeb;
+    border-color: #fde68a;
+}
+
+.legend-chip.baja {
+    color: #991b1b;
+    background: #fef2f2;
+    border-color: #fecaca;
+}
+
+.team-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.team-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 5px;
+}
+
+.team-card-status-active::before {
+    background: #22c55e;
+}
+
+.team-card-status-inactive::before {
+    background: #f59e0b;
+}
+
+.team-card-status-baja::before {
+    background: #ef4444;
+}
+
+.team-card-status-inactive {
+    background: linear-gradient(180deg, #fffdf7 0, #ffffff 80px);
+}
+
+.team-card-status-baja {
+    background: linear-gradient(180deg, #fff8f8 0, #ffffff 80px);
+    border-color: #fecaca;
+}
+
+.team-card-title {
+    min-width: 0;
+    flex: 1;
+}
+
+.team-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.member-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    padding: 5px 9px;
+    font-size: 11px;
+    font-weight: 900;
+    line-height: 1;
+    border: 1px solid transparent;
+}
+
+.status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.member-status.active {
+    color: #166534;
+    background: #dcfce7;
+    border-color: #bbf7d0;
+}
+
+.member-status.inactive {
+    color: #92400e;
+    background: #fef3c7;
+    border-color: #fde68a;
+}
+
+.member-status.baja {
+    color: #991b1b;
+    background: #fee2e2;
+    border-color: #fecaca;
+}
+
+.avatar-active {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.avatar-inactive {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.avatar-baja {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.access-badge {
+    display: inline-flex;
+    margin-top: 7px;
+    width: fit-content;
+    border-radius: 999px;
+    padding: 4px 8px;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.access-badge.linked {
+    background: #eef2ff;
+    color: #4338ca;
+}
+
+.access-badge.standalone {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.member-account-note {
+    grid-column: 1 / -1;
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.member-account-note.info,
+.member-account-note.standalone {
+    background: #f8fafc;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+}
+
+.member-account-note.linked {
+    background: #eff6ff;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+}
+
+.readonly-field {
+    background: #f8fafc !important;
+    color: #64748b;
+    cursor: not-allowed;
+}
+
+@media screen and (max-width: 1100px) {
+    .filters-section {
+        flex-wrap: wrap;
+        justify-content: flex-start;
+    }
+
+    .search-box {
+        max-width: none;
+        flex: 1 1 100%;
+    }
+}
+
+@media screen and (max-width: 700px) {
+    .header-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .btn-add-member {
+        width: 100%;
+    }
+
+    .status-legend {
+        width: 100%;
+    }
+}

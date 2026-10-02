@@ -1,0 +1,66 @@
+CATÁLOGO OFICIAL DE PROYECTOS · SEPTIEMBRE - DICIEMBRE 2026
+============================================================
+
+OBJETIVO
+- Mostrar en la plataforma el nombre oficial completo del proyecto.
+- Cuando el documento fuente usa un título en azul para un equipo integrado,
+  ese título azul es el nombre visual oficial.
+- Vincular automáticamente cada proyecto con el alumno indicado en rojo en
+  el documento de asignación, siempre que ese alumno ya exista en
+  miembros_equipo.
+
+SEGURIDAD DE LA SINCRONIZACIÓN
+- NO elimina proyectos existentes.
+- NO elimina asignaciones manuales.
+- Crea/actualiza únicamente proyectos con códigos JJM-SD26-01 a JJM-SD26-15.
+- Los títulos completos se guardan en descripcion y se muestran como nombre
+  visual; la columna nombre conserva una etiqueta corta para no modificar el
+  esquema VARCHAR(180) de la base de datos.
+- La asignación por alumno compara los tokens del nombre sin importar el orden
+  ni los acentos.
+- Si no existe una coincidencia única, NO asigna a nadie para evitar errores.
+
+EQUIPOS / ALUMNOS DEL DOCUMENTO FUENTE
+01  Rodrigo Pérez Tapia
+02  Jimenez Villegas Karla Guadalupe
+03  Metzli Citlalli Gamero Gaytan
+04  Jonathan Adrian Flores Morales
+05  Carmona García Leonardo Maximiliano
+06  Angel Zamora Joshua Misael
+07  Martell
+08  Emily
+09  Remigio Elizalde Kevin Uriel
+10  Edgr Ivan Castañeda Juarez
+11  Dana Erandi Hernández Franco
+12  SIN ALUMNO VISIBLE EN EL DOCUMENTO FUENTE
+13  Diana Paola Cesar Hernández
+14  David Mondragón Cardoso
+15  Vilegas Sierra Adrián
+
+IMPORTANTE
+- En los equipos 07 y 08 el PDF únicamente muestra "Martell" y "Emily".
+  El sistema solo hará la vinculación si encuentra una coincidencia única.
+- En el equipo 12 el PDF no muestra un alumno; por seguridad se deja sin
+  asignación automática hasta que el administrador indique el nombre.
+
+ARCHIVOS MODIFICADOS
+Frontend:
+- frontend/js/proyectos.js
+- frontend/css/proyectos.css
+- frontend/js/documentos.js
+
+Backend:
+- backend/src/main/java/com/jjm/oficina/servicio/CatalogoProyectosSepDic2026Service.java
+- backend/src/main/java/com/jjm/oficina/repositorio/ProyectoRepository.java
+- backend/src/main/java/com/jjm/oficina/controller/ProyectoController.java
+- backend/src/main/java/com/jjm/oficina/controller/MiembroProyectoController.java
+- backend/target/oficina-proyectos-backend-1.0.0.jar
+
+COMPORTAMIENTO
+- Al iniciar el backend se sincroniza el catálogo oficial.
+- En Proyectos, los proyectos oficiales aparecen primero y muestran:
+  * Nombre oficial completo.
+  * Equipo Sept-Dic 2026.
+  * Alumno(s) asignado(s).
+- En Documentos > Reporte de actividades, el nombre del proyecto se toma del
+  catálogo oficial según el alumno.

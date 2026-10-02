@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bitácora | PMO Platform</title>
+    <link rel="stylesheet" href="css/bitacora.css?v=20260707-1">
+</head>
+<body>
+<div class="dashboard-container">
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <img src="img/LOGO-J2M.png" alt="Logo PMO">
+        </div>
+        <nav class="sidebar-menu">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="perfil.html">Perfil</a>
+            <a href="proyectos.html">Proyectos</a>
+            <a href="proyecto-avanzado.html">Proyecto Avanzado</a>
+            <a href="cursos.html">Cursos</a>
+            <a href="tablero-tareas.html">Tablero de tareas</a>
+            <a href="tareas.html">Tareas</a>
+            <a href="equipo.html">Equipo</a>
+            <a href="organizaciones.html">Organizaciones</a>
+            <a href="control-horas.html">Control de horas</a>
+            <a href="bitacora.html" class="active">Bitácora</a>
+            <a href="alertas.html">Alertas</a>
+            <a href="reportes.html">Reportes</a>
+            <a href="encuestas.html">Encuestas</a>
+            <a href="chatbot.html">Chatbot IA</a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="login.html">Cerrar sesión</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header class="page-header">
+            <div>
+                <span class="eyebrow">Auditoría administrativa</span>
+                <h1>Bitácora de movimientos</h1>
+                <p>Consulta las acciones relevantes realizadas dentro de la Oficina de Proyectos.</p>
+            </div>
+            <div class="header-actions">
+                <span id="indicadorRol" class="role-indicator">Verificando permisos...</span>
+                <button type="button" id="btnActualizar" class="btn-primary">↻ Actualizar</button>
+            </div>
+        </header>
+
+        <section id="mensajeAcceso" class="access-message" style="display:none;">
+            <div class="access-icon">🔒</div>
+            <div>
+                <h2>Acceso restringido</h2>
+                <p>La bitácora general solo está disponible para administradores.</p>
+                <a href="dashboard.html">Ir al Dashboard</a>
+            </div>
+        </section>
+
+        <div id="contenidoBitacora">
+            <section class="summary-grid">
+                <article class="summary-card"><span class="summary-icon blue">📋</span><div><h2 id="totalEventos">0</h2><p>Eventos encontrados</p></div></article>
+                <article class="summary-card"><span class="summary-icon purple">⏱</span><div><h2 id="eventosHoy">0</h2><p>Eventos de hoy</p></div></article>
+                <article class="summary-card"><span class="summary-icon green">👤</span><div><h2 id="usuariosActivos">0</h2><p>Usuarios con actividad</p></div></article>
+                <article class="summary-card"><span class="summary-icon orange">⚙</span><div><h2 id="modulosActivos">0</h2><p>Módulos involucrados</p></div></article>
+            </section>
+
+            <section class="filters-card">
+                <div class="filters-heading">
+                    <h2>Filtros</h2>
+                    <p>Refina los movimientos por responsable, módulo, acción o periodo.</p>
+                </div>
+                <div class="filters-grid">
+                    <div class="filter-group">
+                        <label for="filtroUsuario">Usuario</label>
+                        <select id="filtroUsuario"><option value="">Todos los usuarios</option></select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="filtroModulo">Módulo</label>
+                        <select id="filtroModulo">
+                            <option value="">Todos los módulos</option>
+                            <option value="HORAS">Horas</option>
+                            <option value="EQUIPO">Equipo</option>
+                            <option value="PROYECTOS">Proyectos</option>
+                            <option value="TAREAS">Tareas</option>
+                            <option value="ALERTAS">Alertas</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="filtroAccion">Acción</label>
+                        <select id="filtroAccion">
+                            <option value="">Todas las acciones</option>
+                            <option value="CREAR_REGISTRO">Crear registro</option>
+                            <option value="EDITAR_REGISTRO">Editar registro</option>
+                            <option value="VALIDAR_REGISTRO">Validar registro</option>
+                            <option value="ELIMINAR_REGISTRO">Eliminar registro</option>
+                            <option value="INICIAR_JORNADA">Iniciar jornada</option>
+                            <option value="FINALIZAR_JORNADA">Finalizar jornada</option>
+                            <option value="EDITAR_MIEMBRO">Editar integrante</option>
+                            <option value="CREAR_PROYECTO">Crear proyecto</option>
+                            <option value="EDITAR_PROYECTO">Editar proyecto</option>
+                            <option value="CREAR_TAREA">Crear tarea</option>
+                            <option value="EDITAR_TAREA">Editar tarea</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="fechaInicio">Fecha inicial</label>
+                        <input type="date" id="fechaInicio">
+                    </div>
+                    <div class="filter-group">
+                        <label for="fechaFin">Fecha final</label>
+                        <input type="date" id="fechaFin">
+                    </div>
+                    <div class="filter-actions">
+                        <button type="button" id="btnAplicarFiltros" class="btn-primary">Aplicar filtros</button>
+                        <button type="button" id="btnLimpiarFiltros" class="btn-secondary">Limpiar</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="table-card">
+                <div class="table-header">
+                    <div><h2>Movimientos registrados</h2><p id="textoResultado">Consultando la bitácora...</p></div>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Fecha y hora</th>
+                                <th>Usuario</th>
+                                <th>Módulo</th>
+                                <th>Acción</th>
+                                <th>Elemento</th>
+                                <th>Descripción</th>
+                                <th>Detalle</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaBitacora">
+                            <tr><td colspan="7" class="empty-row">Cargando movimientos...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+</div>
+
+<div id="modalDetalle" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <div><h2>Detalle del movimiento</h2><p id="detalleSubtitulo">Información de auditoría.</p></div>
+            <button type="button" id="btnCerrarModal" class="btn-close">×</button>
+        </div>
+        <div class="detail-grid">
+            <div><span>Datos anteriores</span><pre id="detalleAnterior">Sin información.</pre></div>
+            <div><span>Datos nuevos</span><pre id="detalleNuevo">Sin información.</pre></div>
+        </div>
+    </div>
+</div>
+
+<script src="js/api-config.js?v=20260825"></script>
+<script src="js/permisos-globales.js?v=20260922-menu"></script>
+<script src="js/bitacora.js?v=20260707-1"></script>
+</body>
+</html>

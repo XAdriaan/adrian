@@ -1,0 +1,225 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proyectos | PMO Platform</title>
+    <link rel="stylesheet" href="css/proyectos.css">
+<style>
+.project-toolbar-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.folders-panel{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:20px;margin-bottom:20px}.folders-panel-head{display:flex;justify-content:space-between;gap:15px;align-items:center}.folders-panel h2{margin:0 0 5px;font-size:20px}.folders-panel p{margin:0;color:#667085;font-size:13px}.folders-panel-head span{background:#eef4ff;color:#3538cd;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:700}.folders-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:16px}.folder-card{border:1px solid #e4e7ec;border-radius:12px;padding:15px;background:#f8fafc;cursor:pointer}.folder-card.active{border-color:#155eef;box-shadow:0 0 0 2px rgba(21,94,239,.08)}.folder-card h3{margin:0 0 5px;font-size:15px}.folder-card p{margin:0 0 10px;color:#667085}.folder-card small{color:#475467}.folder-card .folder-actions{display:flex;gap:6px;margin-top:10px}.folder-card button{border:1px solid #d0d5dd;background:#fff;border-radius:7px;padding:6px 8px;cursor:pointer;font-size:12px}
+</style></head>
+<body>
+
+<div class="dashboard-container">
+
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <img src="img/LOGO-J2M.png" alt="Logo PMO">
+        </div>
+
+        <nav class="sidebar-menu">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="perfil.html">Perfil</a>
+            <a href="proyectos.html" class="active">Carpetas y proyectos</a>
+            <a href="proyecto-avanzado.html">Proyecto Avanzado</a>
+            <a href="cursos.html">Cursos</a>
+            <a href="tablero-tareas.html">Tablero de tareas</a>
+            <a href="tareas.html">Tareas</a>
+            <a href="equipo.html">Equipo</a>
+            <a href="organizaciones.html">Organizaciones</a>
+            <a href="control-horas.html">Control de horas</a>
+            <a href="bitacora.html">Bitácora</a>
+            <a href="alertas.html">Alertas</a>
+            <a href="reportes.html">Reportes</a>
+            <a href="encuestas.html">Encuestas</a>
+            <a href="chatbot.html">Chatbot IA</a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="login.html">Cerrar sesión</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+
+        <header class="page-header">
+            <div>
+                <h1>Carpetas y proyectos</h1>
+                <p>Gestión integral del portafolio de proyectos.</p>
+            </div>
+
+            <div class="project-toolbar-actions">
+                <button class="btn-secondary" id="btnNuevaCarpeta" type="button">+ Nueva carpeta</button>
+                <button class="btn-secondary" id="btnImportarProyecto" type="button">Importar proyecto</button>
+                <input id="archivoImportarProyecto" type="file" accept="application/json,.json" hidden>
+                <button class="btn-primary" id="btnNuevoProyecto">+ Nuevo Proyecto</button>
+            </div>
+        </header>
+
+        <div id="permisoProyectos" class="permission-note"></div>
+
+        <section class="filters-section">
+            <div class="search-box">
+                <span>🔍</span>
+                <input
+                    type="text"
+                    id="buscarProyecto"
+                    placeholder="Buscar proyecto..."
+                >
+            </div>
+
+            <select id="filtroEstado">
+                <option value="todos">Todos</option>
+                <option value="Propuesto">Propuesto</option>
+                <option value="Inicio">Iniciación</option>
+                <option value="Planificación">Planificación</option>
+                <option value="Ejecución">Ejecución</option>
+                <option value="Monitoreo">Monitoreo y Control</option>
+                <option value="Cierre">Cierre</option>
+                <option value="Cerrado">Cerrado</option>
+                <option value="Cancelado">Cancelado</option>
+            </select>
+        </section>
+
+        <section class="folders-panel">
+            <div class="folders-panel-head"><div><h2>Carpetas de proyectos</h2><p>Organiza los proyectos por área, cliente, periodo o cualquier criterio que necesites.</p></div><span id="contadorCarpetas">0 carpetas</span></div>
+            <div id="contenedorCarpetas" class="folders-grid"></div>
+        </section>
+
+        <section id="contenedorProyectos" class="projects-grid">
+            <div class="empty-state">
+                <h3>Cargando proyectos...</h3>
+                <p>Consultando la información registrada en MySQL.</p>
+            </div>
+        </section>
+
+    </main>
+
+</div>
+
+<div class="modal" id="modalProyecto">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="tituloModal">Nuevo Proyecto</h2>
+            <button type="button" id="btnCerrarModal" class="btn-close">×</button>
+        </div>
+
+        <form id="formProyecto" class="project-form">
+
+            <input type="hidden" id="idProyecto">
+
+            <div class="form-group">
+                <label for="nombreProyecto">Nombre del proyecto *</label>
+                <input
+                    type="text"
+                    id="nombreProyecto"
+                    maxlength="180"
+                    placeholder="Ej. Sistema PMO Web"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="codigoProyecto">Código del proyecto</label>
+                <input
+                    type="text"
+                    id="codigoProyecto"
+                    maxlength="50"
+                    placeholder="Opcional; se genera automáticamente"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="organizacionProyecto">Organización relacionada</label>
+                <select id="organizacionProyecto">
+                    <option value="">Sin organización asignada</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="carpetaProyecto">Carpeta</label>
+                <select id="carpetaProyecto"><option value="">Sin carpeta</option></select>
+                <button type="button" class="btn-secondary" onclick="crearCarpetaUI()">+ Crear carpeta</button>
+            </div>
+
+            <div class="form-group">
+                <label for="responsableProyecto">Responsable</label>
+                <select id="responsableProyecto">
+                    <option value="">Sin responsable asignado</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="clienteProyecto">Cliente / Área</label>
+                <input
+                    type="text"
+                    id="clienteProyecto"
+                    maxlength="150"
+                    placeholder="Ej. Dirección de Innovación"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="estadoProyecto">Estado</label>
+                <select id="estadoProyecto">
+                    <option value="Propuesto">Propuesto</option>
+                    <option value="Inicio">Iniciación</option>
+                    <option value="Planificación">Planificación</option>
+                    <option value="Ejecución">Ejecución</option>
+                    <option value="Monitoreo">Monitoreo y Control</option>
+                    <option value="Cierre">Cierre</option>
+                    <option value="Cerrado">Cerrado</option>
+                    <option value="Cancelado">Cancelado</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="prioridadProyecto">Prioridad</label>
+                <select id="prioridadProyecto">
+                    <option value="Baja">Baja</option>
+                    <option value="Media">Media</option>
+                    <option value="Alta">Alta</option>
+                    <option value="Crítica">Crítica</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="fechaInicioProyecto">Fecha de inicio</label>
+                <input type="date" id="fechaInicioProyecto">
+            </div>
+
+            <div class="form-group">
+                <label for="fechaFinProyecto">Fecha estimada de cierre</label>
+                <input type="date" id="fechaFinProyecto">
+            </div>
+
+            <div class="form-group full">
+                <label for="descripcionProyecto">Descripción</label>
+                <textarea
+                    id="descripcionProyecto"
+                    rows="4"
+                    placeholder="Descripción breve del proyecto"
+                ></textarea>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" id="btnCancelar">
+                    Cancelar
+                </button>
+
+                <button type="submit" class="btn-primary" id="btnGuardarProyecto">
+                    Guardar Proyecto
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<script src="js/api-config.js?v=20260825"></script>
+<script src="js/permisos-globales.js?v=20260922-menu"></script>
+<script src="js/proyectos.js"></script>
+</body>
+</html>
+

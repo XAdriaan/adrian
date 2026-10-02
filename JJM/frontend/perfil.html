@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Perfil | PMO Platform</title>
+
+    <link
+        rel="stylesheet"
+        href="css/perfil.css?v=20260829-2"
+    >
+</head>
+
+<body>
+
+<div class="dashboard-container">
+
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <img
+                src="img/LOGO-J2M.png"
+                alt="Logo PMO"
+            >
+        </div>
+
+        <nav class="sidebar-menu">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="perfil.html" class="active">Perfil</a>
+            <a href="proyectos.html">Proyectos</a>
+            <a href="proyecto-avanzado.html">Proyecto Avanzado</a>
+            <a href="cursos.html">Cursos</a>
+            <a href="tablero-tareas.html">Tablero de tareas</a>
+            <a href="tareas.html">Tareas</a>
+            <a href="equipo.html">Equipo</a>
+            <a href="organizaciones.html">Organizaciones</a>
+            <a href="control-horas.html">Control de horas</a>
+            <a href="bitacora.html">Bitácora</a>
+            <a href="alertas.html">Alertas</a>
+            <a href="reportes.html">Reportes</a>
+            <a href="encuestas.html">Encuestas</a>
+            <a href="chatbot.html">Chatbot IA</a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="login.html">Cerrar sesión</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+
+        <section class="page-header">
+            <div>
+                <h1>Perfil</h1>
+                <p>
+                    Administra tu información personal, seguridad,
+                    preferencias y políticas de uso.
+                </p>
+            </div>
+        </section>
+
+        <section class="profile-layout">
+
+            <aside class="profile-menu">
+                <button
+                    type="button"
+                    class="profile-menu-btn active"
+                    data-section="general"
+                >
+                    Información general
+                </button>
+
+                <button
+                    type="button"
+                    class="profile-menu-btn"
+                    data-section="datos"
+                >
+                    Datos y seguridad
+                </button>
+
+                <button
+                    type="button"
+                    class="profile-menu-btn"
+                    data-section="hora"
+                >
+                    Hora e idioma
+                </button>
+
+                <button
+                    type="button"
+                    class="profile-menu-btn"
+                    data-section="politicas"
+                >
+                    Condiciones y políticas
+                </button>
+
+                <button
+                    type="button"
+                    class="profile-menu-btn"
+                    data-section="contactos"
+                >
+                    Contactos
+                </button>
+            </aside>
+
+            <section class="profile-content">
+
+                <!-- INFORMACIÓN GENERAL -->
+                <section
+                    class="profile-section active"
+                    id="section-general"
+                >
+
+                    <div class="profile-card">
+
+                        <div class="section-title">
+                            <h2>Información general</h2>
+                            <p>
+                                Actualiza tus datos visibles dentro de la plataforma.
+                            </p>
+                        </div>
+
+                        <div class="avatar-section">
+                            <div
+                                class="avatar-preview"
+                                id="avatarPreview"
+                            >
+                                <span id="avatarPlaceholder">👤</span>
+
+                                <img
+                                    id="fotoPerfilPreview"
+                                    src=""
+                                    alt="Foto de perfil"
+                                >
+                            </div>
+
+                            <label
+                                for="fotoPerfil"
+                                class="avatar-upload-btn"
+                            >
+                                +
+                            </label>
+
+                            <input
+                                type="file"
+                                id="fotoPerfil"
+                                accept="image/*"
+                            >
+                        </div>
+
+                        <form
+                            id="formPerfil"
+                            class="profile-form"
+                        >
+
+                            <div class="form-group">
+                                <label for="nombrePerfil">
+                                    Nombre completo
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="nombrePerfil"
+                                    placeholder="Nombre del usuario"
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label for="usuarioPerfil">
+                                    Usuario
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="usuarioPerfil"
+                                    placeholder="Nombre de usuario"
+                                >
+                            </div>
+
+                            <div class="form-group full">
+                                <label for="descripcionPerfil">
+                                    Descripción
+                                </label>
+
+                                <textarea
+                                    id="descripcionPerfil"
+                                    rows="4"
+                                    placeholder="Agrega una breve descripción profesional"
+                                ></textarea>
+                            </div>
+
+                            <div class="form-actions">
+                                <button
+                                    type="submit"
+                                    class="btn-primary"
+                                >
+                                    Guardar información
+                                </button>
+                            </div>
+
+                        </form>
+
+                    </div>
+
+                </section>
+
+                <!-- DATOS Y SEGURIDAD -->
+                <section
+                    class="profile-section"
+                    id="section-datos"
+                >
+
+                    <div class="profile-card">
+
+                        <div class="section-title">
+                            <h2>Datos y seguridad</h2>
+                            <p>
+                                Gestiona la autenticación, recuperación de
+                                contraseña y protección de la cuenta.
+                            </p>
+                        </div>
+
+                        <div class="security-grid">
+
+                            <article class="security-box">
+                                <div>
+                                    <h3>Autenticación de cuenta</h3>
+
+                                    <p id="estadoAutenticacionTexto">
+                                        La autenticación adicional no está configurada.
+                                    </p>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    class="btn-primary"
+                                    id="btnConfigurarAuth"
+                                >
+                                    Configurar autenticación
+                                </button>
+                            </article>
+
+                            <article class="security-box">
+                                <div>
+                                    <h3>Recuperación de contraseña</h3>
+
+                                    <p>
+                                        Solicita un código de recuperación para
+                                        actualizar tu contraseña.
+                                    </p>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    class="forgot-password-btn"
+                                    id="btnOlvidePassword"
+                                >
+                                    ¿No recuerdas tu contraseña?
+                                </button>
+                            </article>
+
+                            <article class="security-box">
+                                <div>
+                                    <h3>Correo electrónico</h3>
+
+                                    <p>
+                                        Correo asociado a la cuenta del usuario.
+                                    </p>
+                                </div>
+
+                                <input
+                                    type="email"
+                                    id="correoPerfil"
+                                    placeholder="usuario@correo.com"
+                                    autocomplete="email"
+                                >
+
+                                <button
+                                    type="button"
+                                    class="btn-primary"
+                                    id="btnActualizarCorreo"
+                                >
+                                    Actualizar correo
+                                </button>
+                            </article>
+
+                            <article class="security-box">
+                                <div>
+                                    <h3>Contraseña actual</h3>
+
+                                    <p>
+                                        Confirma tu contraseña actual para autorizar
+                                        el cambio de correo electrónico.
+                                    </p>
+                                </div>
+
+                                <input
+                                    type="password"
+                                    id="passwordActualPerfil"
+                                    placeholder="Contraseña actual"
+                                >
+                            </article>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+                <!-- HORA E IDIOMA -->
+                <section
+                    class="profile-section"
+                    id="section-hora"
+                >
+
+                    <div class="profile-card">
+
+                        <div class="section-title">
+                            <h2>Hora e idioma</h2>
+                            <p>
+                                Configura las preferencias regionales de la plataforma.
+                            </p>
+                        </div>
+
+                        <form
+                            id="formPreferencias"
+                            class="profile-form"
+                        >
+
+                            <div class="form-group">
+                                <label for="idiomaPerfil">
+                                    Idioma
+                                </label>
+
+                                <select id="idiomaPerfil">
+                                    <option value="es">Español</option>
+                                    <option value="en">Inglés</option>
+                                    <option value="zh">Chino mandarín</option>
+                                    <option value="hi">Hindi</option>
+                                    <option value="ar">Árabe</option>
+                                    <option value="fr">Francés</option>
+                                    <option value="ru">Ruso</option>
+                                    <option value="pt">Portugués</option>
+                                    <option value="de">Alemán</option>
+                                    <option value="ja">Japonés</option>
+                                    <option value="ko">Coreano</option>
+                                    <option value="it">Italiano</option>
+                                    <option value="tr">Turco</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="zonaHorariaPerfil">
+                                    Zona horaria
+                                </label>
+
+                                <select id="zonaHorariaPerfil">
+                                    <option value="America/Mexico_City">
+                                        Ciudad de México
+                                    </option>
+
+                                    <option value="America/Tijuana">
+                                        Tijuana
+                                    </option>
+
+                                    <option value="America/Cancun">
+                                        Cancún
+                                    </option>
+
+                                    <option value="America/New_York">
+                                        Nueva York
+                                    </option>
+
+                                    <option value="Europe/Madrid">
+                                        Madrid
+                                    </option>
+                                </select>
+                            </div>
+
+                            <div class="form-actions">
+                                <button
+                                    type="submit"
+                                    class="btn-primary"
+                                >
+                                    Guardar preferencias
+                                </button>
+                            </div>
+
+                        </form>
+
+                    </div>
+
+                </section>
+
+                <!-- CONDICIONES Y POLÍTICAS -->
+                <section
+                    class="profile-section"
+                    id="section-politicas"
+                >
+
+                    <div class="profile-card terms-card">
+
+                        <div class="section-title">
+                            <h2>Términos, condiciones y políticas</h2>
+                            <p>
+                                Consulta las políticas de uso de la Solución Integral PMO.
+                            </p>
+                        </div>
+
+                        <div class="terms-content">
+
+                            <h3>
+                                TÉRMINOS, CONDICIONES Y POLÍTICAS DE USO
+                                DE LA SOLUCIÓN INTEGRAL PMO
+                            </h3>
+
+                            <p>
+                                <strong>Empresa:</strong>
+                                JJM Tecnologías Innovadoras, S.A. de C.V.
+                            </p>
+
+                            <p>
+                                <strong>Fecha de Vigencia:</strong>
+                                Mayo 2026
+                            </p>
+
+                            <p>
+                                El presente documento establece los términos,
+                                condiciones y políticas bajo los cuales los
+                                colaboradores, líderes de proyecto, administradores
+                                y enlaces universitarios o empresariales autorizados
+                                harán uso de la Solución Tecnológica Integral,
+                                conformada por Plataforma Web y Aplicación Móvil
+                                Android/iOS.
+                            </p>
+
+                            <h4>1. Ámbito de Aplicación y Perfiles de Usuario</h4>
+
+                            <p>
+                                La plataforma está destinada exclusivamente a la
+                                gestión, administración y monitoreo del portafolio
+                                de proyectos de la organización. El acceso y las
+                                funcionalidades permitidas estarán estrictamente
+                                limitados y condicionados por el rol asignado a
+                                cada cuenta de usuario.
+                            </p>
+
+                            <p>
+                                <strong>Perfiles Autorizados:</strong>
+                                Administrador PMO, Director, Líder de Proyecto,
+                                Colaborador, QA, Cliente y Enlace de
+                                Universidad/Empresa.
+                            </p>
+
+                            <p>
+                                Cada usuario es responsable de mantener la
+                                confidencialidad de sus credenciales de acceso.
+                                Queda estrictamente prohibido compartir cuentas
+                                entre personal interno o estudiantes de
+                                estancias/estadías.
+                            </p>
+
+                            <h4>2. Políticas de Registro de Horarios y Actividades (Timesheets)</h4>
+
+                            <p>
+                                De acuerdo con las reglas de negocio del sistema,
+                                el uso de las herramientas de control de tiempo
+                                está sujeto a las siguientes condiciones obligatorias:
+                            </p>
+
+                            <p>
+                                <strong>Check-in / Check-out:</strong>
+                                Los colaboradores deben registrar de forma
+                                obligatoria su hora de inicio y término de la
+                                jornada diaria a través de la aplicación móvil.
+                                Solo se permite un registro de check-in activo
+                                por día.
+                            </p>
+
+                            <p>
+                                <strong>Correcciones y Justificaciones:</strong>
+                                Cualquier modificación o corrección manual sobre
+                                los horarios registrados requerirá de una
+                                justificación obligatoria y estará sujeta a la
+                                validación y aprobación del Líder de Proyecto
+                                asignado.
+                            </p>
+
+                            <p>
+                                <strong>Límites de Registro:</strong>
+                                No se permitirá bajo ninguna circunstancia el
+                                registro de horas con valores negativos, ni
+                                acumulaciones que excedan las 24 horas de actividad
+                                diarias por persona.
+                            </p>
+
+                            <p>
+                                <strong>Auditoría de Actividades:</strong>
+                                Toda hora capturada debe vincularse de manera
+                                directa a una tarea específica del proyecto.
+                                El Líder de Proyecto tiene la facultad de aprobar
+                                o rechazar las horas reportadas semanalmente,
+                                quedando guardado todo movimiento en la bitácora
+                                de auditoría del sistema.
+                            </p>
+
+                            <h4>3. Condiciones de Uso de Tableros Kanban y Gestión de Tareas</h4>
+
+                            <p>
+                                El flujo operativo en tiempo real de los tableros
+                                visuales debe respetar las siguientes políticas de
+                                calidad de software y de gobernanza, conocidas
+                                como Quality Gates.
+                            </p>
+
+                            <p>
+                                <strong>Límites de Trabajo en Proceso (WIP):</strong>
+                                El sistema aplicará restricciones al número de
+                                tareas activas simultáneamente en la plataforma web.
+                                Exceder estos límites generará alertas preventivas
+                                automatizadas.
+                            </p>
+
+                            <p>
+                                <strong>Evidencias de Cierre:</strong>
+                                Los usuarios se comprometen a adjuntar de manera
+                                digital, a través de la cámara del móvil o archivos
+                                permitidos como PDF o enlaces, las evidencias
+                                correspondientes al avance de sus tareas.
+                            </p>
+
+                            <p>
+                                <strong>Transiciones de Fase Obligatorias:</strong>
+                                Para que una tarea pueda ser promovida en el
+                                tablero a la columna de “Pruebas”, el sistema
+                                validará la existencia de un responsable de QA
+                                asignado. Para que un proyecto o tarea avance a
+                                la columna de “Cierre”, será condición obligatoria
+                                haber cargado y completado el acta o checklist de
+                                cierre correspondiente. Las fases que no cumplan
+                                con los entregables mínimos obligatorios serán
+                                bloqueadas por el motor de reglas del sistema.
+                            </p>
+
+                            <h4>4. Políticas del Uso del Chatbot con Inteligencia Artificial (IA)</h4>
+
+                            <p>
+                                La solución web y móvil incorpora asistentes
+                                basados en IA y modelos heurísticos orientados
+                                a optimizar la operación y toma de decisiones.
+                                Su uso se rige bajo los siguientes principios:
+                            </p>
+
+                            <p>
+                                <strong>Alcance Operativo:</strong>
+                                El Chatbot móvil y web está facultado para procesar
+                                comandos de consulta de tareas, reportes rápidos de
+                                avance y automatización de registros de tiempo bajo
+                                petición expresa del usuario.
+                            </p>
+
+                            <p>
+                                <strong>Explicabilidad y Supervisión Humana:</strong>
+                                Las recomendaciones preventivas, predicciones de
+                                riesgos de retraso o sugerencias de reasignación
+                                emitidas por la IA incluirán los factores
+                                contribuyentes que justifican dicha sugerencia.
+                            </p>
+
+                            <p>
+                                <strong>Confirmación de Acciones Sensibles:</strong>
+                                La Inteligencia Artificial actúa únicamente como un
+                                agente predictivo y de recomendación. Las acciones
+                                críticas o sensibles, tales como el cierre de tareas
+                                en el tablero o cambios en la planeación del proyecto,
+                                requerirán de manera mandatoria la confirmación y
+                                aprobación expresa de un usuario humano calificado.
+                                El sistema no ejecutará cambios operativos de forma
+                                autónoma.
+                            </p>
+
+                            <h4>5. Propiedad Intelectual, Seguridad de la Información y Confidencialidad</h4>
+
+                            <p>
+                                <strong>Información del Proyecto:</strong>
+                                Toda información ingresada a la plataforma,
+                                incluyendo nombres de clientes, portafolios,
+                                presupuestos, estructuras de bases de datos y
+                                códigos de tareas, constituye información
+                                confidencial y propiedad exclusiva de JJM
+                                Tecnologías Innovadoras, S.A. de C.V. o de los
+                                clientes asociados.
+                            </p>
+
+                            <p>
+                                <strong>Protección de Datos en el Chatbot:</strong>
+                                Las interacciones con el Chatbot e IA serán
+                                almacenadas en una bitácora de conversación con
+                                fines de mejora del sistema y aprendizaje continuo,
+                                asegurando en todo momento que los datos sensibles
+                                de los proyectos o usuarios no queden visibles.
+                            </p>
+
+                            <p>
+                                <strong>Encuestas de Satisfacción:</strong>
+                                El sistema recopilará datos cualitativos y métricas
+                                de rendimiento mediante encuestas de satisfacción
+                                dirigidas a los usuarios finales, equipo y clientes,
+                                al término de cada fase y al cierre del proyecto.
+                                Esta información será utilizada para la analítica de
+                                desempeño y la generación de lecciones aprendidas
+                                dentro del gobierno de la PMO.
+                            </p>
+
+                            <h4>6. Incumplimiento de las Políticas y Sistema de Escalamiento</h4>
+
+                            <p>
+                                El sistema cuenta con un motor automático de reglas
+                                configurables que monitorea las desviaciones de
+                                tiempos, tareas vencidas, falta de registros o
+                                violaciones de flujo.
+                            </p>
+
+                            <p>
+                                Cualquier alerta desatendida o violación a las reglas
+                                de negocio descritas en este documento será notificada
+                                por medio de alertas tipo push en la app móvil y en
+                                la bandeja de control web.
+                            </p>
+
+                            <p>
+                                Las alertas cuentan con niveles de severidad y, en
+                                caso de no ser atendidas en los plazos parametrizados,
+                                el sistema escalará automáticamente la incidencia hacia
+                                las instancias superiores de la Oficina de Proyectos PMO.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+                <!-- CONTACTOS -->
+                <section
+                    class="profile-section"
+                    id="section-contactos"
+                >
+
+                    <div class="profile-card">
+
+                        <div class="section-title">
+                            <h2>Contactos de soporte</h2>
+                            <p>
+                                Accede a los canales de soporte de la plataforma.
+                            </p>
+                        </div>
+
+                        <div class="contact-grid">
+
+                            <a
+                                href="chatbot.html"
+                                class="support-banner"
+                            >
+                                <div class="support-icon">
+                                    <img
+                                        src="img/chatbot-avatar.png"
+                                        alt="Chatbot IA"
+                                    >
+                                </div>
+
+                                <div>
+                                    <h3>Conoce nuestro soporte</h3>
+                                    <p>
+                                        Consulta dudas operativas con el asistente PMO.
+                                    </p>
+                                </div>
+                            </a>
+
+                            <article class="contact-card">
+                                <h3>Soporte técnico</h3>
+                                <p>Correo: soporte@jjmtecnologias.com</p>
+                                <p>
+                                    Horario: lunes a viernes de 9:00 a 18:00 hrs.
+                                </p>
+                            </article>
+
+                            <article class="contact-card">
+                                <h3>Administración PMO</h3>
+                                <p>
+                                    Área responsable de la operación y seguimiento
+                                    de proyectos.
+                                </p>
+                            </article>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+            </section>
+
+        </section>
+
+    </main>
+
+</div>
+
+<!-- MODAL AUTENTICACIÓN -->
+<div
+    class="modal"
+    id="modalAuth"
+>
+    <div class="modal-content modern-auth">
+
+        <div class="auth-header">
+            <div>
+                <h2>Configurar autenticación</h2>
+                <p>
+                    Protege la cuenta mediante un código enviado al correo electrónico registrado.
+                </p>
+            </div>
+
+            <button
+                type="button"
+                class="btn-close"
+                id="btnCerrarAuth"
+            >
+                ×
+            </button>
+        </div>
+
+        <div class="auth-methods">
+
+            <button
+                type="button"
+                class="auth-method-card"
+                data-method="correo"
+            >
+                <span>📧</span>
+
+                <div>
+                    <h3>Correo electrónico</h3>
+                    <p>
+                        Recibe un código de verificación en tu correo.
+                    </p>
+                </div>
+            </button>
+
+
+
+        </div>
+
+    </div>
+</div>
+
+<!-- MODAL CÓDIGO AUTENTICACIÓN -->
+<div
+    class="modal"
+    id="modalCodigo"
+>
+    <div class="modal-content modern-auth">
+
+        <div class="auth-header">
+            <div>
+                <h2>Verificación de seguridad</h2>
+                <p id="codigoAuthTexto">
+                    Ingresa el código enviado.
+                </p>
+            </div>
+
+            <button
+                type="button"
+                class="btn-close"
+                id="btnCerrarCodigo"
+            >
+                ×
+            </button>
+        </div>
+
+        <form id="formCodigoAuth">
+
+            <div class="code-inputs">
+                <input
+                    type="text"
+                    maxlength="1"
+                    class="codigo-auth-input"
+                >
+
+                <input
+                    type="text"
+                    maxlength="1"
+                    class="codigo-auth-input"
+                >
+
+                <input
+                    type="text"
+                    maxlength="1"
+                    class="codigo-auth-input"
+                >
+
+                <input
+                    type="text"
+                    maxlength="1"
+                    class="codigo-auth-input"
+                >
+
+                <input
+                    type="text"
+                    maxlength="1"
+                    class="codigo-auth-input"
+                >
+
+                <input
+                    type="text"
+                    maxlength="1"
+                    class="codigo-auth-input"
+                >
+            </div>
+
+            <div class="form-actions">
+                <button
+                    type="button"
+                    class="btn-secondary"
+                    id="btnCancelarCodigo"
+                >
+                    Cancelar
+                </button>
+
+                <button
+                    type="submit"
+                    class="btn-primary"
+                >
+                    Verificar código
+                </button>
+            </div>
+
+        </form>
+
+    </div>
+</div>
+
+<!-- MODAL RECUPERAR CONTRASEÑA -->
+<div
+    class="modal"
+    id="modalRecuperarPassword"
+>
+    <div class="modal-content recover-auth">
+
+        <div class="auth-header">
+            <div>
+                <h2>Recuperar contraseña</h2>
+                <p>
+                    Completa el proceso de verificación para crear
+                    una nueva contraseña.
+                </p>
+            </div>
+
+            <button
+                type="button"
+                class="btn-close"
+                id="btnCerrarRecuperar"
+            >
+                ×
+            </button>
+        </div>
+
+        <div class="recover-body">
+
+            <form
+                id="formEnviarCodigoPassword"
+                class="recover-step active"
+                data-step="correo"
+            >
+
+                <div class="form-group full">
+                    <label for="correoRecuperacion">
+                        Correo electrónico
+                    </label>
+
+                    <input
+                        type="email"
+                        id="correoRecuperacion"
+                        placeholder="usuario@correo.com"
+                        required
+                    >
+                </div>
+
+                <div class="form-actions">
+                    <button
+                        type="button"
+                        class="btn-secondary"
+                        id="btnCancelarRecuperar"
+                    >
+                        Cancelar
+                    </button>
+
+                    <button
+                        type="submit"
+                        class="btn-primary"
+                    >
+                        Enviar código
+                    </button>
+                </div>
+
+            </form>
+
+            <form
+                id="formValidarCodigoPassword"
+                class="recover-step"
+                data-step="codigo"
+            >
+
+                <p
+                    id="codigoRecuperacionTexto"
+                    class="recover-info"
+                >
+                    Ingresa el código enviado para continuar.
+                </p>
+
+                <div class="recovery-code-inputs">
+                    <input
+                        type="text"
+                        maxlength="1"
+                        class="codigo-recuperacion-input"
+                    >
+
+                    <input
+                        type="text"
+                        maxlength="1"
+                        class="codigo-recuperacion-input"
+                    >
+
+                    <input
+                        type="text"
+                        maxlength="1"
+                        class="codigo-recuperacion-input"
+                    >
+
+                    <input
+                        type="text"
+                        maxlength="1"
+                        class="codigo-recuperacion-input"
+                    >
+
+                    <input
+                        type="text"
+                        maxlength="1"
+                        class="codigo-recuperacion-input"
+                    >
+
+                    <input
+                        type="text"
+                        maxlength="1"
+                        class="codigo-recuperacion-input"
+                    >
+                </div>
+
+                <div class="form-actions">
+                    <button
+                        type="button"
+                        class="btn-secondary"
+                        id="btnVolverCorreo"
+                    >
+                        Volver
+                    </button>
+
+                    <button
+                        type="submit"
+                        class="btn-primary"
+                    >
+                        Validar código
+                    </button>
+                </div>
+
+            </form>
+
+            <form
+                id="formNuevaPassword"
+                class="recover-step"
+                data-step="nueva"
+            >
+
+                <div class="form-group full">
+                    <label for="nuevaPasswordRecuperacion">
+                        Nueva contraseña
+                    </label>
+
+                    <input
+                        type="password"
+                        id="nuevaPasswordRecuperacion"
+                        placeholder="Nueva contraseña"
+                        required
+                    >
+                </div>
+
+                <div class="form-group full">
+                    <label for="confirmarPasswordRecuperacion">
+                        Confirmar contraseña
+                    </label>
+
+                    <input
+                        type="password"
+                        id="confirmarPasswordRecuperacion"
+                        placeholder="Confirmar contraseña"
+                        required
+                    >
+                </div>
+
+                <div class="form-actions">
+                    <button
+                        type="button"
+                        class="btn-secondary"
+                        id="btnCancelarNuevaPassword"
+                    >
+                        Cancelar
+                    </button>
+
+                    <button
+                        type="submit"
+                        class="btn-primary"
+                    >
+                        Guardar contraseña
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+</div>
+
+<script src="js/api-config.js?v=20260825"></script>
+<script src="js/permisos-globales.js?v=20260922-menu"></script>
+<script src="js/perfil.js?v=20260712-1"></script>
+
+</body>
+</html>

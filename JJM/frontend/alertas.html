@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Alertas | PMO Platform</title>
+
+    <link
+        rel="stylesheet"
+        href="css/alertas.css?v=20260703-1"
+    >
+</head>
+
+<body>
+
+<div class="dashboard-container">
+
+    <!-- =====================================================
+         BARRA LATERAL
+    ====================================================== -->
+    <aside class="sidebar">
+
+        <div class="sidebar-logo">
+            <img
+                src="img/LOGO-J2M.png"
+                alt="Logo PMO"
+            >
+        </div>
+
+        <nav class="sidebar-menu">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="perfil.html">Perfil</a>
+            <a href="proyectos.html">Proyectos</a>
+            <a href="proyecto-avanzado.html">
+                Proyecto Avanzado
+            </a>
+            <a href="cursos.html">Cursos</a>
+            <a href="tablero-tareas.html">
+                Tablero de tareas
+            </a>
+            <a href="tareas.html">Tareas</a>
+            <a href="equipo.html">Equipo</a>
+            <a href="organizaciones.html">
+                Organizaciones
+            </a>
+            <a href="control-horas.html">
+                Control de horas
+            </a>
+            <a href="bitacora.html">Bitácora</a>
+            <a
+                href="alertas.html"
+                class="active"
+            >
+                Alertas
+            </a>
+
+            <a href="reportes.html">Reportes</a>
+            <a href="encuestas.html">Encuestas</a>
+            <a href="chatbot.html">Chatbot IA</a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="login.html">Cerrar sesión</a>
+        </div>
+
+    </aside>
+
+    <!-- =====================================================
+         CONTENIDO PRINCIPAL
+    ====================================================== -->
+    <main class="main-content">
+
+        <header class="page-header">
+
+            <div>
+                <span
+                    class="welcome-label"
+                    id="saludoAlertas"
+                >
+                    Centro de control
+                </span>
+
+                <h1 id="tituloAlertas">
+                    Alertas
+                </h1>
+
+                <p id="descripcionAlertas">
+                    Sistema de alertas y puntos de control.
+                </p>
+            </div>
+
+            <div class="header-actions">
+
+                <span
+                    class="role-indicator"
+                    id="indicadorRolAlertas"
+                >
+                    Verificando sesión...
+                </span>
+
+                <span class="badge red">
+                    ⚠
+                    <span id="contadorAbiertas">0</span>
+                    Abiertas
+                </span>
+
+                <span class="badge yellow">
+                    🕒
+                    <span id="contadorAtencion">0</span>
+                    En atención
+                </span>
+
+                <button
+                    type="button"
+                    class="btn-secondary"
+                    id="btnActualizarAlertas"
+                >
+                    ↻ Actualizar
+                </button>
+
+                <button
+                    type="button"
+                    class="btn-primary"
+                    id="btnNuevaAlerta"
+                >
+                    + Nueva alerta
+                </button>
+
+            </div>
+
+        </header>
+
+        <!-- =================================================
+             AVISOS
+        ================================================== -->
+        <section
+            class="alerts-notice"
+            id="mensajeAlertas"
+            style="display: none;"
+        >
+            <span class="notice-icon">ℹ</span>
+
+            <p id="textoMensajeAlertas">
+                Consultando información del sistema.
+            </p>
+        </section>
+
+        <!-- =================================================
+             RESUMEN
+        ================================================== -->
+        <section class="summary-grid">
+
+            <article class="summary-card">
+
+                <div class="summary-icon red">
+                    ⚠
+                </div>
+
+                <div>
+                    <h2 id="resumenCriticas">0</h2>
+                    <p>Críticas o altas</p>
+                </div>
+
+            </article>
+
+            <article class="summary-card">
+
+                <div class="summary-icon orange">
+                    ⛔
+                </div>
+
+                <div>
+                    <h2 id="resumenBloqueadas">0</h2>
+                    <p>Tareas bloqueadas</p>
+                </div>
+
+            </article>
+
+            <article class="summary-card">
+
+                <div class="summary-icon yellow">
+                    📅
+                </div>
+
+                <div>
+                    <h2 id="resumenVencidas">0</h2>
+                    <p>Tareas vencidas</p>
+                </div>
+
+            </article>
+
+            <article class="summary-card">
+
+                <div class="summary-icon blue">
+                    ⏱
+                </div>
+
+                <div>
+                    <h2 id="resumenHorasRechazadas">0</h2>
+                    <p>Horas rechazadas</p>
+                </div>
+
+            </article>
+
+        </section>
+
+        <!-- =================================================
+             FILTROS
+        ================================================== -->
+        <section class="filters-panel">
+
+            <div class="filters-title">
+                <h2>Filtros de alertas</h2>
+
+                <p>
+                    Consulta alertas según tipo, severidad y estado.
+                </p>
+            </div>
+
+            <div class="filters-controls">
+
+                <div class="filter-group">
+                    <label for="filtroTipoAlerta">
+                        Tipo
+                    </label>
+
+                    <select id="filtroTipoAlerta">
+                        <option value="">
+                            Todos los tipos
+                        </option>
+
+                        <option value="Tarea bloqueada">
+                            Tarea bloqueada
+                        </option>
+
+                        <option value="Tarea vencida">
+                            Tarea vencida
+                        </option>
+
+                        <option value="Horas rechazadas">
+                            Horas rechazadas
+                        </option>
+
+                        <option value="Jornada pendiente">
+                            Jornada pendiente
+                        </option>
+
+                        <option value="Manual">
+                            Manual
+                        </option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="filtroSeveridadAlerta">
+                        Severidad
+                    </label>
+
+                    <select id="filtroSeveridadAlerta">
+                        <option value="">
+                            Todas las severidades
+                        </option>
+
+                        <option value="Crítica">
+                            Crítica
+                        </option>
+
+                        <option value="Alta">
+                            Alta
+                        </option>
+
+                        <option value="Media">
+                            Media
+                        </option>
+
+                        <option value="Baja">
+                            Baja
+                        </option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="filtroEstadoAlerta">
+                        Estado
+                    </label>
+
+                    <select id="filtroEstadoAlerta">
+                        <option value="">
+                            Todos los estados
+                        </option>
+
+                        <option value="Abierta">
+                            Abierta
+                        </option>
+
+                        <option value="En atención">
+                            En atención
+                        </option>
+
+                        <option value="Escalada">
+                            Escalada
+                        </option>
+
+                        <option value="Resuelta">
+                            Resuelta
+                        </option>
+                    </select>
+                </div>
+
+                <div class="filter-actions">
+
+                    <button
+                        type="button"
+                        class="btn-primary"
+                        id="btnAplicarFiltros"
+                    >
+                        Aplicar filtros
+                    </button>
+
+                    <button
+                        type="button"
+                        class="btn-secondary"
+                        id="btnLimpiarFiltros"
+                    >
+                        Limpiar
+                    </button>
+
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- =================================================
+             EXPLICACIÓN DE ALERTAS AUTOMÁTICAS
+        ================================================== -->
+        <section class="automatic-info">
+
+            <div class="automatic-icon">
+                ⚙
+            </div>
+
+            <div>
+                <h2>Alertas automáticas activas</h2>
+
+                <p>
+                    La plataforma detecta tareas bloqueadas,
+                    tareas vencidas, registros de horas rechazados y
+                    jornadas abiertas de días anteriores.
+                </p>
+            </div>
+
+        </section>
+
+        <!-- =================================================
+             LISTA DE ALERTAS
+        ================================================== -->
+        <section
+            id="contenedorAlertas"
+            class="alerts-list"
+        >
+            <div class="empty-state">
+                <h3>Cargando alertas...</h3>
+
+                <p>
+                    Consultando tareas, proyectos y registros de horas.
+                </p>
+            </div>
+        </section>
+
+    </main>
+
+</div>
+
+<!-- =========================================================
+     MODAL: NUEVA ALERTA MANUAL
+========================================================= -->
+<div
+    class="modal"
+    id="modalAlerta"
+>
+    <div class="modal-content">
+
+        <div class="modal-header">
+
+            <div>
+                <h2>Nueva alerta manual</h2>
+
+                <p>
+                    Registra un riesgo, desviación o situación que
+                    requiera seguimiento administrativo.
+                </p>
+            </div>
+
+            <button
+                type="button"
+                class="btn-close"
+                id="btnCerrarModal"
+                title="Cerrar"
+            >
+                ×
+            </button>
+
+        </div>
+
+        <form
+            id="formAlerta"
+            class="alert-form"
+        >
+
+            <div class="form-group full">
+                <label for="tituloAlerta">
+                    Título *
+                </label>
+
+                <input
+                    type="text"
+                    id="tituloAlerta"
+                    placeholder="Ej. Riesgo de retraso en entrega"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="tipoAlerta">
+                    Tipo
+                </label>
+
+                <select id="tipoAlerta">
+                    <option value="Manual">
+                        Manual
+                    </option>
+
+                    <option value="Riesgo Alto">
+                        Riesgo alto
+                    </option>
+
+                    <option value="Hito Incumplido">
+                        Hito incumplido
+                    </option>
+
+                    <option value="Falta Evidencia">
+                        Falta evidencia
+                    </option>
+
+                    <option value="Desviación de Horas">
+                        Desviación de horas
+                    </option>
+
+                    <option value="Baja Productividad">
+                        Baja productividad
+                    </option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="severidadAlerta">
+                    Severidad
+                </label>
+
+                <select id="severidadAlerta">
+                    <option value="Crítica">
+                        Crítica
+                    </option>
+
+                    <option value="Alta">
+                        Alta
+                    </option>
+
+                    <option
+                        value="Media"
+                        selected
+                    >
+                        Media
+                    </option>
+
+                    <option value="Baja">
+                        Baja
+                    </option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="proyectoAlerta">
+                    Proyecto relacionado
+                </label>
+
+                <select id="proyectoAlerta">
+                    <option value="">
+                        Sin proyecto relacionado
+                    </option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="asignadoAlerta">
+                    Asignada a
+                </label>
+
+                <select id="asignadoAlerta">
+                    <option value="">
+                        Sin responsable asignado
+                    </option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="estadoAlerta">
+                    Estado
+                </label>
+
+                <select id="estadoAlerta">
+                    <option
+                        value="Abierta"
+                        selected
+                    >
+                        Abierta
+                    </option>
+
+                    <option value="En atención">
+                        En atención
+                    </option>
+
+                    <option value="Escalada">
+                        Escalada
+                    </option>
+
+                    <option value="Resuelta">
+                        Resuelta
+                    </option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="fechaLimiteAlerta">
+                    Fecha límite de atención
+                </label>
+
+                <input
+                    type="date"
+                    id="fechaLimiteAlerta"
+                >
+            </div>
+
+            <div class="form-group full">
+                <label for="descripcionAlerta">
+                    Descripción
+                </label>
+
+                <textarea
+                    id="descripcionAlerta"
+                    rows="4"
+                    placeholder="Describe la situación, el impacto y las acciones sugeridas."
+                ></textarea>
+            </div>
+
+            <div class="form-actions">
+
+                <button
+                    type="button"
+                    class="btn-secondary"
+                    id="btnCancelar"
+                >
+                    Cancelar
+                </button>
+
+                <button
+                    type="submit"
+                    class="btn-primary"
+                    id="btnGuardarAlerta"
+                >
+                    Guardar alerta
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+</div>
+
+<script src="js/api-config.js?v=20260825"></script>
+<script src="js/permisos-globales.js?v=20260922-menu"></script>
+<script src="js/alertas.js?v=20260703-1"></script>
+
+</body>
+</html>

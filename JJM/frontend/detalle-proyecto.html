@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalle del Proyecto | PMO Platform</title>
+    <link rel="stylesheet" href="css/detalle-proyecto.css?v=20260828-2">
+</head>
+<body>
+
+<div class="dashboard-container">
+
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <img src="img/LOGO-J2M.png" alt="Logo PMO">
+        </div>
+
+        <nav class="sidebar-menu">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="perfil.html">Perfil</a>
+            <a href="proyectos.html" class="active">Proyectos</a>
+            <a href="proyecto-avanzado.html">Proyecto Avanzado</a>
+            <a href="cursos.html">Cursos</a>
+            <a href="tablero-tareas.html">Tablero de tareas</a>
+            <a href="tareas.html">Tareas</a>
+            <a href="equipo.html">Equipo</a>
+            <a href="organizaciones.html">Organizaciones</a>
+            <a href="control-horas.html">Control de horas</a>
+            <a href="alertas.html">Alertas</a>
+            <a href="reportes.html">Reportes</a>
+            <a href="encuestas.html">Encuestas</a>
+            <a href="chatbot.html">Chatbot IA</a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="login.html">Cerrar sesión</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+
+        <a href="proyectos.html" class="back-link">← Regresar a proyectos</a>
+
+        <section id="projectContent">
+
+            <div class="project-header">
+                <div class="project-title-area">
+                    <span id="healthIndicator" class="health-indicator health-gray"></span>
+
+                    <div>
+                        <h1 id="projectName">Detalle del proyecto</h1>
+
+                        <div class="project-meta">
+                            <span id="projectStatus" class="badge blue">Sin estado</span>
+                            <span id="projectClient" class="project-client">Sin cliente / área</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="project-kpis">
+                    <div class="kpi">
+                        <h2 id="projectProgress">0%</h2>
+                        <p>Avance</p>
+                    </div>
+
+                    <div class="kpi">
+                        <h2 id="projectTasks">0</h2>
+                        <p>Tareas</p>
+                    </div>
+
+                    <div class="kpi">
+                        <h2 id="projectMembers">0</h2>
+                        <p>Miembros</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="progress-wrapper">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+
+            <div class="tabs">
+                <button type="button" class="tab-button active" data-tab="fases">Fases del Proyecto</button>
+                <button type="button" class="tab-button" data-tab="detalles">Detalles</button>
+                <button type="button" class="tab-button" data-tab="equipo">Equipo</button>
+            </div>
+
+            <div class="tab-content active" id="tab-fases">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="phase-topbar">
+                            <div>
+                                <h2>Fases y tareas</h2>
+
+                                <div class="phase-legend">
+                                    <span class="legend-item"><span class="legend-dot green"></span>Completada</span>
+                                    <span class="legend-item"><span class="legend-dot orange"></span>En progreso</span>
+                                    <span class="legend-item"><span class="legend-dot yellow"></span>Pendiente</span>
+                                    <span class="legend-item"><span class="legend-dot gray"></span>No iniciado</span>
+                                    <span class="legend-item"><span class="legend-dot red"></span>No entregado</span>
+                                </div>
+                            </div>
+
+                            <div class="phase-actions">
+                                <button type="button" class="btn-excel" id="btnExportarFases">Exportar CSV</button>
+                                <button type="button" class="btn-pdf" id="btnImprimirProyecto">Imprimir / PDF</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-body">
+                        <div class="phase-list" id="phaseList">
+                            <!-- Fases desde JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="tab-detalles">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Información general</h2>
+                    </div>
+
+                    <div class="card-body">
+                        <div class="info-grid">
+                            <div class="info-column">
+                                <div class="info-row">
+                                    <label>Nombre del proyecto</label>
+                                    <p id="infoNombre">—</p>
+                                </div>
+
+                                <div class="info-row">
+                                    <label>Cliente / Área</label>
+                                    <p id="infoCliente">—</p>
+                                </div>
+
+                                <div class="info-row">
+                                    <label>Responsable</label>
+                                    <p id="infoResponsable">—</p>
+                                </div>
+                            </div>
+
+                            <div class="info-column">
+                                <div class="info-row">
+                                    <label>Prioridad</label>
+                                    <p id="infoPrioridad">—</p>
+                                </div>
+
+                                <div class="info-row">
+                                    <label>Fecha de inicio</label>
+                                    <p id="infoFechaInicio">—</p>
+                                </div>
+
+                                <div class="info-row">
+                                    <label>Fecha fin</label>
+                                    <p id="infoFechaFin">—</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="description-box">
+                            <label>Descripción</label>
+                            <p id="infoDescripcion">—</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="tab-equipo">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Equipo asignado</h2>
+
+                        <div class="team-actions">
+                            <button type="button" class="btn-primary" id="btnAgregarMiembro">
+                                + Agregar miembro
+                            </button>
+
+                            <button type="button" class="btn-primary" id="btnNuevaReunion">
+                                Nueva reunión
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card-body">
+                        <div class="project-meeting-panel" id="projectMeetingPanel">
+                            <div class="meeting-active-banner" id="reunionActivaBox" hidden>
+                                <div>
+                                    <span class="meeting-live-badge">EN VIVO</span>
+                                    <strong id="reunionActivaTitulo">Reunión activa</strong>
+                                    <p id="reunionActivaMeta">Los miembros asignados al proyecto pueden entrar sin enlace.</p>
+                                </div>
+                                <button type="button" class="btn-primary" id="btnUnirseReunionActiva">Unirse a la reunión</button>
+                            </div>
+
+                            <div class="meeting-history" id="historialReunionesBox">
+                                <div class="meeting-history-header">
+                                    <h3>Reuniones y grabaciones</h3>
+                                    <span>Las grabaciones guardadas quedan asociadas al proyecto.</span>
+                                </div>
+                                <div id="historialReunionesLista" class="meeting-history-list">
+                                    <p class="project-empty-text">Todavía no hay reuniones registradas.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="team-list" id="teamList">
+                            <!-- Equipo desde JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+<!-- MODAL CREAR TAREA POR FASE -->
+<div class="modal" id="modalTareaFase">
+    <div class="modal-content">
+
+        <div class="modal-header">
+            <h2 id="tituloModalTareaFase">Nueva tarea</h2>
+            <button type="button" class="btn-close" id="btnCerrarModalTareaFase">×</button>
+        </div>
+
+        <form id="formTareaFase" class="meeting-form">
+
+            <input type="hidden" id="faseTareaProyecto">
+
+            <div class="form-group full">
+                <label for="tituloTareaFase">Título de la tarea *</label>
+                <input type="text" id="tituloTareaFase" placeholder="Nombre de la tarea" required>
+            </div>
+
+            <div class="form-group">
+                <label for="asignadoTareaFase">Asignado a *</label>
+                <select id="asignadoTareaFase" required>
+                    <option value="">Selecciona una persona del equipo</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="estadoTareaFase">Estado</label>
+                <select id="estadoTareaFase">
+                    <option value="Pendiente">Pendiente</option>
+                    <option value="En progreso">En progreso</option>
+                    <option value="Bloqueada">Bloqueada</option>
+                    <option value="Completada">Completada</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="prioridadTareaFase">Prioridad</label>
+                <select id="prioridadTareaFase">
+                    <option value="Baja">Baja</option>
+                    <option value="Media" selected>Media</option>
+                    <option value="Alta">Alta</option>
+                    <option value="Crítica">Crítica</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="horasTareaFase">Horas estimadas</label>
+                <input type="number" id="horasTareaFase" min="0" step="0.5" value="0">
+            </div>
+
+            <div class="form-group full">
+                <label for="descripcionTareaFase">Descripción</label>
+                <textarea id="descripcionTareaFase" rows="4" placeholder="Describe la tarea o entregable"></textarea>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" id="btnCancelarTareaFase">Cancelar</button>
+                <button type="submit" class="btn-primary">Guardar tarea</button>
+            </div>
+
+        </form>
+
+    </div>
+</div>
+
+<!-- MODAL AGREGAR MIEMBRO -->
+<div class="modal" id="modalAgregarMiembro">
+    <div class="modal-content">
+
+        <div class="modal-header">
+            <h2>Agregar miembro al proyecto</h2>
+            <button type="button" class="btn-close" id="btnCerrarModalMiembro">×</button>
+        </div>
+
+        <form id="formAgregarMiembro" class="meeting-form">
+
+            <div class="form-group full">
+                <label for="miembroExistenteProyecto">Persona del equipo *</label>
+                <select id="miembroExistenteProyecto" required>
+                    <option value="">Selecciona una persona registrada</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="rolMiembroProyecto">Rol en el proyecto</label>
+                <input type="text" id="rolMiembroProyecto" placeholder="Ej. QA, Líder, Colaborador">
+            </div>
+
+            <div class="form-group">
+                <label for="horasMiembroProyecto">Horas asignadas</label>
+                <input type="number" id="horasMiembroProyecto" min="0" step="0.5" value="0">
+            </div>
+
+            <div class="form-group full">
+                <label for="notasMiembroProyecto">Notas</label>
+                <textarea id="notasMiembroProyecto" rows="3" placeholder="Observaciones"></textarea>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" id="btnCancelarMiembroProyecto">Cancelar</button>
+                <button type="submit" class="btn-primary">Agregar miembro</button>
+            </div>
+
+        </form>
+
+    </div>
+</div>
+
+<script src="js/api-config.js?v=20260825"></script>
+<script src="js/permisos-globales.js?v=20260922-menu"></script>
+<script src="js/detalle-proyecto.js?v=20260828-2"></script>
+</body>
+</html>

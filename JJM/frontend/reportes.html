@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Reportes | PMO Platform</title>
+
+    <link
+        rel="stylesheet"
+        href="css/reportes.css?v=20260702-3"
+    >
+</head>
+
+<body>
+
+<div class="dashboard-container">
+
+    <!-- =====================================================
+         BARRA LATERAL
+    ====================================================== -->
+    <aside class="sidebar">
+
+        <div class="sidebar-logo">
+            <img
+                src="img/LOGO-J2M.png"
+                alt="Logo PMO"
+            >
+        </div>
+
+        <nav class="sidebar-menu">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="perfil.html">Perfil</a>
+            <a href="proyectos.html">Proyectos</a>
+            <a href="proyecto-avanzado.html">Proyecto Avanzado</a>
+            <a href="cursos.html">Cursos</a>
+            <a href="tablero-tareas.html">Tablero de tareas</a>
+            <a href="tareas.html">Tareas</a>
+            <a href="equipo.html">Equipo</a>
+            <a href="organizaciones.html">Organizaciones</a>
+            <a href="control-horas.html">Control de horas</a>
+            <a href="bitacora.html">Bitácora</a>
+            <a href="alertas.html">Alertas</a>
+
+            <a
+                href="reportes.html"
+                class="active"
+            >
+                Reportes
+            </a>
+
+            <a href="encuestas.html">Encuestas</a>
+            <a href="chatbot.html">Chatbot IA</a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="login.html">Cerrar sesión</a>
+        </div>
+
+    </aside>
+
+    <!-- =====================================================
+         CONTENIDO PRINCIPAL
+    ====================================================== -->
+    <main class="main-content">
+
+        <header class="page-header">
+
+            <div>
+                <h1>Reportes</h1>
+
+                <p>
+                    Consulta, filtra y exporta información de la
+                    Oficina de Proyectos.
+                </p>
+            </div>
+
+            <div class="header-actions">
+
+                <span
+                    class="role-indicator"
+                    id="indicadorRolReportes"
+                >
+                    Verificando permisos...
+                </span>
+
+                <button
+                    type="button"
+                    class="btn-primary"
+                    id="btnActualizarReportes"
+                >
+                    ↻ Actualizar reportes
+                </button>
+
+            </div>
+
+        </header>
+
+        <!-- =================================================
+             AVISO DE PERMISOS
+        ================================================== -->
+        <section
+            class="access-message"
+            id="mensajeAccesoReportes"
+            style="display: none;"
+        >
+            <div class="access-message-icon">🔒</div>
+
+            <div>
+                <h2>Acceso restringido</h2>
+
+                <p>
+                    Los reportes generales de la Oficina de Proyectos
+                    solo están disponibles para usuarios con rol
+                    Administrador.
+                </p>
+
+                <a
+                    href="control-horas.html"
+                    class="access-message-link"
+                >
+                    Ir a mi control de horas
+                </a>
+            </div>
+        </section>
+
+        <!-- =================================================
+             CONTENIDO DE REPORTES
+        ================================================== -->
+        <div id="contenidoReportes">
+
+            <!-- =============================================
+                 FILTROS GLOBALES
+            ============================================== -->
+            <section class="report-filters">
+
+                <div class="filter-title">
+                    <h2>Filtros globales</h2>
+
+                    <p>
+                        Aplica un periodo general a los reportes
+                        mensuales, proyectos, tareas, horas, alertas,
+                        encuestas y certificados.
+                    </p>
+                </div>
+
+                <div class="filter-controls">
+
+                    <div class="filter-group">
+                        <label for="filtroMesInicio">
+                            Mes inicial
+                        </label>
+
+                        <input
+                            type="month"
+                            id="filtroMesInicio"
+                        >
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="filtroMesFin">
+                            Mes final
+                        </label>
+
+                        <input
+                            type="month"
+                            id="filtroMesFin"
+                        >
+                    </div>
+
+                    <div class="filter-actions">
+
+                        <button
+                            type="button"
+                            class="btn-primary"
+                            id="btnAplicarFiltroMes"
+                        >
+                            Aplicar filtro
+                        </button>
+
+                        <button
+                            type="button"
+                            class="btn-secondary"
+                            id="btnLimpiarFiltroMes"
+                        >
+                            Limpiar
+                        </button>
+
+                    </div>
+
+                </div>
+
+                <p
+                    class="filter-status"
+                    id="textoFiltroActivo"
+                >
+                    Mostrando información de todos los meses.
+                </p>
+
+            </section>
+
+            <!-- =============================================
+                 RESUMEN GENERAL
+            ============================================== -->
+            <section class="summary-grid">
+
+                <article class="summary-card">
+                    <span class="summary-icon blue">📁</span>
+
+                    <div>
+                        <h2 id="totalProyectosReporte">0</h2>
+                        <p>Proyectos</p>
+                    </div>
+                </article>
+
+                <article class="summary-card">
+                    <span class="summary-icon orange">✅</span>
+
+                    <div>
+                        <h2 id="totalTareasReporte">0</h2>
+                        <p>Tareas</p>
+                    </div>
+                </article>
+
+                <article class="summary-card">
+                    <span class="summary-icon green">👥</span>
+
+                    <div>
+                        <h2 id="totalEquipoReporte">0</h2>
+                        <p>Miembros</p>
+                    </div>
+                </article>
+
+                <article class="summary-card">
+                    <span class="summary-icon purple">⏱</span>
+
+                    <div>
+                        <h2 id="totalHorasAprobadasReporte">
+                            0.00h
+                        </h2>
+
+                        <p>Horas aprobadas</p>
+                    </div>
+                </article>
+
+            </section>
+
+            <!-- =============================================
+                 PESTAÑAS
+            ============================================== -->
+            <section class="reports-tabs">
+
+                <button
+                    type="button"
+                    class="tab-btn active"
+                    data-tab="general"
+                >
+                    General
+                </button>
+
+                <button
+                    type="button"
+                    class="tab-btn"
+                    data-tab="mensual"
+                >
+                    Reporte mensual
+                </button>
+
+                <button
+                    type="button"
+                    class="tab-btn"
+                    data-tab="proyectos"
+                >
+                    Proyectos
+                </button>
+
+                <button
+                    type="button"
+                    class="tab-btn"
+                    data-tab="tareas"
+                >
+                    Tareas
+                </button>
+
+                <button
+                    type="button"
+                    class="tab-btn"
+                    data-tab="equipo"
+                >
+                    Equipo
+                </button>
+
+                <button
+                    type="button"
+                    class="tab-btn"
+                    data-tab="horas"
+                >
+                    Horas
+                </button>
+
+                <button
+                    type="button"
+                    class="tab-btn"
+                    data-tab="alertas"
+                >
+                    Alertas
+                </button>
+
+                <button
+                    type="button"
+                    class="tab-btn"
+                    data-tab="encuestas"
+                >
+                    Encuestas
+                </button>
+
+                <button
+                    type="button"
+                    class="tab-btn"
+                    data-tab="cursos"
+                >
+                    Cursos
+                </button>
+
+                <button
+                    type="button"
+                    class="tab-btn"
+                    data-tab="certificados"
+                >
+                    Certificados
+                </button>
+
+            </section>
+
+            <!-- =============================================
+                 GENERAL
+            ============================================== -->
+            <section
+                class="tab-content active"
+                id="tab-general"
+            >
+                <div class="report-card">
+
+                    <div class="report-card-header">
+
+                        <div>
+                            <h2>Reporte general</h2>
+
+                            <p>
+                                Resumen general de la operación de la
+                                Oficina de Proyectos.
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="btn-secondary"
+                            id="btnDescargarReporteGeneral"
+                        >
+                            ⬇ Descargar resumen CSV
+                        </button>
+
+                    </div>
+
+                    <div class="general-grid">
+
+                        <article class="general-box">
+                            <h3>Estado del portafolio</h3>
+
+                            <p id="estadoGeneralPortafolio">
+                                Cargando información del portafolio...
+                            </p>
+                        </article>
+
+                        <article class="general-box">
+                            <h3>Productividad</h3>
+
+                            <p id="estadoGeneralProductividad">
+                                Cargando indicadores de productividad...
+                            </p>
+                        </article>
+
+                        <article class="general-box">
+                            <h3>Validación de horas</h3>
+
+                            <p id="estadoGeneralHoras">
+                                Cargando información de horas...
+                            </p>
+                        </article>
+
+                        <article class="general-box">
+                            <h3>Riesgos principales</h3>
+
+                            <p id="estadoGeneralRiesgos">
+                                Cargando alertas registradas...
+                            </p>
+                        </article>
+
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- =============================================
+                 REPORTE MENSUAL
+            ============================================== -->
+            <section
+                class="tab-content"
+                id="tab-mensual"
+            >
+                <div class="report-card">
+
+                    <div class="report-card-header">
+
+                        <div>
+                            <h2>Reporte mensual</h2>
+
+                            <p>
+                                Consolidado por mes de proyectos,
+                                tareas, horas y eventos registrados.
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="btn-secondary"
+                            id="btnDescargarMensual"
+                        >
+                            ⬇ Descargar reporte mensual
+                        </button>
+
+                    </div>
+
+                    <div class="monthly-grid">
+
+                        <article class="monthly-box">
+                            <h3>Proyectos del periodo</h3>
+                            <strong id="mensualProyectos">0</strong>
+                        </article>
+
+                        <article class="monthly-box">
+                            <h3>Tareas del periodo</h3>
+                            <strong id="mensualTareas">0</strong>
+                        </article>
+
+                        <article class="monthly-box">
+                            <h3>Horas registradas</h3>
+                            <strong id="mensualHoras">0.00h</strong>
+                        </article>
+
+                        <article class="monthly-box">
+                            <h3>Horas aprobadas</h3>
+                            <strong id="mensualHorasAprobadas">
+                                0.00h
+                            </strong>
+                        </article>
+
+                        <article class="monthly-box">
+                            <h3>Alertas del periodo</h3>
+                            <strong id="mensualAlertas">0</strong>
+                        </article>
+
+                        <article class="monthly-box">
+                            <h3>Certificados del periodo</h3>
+                            <strong id="mensualCertificados">0</strong>
+                        </article>
+
+                    </div>
+
+                    <div class="table-wrapper">
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Mes</th>
+                                    <th>Proyectos</th>
+                                    <th>Tareas</th>
+                                    <th>Horas registradas</th>
+                                    <th>Horas aprobadas</th>
+                                    <th>Alertas</th>
+                                    <th>Certificados</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="tablaReporteMensual">
+                                <tr>
+                                    <td
+                                        colspan="7"
+                                        class="empty-row"
+                                    >
+                                        Cargando reporte mensual...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- =============================================
+                 PROYECTOS
+            ============================================== -->
+            <section
+                class="tab-content"
+                id="tab-proyectos"
+            >
+                <div class="report-card">
+
+                    <div class="report-card-header">
+
+                        <div>
+                            <h2>Reporte de proyectos</h2>
+
+                            <p>
+                                Proyectos registrados dentro del periodo
+                                seleccionado.
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="btn-secondary"
+                            id="btnDescargarProyectos"
+                        >
+                            ⬇ Descargar CSV
+                        </button>
+
+                    </div>
+
+                    <div class="table-wrapper">
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Cliente / Área</th>
+                                    <th>Responsable</th>
+                                    <th>Estado</th>
+                                    <th>Prioridad</th>
+                                    <th>Avance</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="tablaReporteProyectos">
+                                <tr>
+                                    <td
+                                        colspan="6"
+                                        class="empty-row"
+                                    >
+                                        Cargando proyectos...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- =============================================
+                 TAREAS
+            ============================================== -->
+            <section
+                class="tab-content"
+                id="tab-tareas"
+            >
+                <div class="report-card">
+
+                    <div class="report-card-header">
+
+                        <div>
+                            <h2>Reporte de tareas</h2>
+
+                            <p>
+                                Tareas registradas y su estado operativo.
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="btn-secondary"
+                            id="btnDescargarTareas"
+                        >
+                            ⬇ Descargar CSV
+                        </button>
+
+                    </div>
+
+                    <div class="table-wrapper">
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Tarea</th>
+                                    <th>Proyecto</th>
+                                    <th>Fase</th>
+                                    <th>Asignado</th>
+                                    <th>Estado</th>
+                                    <th>Prioridad</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="tablaReporteTareas">
+                                <tr>
+                                    <td
+                                        colspan="6"
+                                        class="empty-row"
+                                    >
+                                        Cargando tareas...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- =============================================
+                 EQUIPO
+            ============================================== -->
+            <section
+                class="tab-content"
+                id="tab-equipo"
+            >
+                <div class="report-card">
+
+                    <div class="report-card-header">
+
+                        <div>
+                            <h2>Reporte de equipo</h2>
+
+                            <p>
+                                Integrantes registrados en la Oficina
+                                de Proyectos.
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="btn-secondary"
+                            id="btnDescargarEquipo"
+                        >
+                            ⬇ Descargar CSV
+                        </button>
+
+                    </div>
+
+                    <div class="table-wrapper">
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Correo</th>
+                                    <th>Rol</th>
+                                    <th>Seniority</th>
+                                    <th>Estado</th>
+                                    <th>Horas / semana</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="tablaReporteEquipo">
+                                <tr>
+                                    <td
+                                        colspan="6"
+                                        class="empty-row"
+                                    >
+                                        Cargando integrantes...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- =============================================
+                 HORAS
+            ============================================== -->
+            <section
+                class="tab-content"
+                id="tab-horas"
+            >
+                <div class="report-card">
+
+                    <div class="report-card-header">
+
+                        <div>
+                            <h2>Reporte de horas</h2>
+
+                            <p>
+                                Consulta consolidada de jornadas y
+                                registros manuales capturados por el
+                                equipo.
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="btn-secondary"
+                            id="btnDescargarHoras"
+                        >
+                            ⬇ Descargar CSV
+                        </button>
+
+                    </div>
+
+                    <!-- FILTROS ESPECÍFICOS DE HORAS -->
+                    <section class="hours-filters">
+
+                        <div class="filter-group">
+                            <label for="filtroHorasMiembro">
+                                Integrante
+                            </label>
+
+                            <select id="filtroHorasMiembro">
+                                <option value="">
+                                    Todos los integrantes
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label for="filtroHorasProyecto">
+                                Proyecto
+                            </label>
+
+                            <select id="filtroHorasProyecto">
+                                <option value="">
+                                    Todos los proyectos
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label for="filtroHorasEstado">
+                                Validación
+                            </label>
+
+                            <select id="filtroHorasEstado">
+                                <option value="">
+                                    Todos los estados
+                                </option>
+                                <option value="Pendiente">
+                                    Pendiente
+                                </option>
+                                <option value="Aprobado">
+                                    Aprobado
+                                </option>
+                                <option value="Rechazado">
+                                    Rechazado
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label for="filtroHorasTipo">
+                                Tipo de registro
+                            </label>
+
+                            <select id="filtroHorasTipo">
+                                <option value="">
+                                    Todos los tipos
+                                </option>
+                                <option value="Jornada">
+                                    Jornada
+                                </option>
+                                <option value="Manual">
+                                    Manual
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="hours-filter-actions">
+
+                            <button
+                                type="button"
+                                class="btn-primary"
+                                id="btnAplicarFiltroHoras"
+                            >
+                                Filtrar horas
+                            </button>
+
+                            <button
+                                type="button"
+                                class="btn-secondary"
+                                id="btnLimpiarFiltroHoras"
+                            >
+                                Limpiar
+                            </button>
+
+                        </div>
+
+                    </section>
+
+                    <!-- RESUMEN DE HORAS -->
+                    <section class="hours-summary-grid">
+
+                        <article class="hours-summary-card">
+                            <span class="hours-summary-icon blue">
+                                ⏱
+                            </span>
+
+                            <div>
+                                <p>Total registrado</p>
+                                <strong
+                                    id="horasTotalFiltrado"
+                                >
+                                    0.00h
+                                </strong>
+                            </div>
+                        </article>
+
+                        <article class="hours-summary-card">
+                            <span class="hours-summary-icon green">
+                                ✓
+                            </span>
+
+                            <div>
+                                <p>Aprobadas</p>
+                                <strong
+                                    id="horasAprobadasFiltrado"
+                                >
+                                    0.00h
+                                </strong>
+                            </div>
+                        </article>
+
+                        <article class="hours-summary-card">
+                            <span class="hours-summary-icon yellow">
+                                ⌛
+                            </span>
+
+                            <div>
+                                <p>Pendientes</p>
+                                <strong
+                                    id="horasPendientesFiltrado"
+                                >
+                                    0.00h
+                                </strong>
+                            </div>
+                        </article>
+
+                        <article class="hours-summary-card">
+                            <span class="hours-summary-icon red">
+                                ✕
+                            </span>
+
+                            <div>
+                                <p>Rechazadas</p>
+                                <strong
+                                    id="horasRechazadasFiltrado"
+                                >
+                                    0.00h
+                                </strong>
+                            </div>
+                        </article>
+
+                    </section>
+
+                    <div class="hours-table-meta">
+
+                        <p id="textoHorasFiltradas">
+                            Mostrando todos los registros de horas
+                            disponibles.
+                        </p>
+
+                        <span id="contadorHorasFiltradas">
+                            0 registros
+                        </span>
+
+                    </div>
+
+                    <div class="table-wrapper">
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Persona</th>
+                                    <th>Tipo</th>
+                                    <th>Proyecto / Tarea</th>
+                                    <th>Descripción</th>
+                                    <th>Horario</th>
+                                    <th>Horas</th>
+                                    <th>Incidente</th>
+                                    <th>Validación</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="tablaReporteHoras">
+                                <tr>
+                                    <td
+                                        colspan="9"
+                                        class="empty-row"
+                                    >
+                                        Cargando registros de horas...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- =============================================
+                 ALERTAS
+            ============================================== -->
+            <section
+                class="tab-content"
+                id="tab-alertas"
+            >
+                <div class="report-card">
+
+                    <div class="report-card-header">
+
+                        <div>
+                            <h2>Reporte de alertas</h2>
+
+                            <p>
+                                Alertas generadas dentro de los
+                                proyectos y actividades.
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="btn-secondary"
+                            id="btnDescargarAlertas"
+                        >
+                            ⬇ Descargar CSV
+                        </button>
+
+                    </div>
+
+                    <div class="table-wrapper">
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Título</th>
+                                    <th>Proyecto</th>
+                                    <th>Tipo</th>
+                                    <th>Severidad</th>
+                                    <th>Estado</th>
+                                    <th>Fecha</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="tablaReporteAlertas">
+                                <tr>
+                                    <td
+                                        colspan="6"
+                                        class="empty-row"
+                                    >
+                                        Cargando alertas...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- =============================================
+                 ENCUESTAS
+            ============================================== -->
+            <section
+                class="tab-content"
+                id="tab-encuestas"
+            >
+                <div class="report-card">
+
+                    <div class="report-card-header">
+
+                        <div>
+                            <h2>Reporte de encuestas</h2>
+
+                            <p>
+                                Resultados de satisfacción, evaluación
+                                y lecciones aprendidas.
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="btn-secondary"
+                            id="btnDescargarEncuestas"
+                        >
+                            ⬇ Descargar CSV
+                        </button>
+
+                    </div>
+
+                    <div class="table-wrapper">
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Proyecto</th>
+                                    <th>Tipo</th>
+                                    <th>Calificación</th>
+                                    <th>Nombre</th>
+                                    <th>Correo</th>
+                                    <th>Difusión</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="tablaReporteEncuestas">
+                                <tr>
+                                    <td
+                                        colspan="6"
+                                        class="empty-row"
+                                    >
+                                        Cargando encuestas...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- =============================================
+                 CURSOS
+            ============================================== -->
+            <section
+                class="tab-content"
+                id="tab-cursos"
+            >
+                <div class="report-card">
+
+                    <div class="report-card-header">
+
+                        <div>
+                            <h2>Reporte de cursos</h2>
+
+                            <p>
+                                Estado de avance de los cursos
+                                obligatorios.
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="btn-secondary"
+                            id="btnDescargarCursos"
+                        >
+                            ⬇ Descargar CSV
+                        </button>
+
+                    </div>
+
+                    <div class="table-wrapper">
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Curso</th>
+                                    <th>Estado</th>
+                                    <th>Certificado</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="tablaReporteCursos">
+                                <tr>
+                                    <td
+                                        colspan="4"
+                                        class="empty-row"
+                                    >
+                                        Cargando cursos...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- =============================================
+                 CERTIFICADOS
+            ============================================== -->
+            <section
+                class="tab-content"
+                id="tab-certificados"
+            >
+                <div class="report-card">
+
+                    <div class="report-card-header">
+
+                        <div>
+                            <h2>Reporte de certificados</h2>
+
+                            <p>
+                                Certificados registrados por cursos
+                                completados.
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="btn-secondary"
+                            id="btnDescargarCertificados"
+                        >
+                            ⬇ Descargar CSV
+                        </button>
+
+                    </div>
+
+                    <div class="table-wrapper">
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Curso</th>
+                                    <th>Archivo</th>
+                                    <th>Fecha completado</th>
+                                    <th>Notas</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="tablaReporteCertificados">
+                                <tr>
+                                    <td
+                                        colspan="4"
+                                        class="empty-row"
+                                    >
+                                        Cargando certificados...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                    </div>
+
+                </div>
+            </section>
+
+        </div>
+
+    </main>
+
+</div>
+
+<script src="js/api-config.js?v=20260825"></script>
+<script src="js/permisos-globales.js?v=20260922-menu"></script>
+<script src="js/reportes.js?v=20260713-docs-1"></script>
+
+</body>
+</html>

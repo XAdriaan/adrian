@@ -1,0 +1,223 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organizaciones | PMO Platform</title>
+    <link rel="stylesheet" href="css/organizaciones.css">
+</head>
+<body>
+
+<div class="dashboard-container">
+
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <img src="img/LOGO-J2M.png" alt="Logo PMO">
+        </div>
+
+        <nav class="sidebar-menu">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="perfil.html">Perfil</a>
+            <a href="proyectos.html">Proyectos</a>
+            <a href="proyecto-avanzado.html">Proyecto Avanzado</a>
+            <a href="cursos.html">Cursos</a>
+            <a href="tablero-tareas.html">Tablero de tareas</a>
+            <a href="tareas.html">Tareas</a>
+            <a href="equipo.html">Equipo</a>
+            <a href="organizaciones.html" class="active">Organizaciones</a>
+            <a href="control-horas.html">Control de horas</a>
+            <a href="bitacora.html">Bitácora</a>
+            <a href="alertas.html">Alertas</a>
+            <a href="reportes.html">Reportes</a>
+            <a href="encuestas.html">Encuestas</a>
+            <a href="chatbot.html">Chatbot IA</a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="login.html">Cerrar sesión</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+
+        <header class="page-header">
+            <div>
+                <h1>Organizaciones</h1>
+                <p>Universidades, empresas, clientes y proveedores participantes.</p>
+            </div>
+
+            <div class="header-actions">
+                <button class="btn-secondary" id="btnExportar">
+                    ⬇ Exportar Lista
+                </button>
+
+                <button class="btn-primary" id="btnNuevaOrganizacion">
+                    + Nueva Organización
+                </button>
+            </div>
+        </header>
+
+        <div id="permisoOrganizaciones" class="permission-note"></div>
+
+        <section class="filters-section">
+            <div class="search-box">
+                <span>🔍</span>
+                <input
+                    type="text"
+                    id="buscarOrganizacion"
+                    placeholder="Buscar organización..."
+                >
+            </div>
+        </section>
+
+        <section class="table-panel">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Organización</th>
+                        <th>Tipo</th>
+                        <th>Estado Convenio</th>
+                        <th>Contacto</th>
+                        <th>Email</th>
+                        <th>Teléfono</th>
+                        <th class="text-right">Acciones</th>
+                    </tr>
+                </thead>
+
+                <tbody id="tablaOrganizaciones">
+                    <tr>
+                        <td colspan="7" class="empty-table">
+                            Cargando organizaciones...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+    </main>
+
+</div>
+
+<div class="modal" id="modalOrganizacion">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="tituloModal">Nueva Organización</h2>
+            <button type="button" class="btn-close" id="btnCerrarModal">×</button>
+        </div>
+
+        <form id="formOrganizacion" class="organization-form">
+
+            <input type="hidden" id="idOrganizacion">
+
+            <div class="form-group full">
+                <label for="nombreOrganizacion">Nombre *</label>
+                <input
+                    type="text"
+                    id="nombreOrganizacion"
+                    maxlength="150"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="tipoOrganizacion">Tipo</label>
+                <select id="tipoOrganizacion">
+                    <option value="Empresa">Empresa</option>
+                    <option value="Universidad">Universidad</option>
+                    <option value="Proveedor">Proveedor</option>
+                    <option value="Cliente">Cliente</option>
+                    <option value="Otro">Otro</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="estadoConvenio">Estado del convenio</label>
+                <select id="estadoConvenio">
+                    <option value="Sin convenio">Sin convenio</option>
+                    <option value="Activo">Activo</option>
+                    <option value="Pendiente">Pendiente</option>
+                    <option value="Vencido">Vencido</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="nombreContacto">Contacto</label>
+                <input
+                    type="text"
+                    id="nombreContacto"
+                    maxlength="150"
+                    placeholder="Nombre de la persona de contacto"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="emailContacto">Email de contacto</label>
+                <input
+                    type="email"
+                    id="emailContacto"
+                    maxlength="150"
+                    placeholder="correo@ejemplo.com"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="telefonoContacto">Teléfono</label>
+                <input
+                    type="text"
+                    id="telefonoContacto"
+                    maxlength="25"
+                    placeholder="Ej. 55 1234 5678"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="fechaInicioConvenio">Inicio del convenio</label>
+                <input type="date" id="fechaInicioConvenio">
+            </div>
+
+            <div class="form-group">
+                <label for="fechaFinConvenio">Fin del convenio</label>
+                <input type="date" id="fechaFinConvenio">
+            </div>
+
+            <div class="form-group full">
+                <label for="notasOrganizacion">Notas</label>
+                <textarea
+                    id="notasOrganizacion"
+                    rows="3"
+                    placeholder="Observaciones adicionales sobre la organización"
+                ></textarea>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" id="btnCancelar">
+                    Cancelar
+                </button>
+
+                <button type="submit" class="btn-primary" id="btnGuardarOrganizacion">
+                    Guardar Organización
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<div class="modal" id="modalDetalle">
+    <div class="modal-content detalle-content">
+        <div class="modal-header">
+            <h2>Detalle de Organización</h2>
+            <button type="button" class="btn-close" id="btnCerrarDetalle">×</button>
+        </div>
+
+        <div id="detalleOrganizacion" class="organization-detail"></div>
+    </div>
+</div>
+
+<script src="js/api-config.js?v=20260825"></script>
+<script src="js/permisos-globales.js?v=20260922-menu"></script>
+<script src="js/organizaciones.js"></script>
+</body>
+</html>
+

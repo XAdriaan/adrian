@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Control de Horas | PMO Platform</title>
+
+    <link
+        rel="stylesheet"
+        href="css/control-horas.css?v=20260626-2"
+    >
+</head>
+
+<body>
+
+<div class="dashboard-container">
+
+    <aside class="sidebar">
+
+        <div class="sidebar-logo">
+            <img
+                src="img/LOGO-J2M.png"
+                alt="Logo PMO"
+            >
+        </div>
+
+        <nav class="sidebar-menu">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="perfil.html">Perfil</a>
+            <a href="proyectos.html">Proyectos</a>
+            <a href="proyecto-avanzado.html">Proyecto Avanzado</a>
+            <a href="cursos.html">Cursos</a>
+            <a href="tablero-tareas.html">Tablero de tareas</a>
+            <a href="tareas.html">Tareas</a>
+            <a href="equipo.html">Equipo</a>
+            <a href="organizaciones.html">Organizaciones</a>
+
+            <a
+                href="control-horas.html"
+                class="active"
+            >
+                Control de horas
+            </a>
+            <a href="bitacora.html">Bitácora</a>
+            <a href="alertas.html">Alertas</a>
+            <a href="reportes.html">Reportes</a>
+            <a href="encuestas.html">Encuestas</a>
+            <a href="chatbot.html">Chatbot IA</a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="login.html">Cerrar sesión</a>
+        </div>
+
+    </aside>
+
+    <main class="main-content">
+
+        <header class="page-header">
+
+            <div>
+                <h1 id="tituloControlHoras">
+                    Control de Horas
+                </h1>
+
+                <p id="descripcionControlHoras">
+                    Registro y seguimiento de tiempo por tarea y proyecto.
+                </p>
+            </div>
+
+            <div class="header-actions">
+
+                <button
+                    type="button"
+                    class="btn-secondary"
+                    id="btnCheckIn"
+                >
+                    ▶ Iniciar jornada
+                </button>
+
+                <button
+                    type="button"
+                    class="btn-danger"
+                    id="btnCheckOut"
+                    disabled
+                >
+                    ■ Finalizar jornada
+                </button>
+
+                <button
+                    type="button"
+                    class="btn-secondary"
+                    id="btnVerMiHistorial"
+                >
+                    🕘 Ver mi historial
+                </button>
+
+                <button
+                    type="button"
+                    class="btn-primary"
+                    id="btnRegistrarHoras"
+                >
+                    + Registrar horas
+                </button>
+
+            </div>
+
+        </header>
+
+        <section class="jornada-status" id="jornadaStatus">
+            <strong>Jornada:</strong>
+            <span id="textoJornada">
+                Consultando estado de jornada...
+            </span>
+        </section>
+
+        <section class="stats-grid">
+
+            <div class="stat-card">
+                <div class="stat-icon blue">⏱</div>
+
+                <div>
+                    <p>Hoy</p>
+                    <h2 id="horasHoy">0.0h</h2>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon orange">🕒</div>
+
+                <div>
+                    <p>Total registrado</p>
+                    <h2 id="horasTotales">0.0h</h2>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon green">✅</div>
+
+                <div>
+                    <p>Horas aprobadas</p>
+                    <h2 id="horasAprobadas">0.0h</h2>
+                </div>
+            </div>
+
+        </section>
+
+        <section class="table-panel">
+
+            <div class="panel-header">
+                <div>
+                    <h2>Registros recientes</h2>
+
+                    <p id="subtituloTablaHoras">
+                        Registros obtenidos desde el sistema.
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    class="btn-refresh"
+                    id="btnActualizarHoras"
+                    title="Actualizar registros"
+                >
+                    ↻
+                </button>
+            </div>
+
+            <div class="table-wrapper">
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Persona</th>
+                            <th>Proyecto / Tarea</th>
+                            <th>Descripción</th>
+                            <th>Horario</th>
+                            <th class="text-right">Horas</th>
+                            <th>Validación</th>
+                            <th class="text-right">Acciones</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="tablaHoras">
+                        <tr>
+                            <td
+                                colspan="8"
+                                class="empty-table"
+                            >
+                                Cargando registros...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+<!-- =========================================================
+     MODAL REGISTRO DE HORAS
+========================================================= -->
+<div
+    class="modal"
+    id="modalHoras"
+>
+    <div class="modal-content">
+
+        <div class="modal-header">
+            <h2 id="tituloModal">
+                Registrar horas
+            </h2>
+
+            <button
+                type="button"
+                class="btn-close"
+                id="btnCerrarModal"
+                title="Cerrar"
+            >
+                ×
+            </button>
+        </div>
+
+        <form
+            id="formHoras"
+            class="time-form"
+        >
+
+            <input
+                type="hidden"
+                id="idRegistro"
+            >
+
+            <div
+                class="form-group"
+                id="grupoPersonaRegistro"
+            >
+                <label for="personaRegistro">
+                    Persona *
+                </label>
+
+                <select
+                    id="personaRegistro"
+                    required
+                >
+                    <option value="">
+                        Cargando integrantes...
+                    </option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="fechaRegistro">
+                    Fecha *
+                </label>
+
+                <input
+                    type="date"
+                    id="fechaRegistro"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="proyectoRegistro">
+                    Proyecto
+                </label>
+
+                <select id="proyectoRegistro">
+                    <option value="">
+                        Sin proyecto relacionado
+                    </option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="tareaRegistro">
+                    Tarea
+                </label>
+
+                <select id="tareaRegistro">
+                    <option value="">
+                        Selecciona primero un proyecto
+                    </option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="horaEntrada">
+                    Hora de entrada
+                </label>
+
+                <input
+                    type="time"
+                    id="horaEntrada"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="horaSalida">
+                    Hora de salida
+                </label>
+
+                <input
+                    type="time"
+                    id="horaSalida"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="horasRegistro">
+                    Horas trabajadas *
+                </label>
+
+                <input
+                    type="number"
+                    id="horasRegistro"
+                    min="0"
+                    max="24"
+                    step="0.25"
+                    value="0"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="incidenteRegistro">
+                    Tipo de registro
+                </label>
+
+                <select id="incidenteRegistro">
+                    <option value="normal">
+                        Laborado normal
+                    </option>
+
+                    <option value="justificado">
+                        No laborado con justificación
+                    </option>
+
+                    <option value="no_justificado">
+                        No laborado sin justificación
+                    </option>
+
+                    <option value="recuperacion">
+                        Recuperación de día no laborado
+                    </option>
+
+                    <option value="festivo">
+                        Día festivo laborado
+                    </option>
+
+                    <option value="fin_semana">
+                        Fin de semana laborado
+                    </option>
+                </select>
+            </div>
+
+            <div class="form-group full">
+                <label for="descripcionRegistro">
+                    Descripción / actividad realizada
+                </label>
+
+                <textarea
+                    id="descripcionRegistro"
+                    rows="4"
+                    placeholder="Describe el avance, actividad, entregable o evidencia realizada..."
+                ></textarea>
+            </div>
+
+            <div class="form-actions">
+
+                <button
+                    type="button"
+                    class="btn-secondary"
+                    id="btnCancelar"
+                >
+                    Cancelar
+                </button>
+
+                <button
+                    type="submit"
+                    class="btn-primary"
+                >
+                    Guardar registro
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+</div>
+
+<script src="js/api-config.js?v=20260825"></script>
+<script src="js/permisos-globales.js?v=20260922-menu"></script>
+<script src="js/control-horas.js?v=20260708-1"></script>
+
+</body>
+</html>

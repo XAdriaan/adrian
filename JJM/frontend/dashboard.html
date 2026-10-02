@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Dashboard | PMO Platform</title>
+
+    <link
+        rel="stylesheet"
+        href="css/dashboard.css?v=20260702-1"
+    >
+</head>
+
+<body>
+
+<div class="dashboard-container">
+
+    <!-- =====================================================
+         BARRA LATERAL
+    ====================================================== -->
+    <aside class="sidebar">
+
+        <div class="sidebar-logo">
+            <img
+                src="img/LOGO-J2M.png"
+                alt="Logo PMO"
+            >
+        </div>
+
+        <nav class="sidebar-menu">
+
+            <a
+                href="dashboard.html"
+                class="active"
+            >
+                Dashboard
+            </a>
+
+            <a href="perfil.html">Perfil</a>
+            <a href="proyectos.html">Proyectos</a>
+
+            <a href="proyecto-avanzado.html">
+                Proyecto Avanzado
+            </a>
+
+            <a href="cursos.html">Cursos</a>
+
+            <a href="tablero-tareas.html">
+                Tablero de tareas
+            </a>
+
+            <a href="tareas.html">Tareas</a>
+            <a href="equipo.html">Equipo</a>
+
+            <a href="organizaciones.html">
+                Organizaciones
+            </a>
+
+            <a href="control-horas.html">
+                Control de horas
+            </a>
+            <a href="bitacora.html">Bitácora</a>
+            <a href="alertas.html">Alertas</a>
+            <a href="reportes.html">Reportes</a>
+            <a href="encuestas.html">Encuestas</a>
+            <a href="chatbot.html">Chatbot IA</a>
+
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="login.html">Cerrar sesión</a>
+        </div>
+
+    </aside>
+
+    <!-- =====================================================
+         CONTENIDO PRINCIPAL
+    ====================================================== -->
+    <main class="main-content">
+
+        <!-- =================================================
+             ENCABEZADO
+        ================================================== -->
+        <section class="page-header">
+
+            <div>
+                <span
+                    class="welcome-label"
+                    id="saludoDashboard"
+                >
+                    Bienvenido
+                </span>
+
+                <h1 id="tituloDashboard">
+                    Dashboard
+                </h1>
+
+                <p id="descripcionDashboard">
+                    Resumen general de proyectos, tareas y horas.
+                </p>
+            </div>
+
+            <div class="header-actions">
+
+                <span
+                    class="role-indicator"
+                    id="indicadorRolDashboard"
+                >
+                    Verificando sesión...
+                </span>
+
+                <button
+                    type="button"
+                    class="btn-refresh"
+                    id="btnActualizarDashboard"
+                >
+                    ↻ Actualizar
+                </button>
+
+            </div>
+
+        </section>
+
+        <!-- =================================================
+             AVISO DE CONEXIÓN
+        ================================================== -->
+        <section
+            class="dashboard-notice"
+            id="mensajeDashboard"
+            style="display: none;"
+        >
+            <span class="notice-icon">ℹ</span>
+
+            <p id="textoMensajeDashboard">
+                Consultando información del sistema.
+            </p>
+        </section>
+
+        <!-- =================================================
+             TARJETAS DE ESTADÍSTICAS
+        ================================================== -->
+        <section class="stats-grid">
+
+            <article class="stat-card">
+
+                <div class="stat-icon blue">
+                    📁
+                </div>
+
+                <div>
+                    <h2 id="totalProyectosActivos">0</h2>
+
+                    <p id="etiquetaProyectos">
+                        Proyectos activos
+                    </p>
+                </div>
+
+            </article>
+
+            <article class="stat-card">
+
+                <div class="stat-icon orange">
+                    ✅
+                </div>
+
+                <div>
+                    <h2 id="totalTareas">0</h2>
+
+                    <p id="etiquetaTareas">
+                        Tareas registradas
+                    </p>
+                </div>
+
+            </article>
+
+            <article class="stat-card">
+
+                <div class="stat-icon red">
+                    ⚠️
+                </div>
+
+                <div>
+                    <h2 id="totalAlertas">0</h2>
+
+                    <p id="etiquetaAlertas">
+                        Tareas bloqueadas
+                    </p>
+                </div>
+
+            </article>
+
+            <article class="stat-card">
+
+                <div class="stat-icon green">
+                    ⏱
+                </div>
+
+                <div>
+                    <h2 id="totalHoras">0.00h</h2>
+
+                    <p id="etiquetaHoras">
+                        Horas pendientes
+                    </p>
+                </div>
+
+            </article>
+
+        </section>
+
+        <!-- =================================================
+             ESTADO DE JORNADA
+        ================================================== -->
+        <section
+            class="jornada-card"
+            id="tarjetaJornada"
+        >
+
+            <div class="jornada-icon">
+                🕒
+            </div>
+
+            <div class="jornada-content">
+
+                <h2 id="tituloJornada">
+                    Estado de jornada
+                </h2>
+
+                <p id="textoJornada">
+                    Consultando el estado de la jornada...
+                </p>
+
+            </div>
+
+            <a
+                href="control-horas.html"
+                class="btn-jornada"
+            >
+                Ir a control de horas
+            </a>
+
+        </section>
+
+        <!-- =================================================
+             CONTENIDO PRINCIPAL
+        ================================================== -->
+        <section class="dashboard-grid">
+
+            <!-- PROYECTOS -->
+            <article class="dashboard-card">
+
+                <div class="card-header">
+
+                    <div>
+                        <h2>Proyectos recientes</h2>
+
+                        <p>
+                            Proyectos registrados recientemente.
+                        </p>
+                    </div>
+
+                    <a href="proyectos.html">
+                        Ver todos
+                    </a>
+
+                </div>
+
+                <div
+                    id="proyectosOverview"
+                    class="dashboard-list"
+                >
+                    <div class="empty-dashboard">
+                        <h3>Cargando proyectos...</h3>
+
+                        <p>
+                            Consultando los proyectos disponibles.
+                        </p>
+                    </div>
+                </div>
+
+            </article>
+
+            <!-- TAREAS -->
+            <article class="dashboard-card">
+
+                <div class="card-header">
+
+                    <div>
+                        <h2 id="tituloTareasRecientes">
+                            Tareas recientes
+                        </h2>
+
+                        <p id="descripcionTareasRecientes">
+                            Actividades registradas recientemente.
+                        </p>
+                    </div>
+
+                    <a href="tablero-tareas.html">
+                        Ver tablero
+                    </a>
+
+                </div>
+
+                <div
+                    id="tareasOverview"
+                    class="dashboard-list"
+                >
+                    <div class="empty-dashboard">
+                        <h3>Cargando tareas...</h3>
+
+                        <p>
+                            Consultando actividades registradas.
+                        </p>
+                    </div>
+                </div>
+
+            </article>
+
+            <!-- ACTIVIDAD -->
+            <article class="dashboard-card dashboard-card-full">
+
+                <div class="card-header">
+
+                    <div>
+                        <h2 id="tituloActividad">
+                            Actividad reciente
+                        </h2>
+
+                        <p id="descripcionActividad">
+                            Registros recientes de horas del equipo.
+                        </p>
+                    </div>
+
+                    <a href="control-horas.html">
+                        Ver horas
+                    </a>
+
+                </div>
+
+                <div
+                    id="actividadOverview"
+                    class="activity-list"
+                >
+                    <div class="empty-dashboard">
+                        <h3>Cargando actividad...</h3>
+
+                        <p>
+                            Consultando registros de horas.
+                        </p>
+                    </div>
+                </div>
+
+            </article>
+
+        </section>
+
+    </main>
+
+</div>
+
+<script src="js/api-config.js?v=20260825"></script>
+<script src="js/permisos-globales.js?v=20260922-menu"></script>
+<script src="js/dashboard.js?v=20260902-3"></script>
+
+</body>
+</html>

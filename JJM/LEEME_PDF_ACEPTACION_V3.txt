@@ -1,0 +1,12 @@
+CORRECCION CARTA DE ACEPTACION - PDF V3
+
+1. La Carta de aceptación se genera como PDF real.
+2. Ya no depende de capturar un elemento oculto con html2pdf, evitando la hoja blanca.
+3. Se conserva la distribución de la plantilla original: logo, fecha, título, destinatario, asunto, cuerpo, firma y pie de página.
+4. La carrera se normaliza a: Ingeniería en Software.
+5. El cuatrimestre 10 se normaliza a: décimo.
+6. El periodo se calcula a partir de la fecha de inicio y se mantiene con el formato de la carta original.
+
+Archivos modificados:
+- frontend/js/documentos.js
+- frontend/documentos.html

@@ -1,0 +1,16 @@
+CORRECCIÓN: ALUMNOS POR PERIODO Y ACENTO EN DÉCIMO
+
+Archivos modificados dentro de frontend:
+- documentos.html
+- js/documentos.js
+- css/documentos.css
+
+1. Sustituye estos tres archivos en tu servidor por los de este ZIP.
+2. Abre Documentos y expediente y pulsa Ctrl + F5.
+3. Como administrador, selecciona el periodo. Abre el nombre del alumno en Alumnos y expedientes para consultar sus datos, documentos y acciones.
+4. Los alumnos sin documentos también aparecen. Los alumnos sin periodo ni fecha de inicio aparecen en Sin periodo académico registrado al seleccionar Todas las personas. Completa sus datos académicos para asignarlos a un periodo.
+5. Las cartas de aceptación nuevas escriben décimo con acento. Una carta guardada antes no cambia al actualizar el código. Para reemplazar una carta anterior, utiliza el procedimiento administrativo de eliminación y generación permitido por tu sistema, conservando previamente una copia si la necesitas.
+
+No se modificó el backend; no se necesita recompilar Java para estos cambios. Las consultas usan la ruta existente /api/datos-registro/usuario/{id}, que conserva sus permisos del servidor.
+
+Verificación: sintaxis JavaScript y pruebas locales con datos simulados de periodos, expedientes, alumnos sin documentos, carga por usuario y HTML de cartas. No se probó contra la base de datos ni el servidor en producción.

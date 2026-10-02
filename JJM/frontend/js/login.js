@@ -1,0 +1,364 @@
+const API_URL = window.apiUrl("/api/auth");
+
+const loginForm = document.getElementById("loginForm");
+const errorMessage = document.getElementById("error-message");
+const successMessage = document.getElementById("success-message");
+const btnLogin = document.getElementById("btnLogin");
+
+loginForm.addEventListener("submit", async function (event) {
+    event.preventDefault();
+
+    const email = document.getElementById("email").value.trim().toLowerCase();
+    const password = document.getElementById("password").value;
+
+    ocultarMensajes();
+
+    if (email === "" || password === "") {
+        mostrarError("Debes ingresar correo y contraseña.");
+        return;
+    }
+
+    if (!validarCorreo(email)) {
+        mostrarError("Ingresa un correo electrónico válido.");
+        return;
+    }
+
+    const datosLogin = {
+        correo: email,
+        contrasena: password
+    };
+
+    bloquearBotonLogin(true);
+
+    try {
+        const respuesta = await fetch(`${API_URL}/login`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(datosLogin)
+        });
+
+        const datos = await obtenerRespuestaJSON(respuesta);
+
+        if (!respuesta.ok) {
+            mostrarError(
+                datos.mensaje ||
+                "Correo o contraseña incorrectos."
+            );
+            return;
+        }
+
+        if (!datos.usuario) {
+            mostrarError("El servidor no devolvió la información del usuario.");
+            return;
+        }
+
+        if (!datos.token) {
+            mostrarError("El servidor no devolvió un token de sesión válido.");
+            return;
+        }
+
+        localStorage.setItem("usuarioActivo", JSON.stringify(datos.usuario));
+        localStorage.setItem("sesionTokenPMO", datos.token);
+
+        const expedienteCompleto = await datosAcademicosCompletos(datos.usuario);
+        mostrarExito("Inicio de sesión correcto. Redirigiendo...");
+
+        setTimeout(function () {
+            window.location.href = expedienteCompleto
+                ? "dashboard.html"
+                : "datos-academicos.html";
+        }, 500);
+
+    } catch (error) {
+        console.error("Error al iniciar sesión:", error);
+
+        mostrarError(
+            "No fue posible conectar con el servidor. " +
+            "Verifica que el backend de Java esté ejecutándose."
+        );
+    } finally {
+        bloquearBotonLogin(false);
+    }
+});
+
+async function obtenerRespuestaJSON(respuesta) {
+    try {
+        return await respuesta.json();
+    } catch (error) {
+        return {};
+    }
+}
+
+function bloquearBotonLogin(estaBloqueado) {
+    if (!btnLogin) return;
+
+    btnLogin.disabled = estaBloqueado;
+    btnLogin.textContent = estaBloqueado
+        ? "Ingresando..."
+        : "Iniciar sesión";
+}
+
+function validarCorreo(email) {
+    const expresion = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return expresion.test(email);
+}
+
+function mostrarError(mensaje) {
+    errorMessage.textContent = mensaje;
+    errorMessage.style.display = "block";
+
+    successMessage.style.display = "none";
+    successMessage.textContent = "";
+}
+
+function mostrarExito(mensaje) {
+    successMessage.textContent = mensaje;
+    successMessage.style.display = "block";
+
+    errorMessage.style.display = "none";
+    errorMessage.textContent = "";
+}
+
+function ocultarMensajes() {
+    errorMessage.style.display = "none";
+    successMessage.style.display = "none";
+
+    errorMessage.textContent = "";
+    successMessage.textContent = "";
+}
+
+const parametrosLogin = new URLSearchParams(window.location.search);
+
+if (parametrosLogin.get("success") === "1") {
+    mostrarExito("Cuenta creada correctamente. Ahora inicia sesión.");
+}
+
+/* =========================================================
+   REDIRECCIÓN A DATOS ACADÉMICOS
+========================================================= */
+function obtenerIdUsuarioLogin(usuario) {
+    if (!usuario) return null;
+    return usuario.id || usuario.idUsuario || usuario.id_usuario || null;
+}
+
+async function datosAcademicosCompletos(usuario) {
+    const idUsuario = obtenerIdUsuarioLogin(usuario);
+    if (!idUsuario) return false;
+
+    try {
+        const respuesta = await fetch(window.apiUrl("/api/datos-academicos/mi-sesion"));
+        if (!respuesta.ok) return false;
+        const datos = await respuesta.json();
+        if (datos?.datos) {
+            localStorage.setItem(`datosAcademicosPMO_${idUsuario}`, JSON.stringify(datos.datos));
+        }
+        return datos?.completo === true;
+    } catch (error) {
+        console.warn("No fue posible consultar el expediente académico.", error);
+        return false;
+    }
+}
+
+
+/* =========================================================
+   RECUPERACIÓN DE CONTRASEÑA POR CORREO REAL
+========================================================= */
+const modalRecuperarPasswordLogin = document.getElementById("modalRecuperarPasswordLogin");
+const linkRecuperarPassword = document.getElementById("linkRecuperarPassword");
+const btnCerrarRecuperarLogin = document.getElementById("btnCerrarRecuperarLogin");
+const formSolicitarRecuperacionLogin = document.getElementById("formSolicitarRecuperacionLogin");
+const formValidarCodigoLogin = document.getElementById("formValidarCodigoLogin");
+const formCambiarPasswordLogin = document.getElementById("formCambiarPasswordLogin");
+const correoRecuperacionLogin = document.getElementById("correoRecuperacionLogin");
+const codigoRecuperacionLogin = document.getElementById("codigoRecuperacionLogin");
+const nuevaPasswordLogin = document.getElementById("nuevaPasswordLogin");
+const confirmarPasswordLogin = document.getElementById("confirmarPasswordLogin");
+const textoCodigoRecuperacionLogin = document.getElementById("textoCodigoRecuperacionLogin");
+
+let correoRecuperacionActualLogin = "";
+let codigoRecuperacionValidadoLogin = "";
+
+function mostrarPasoRecuperacionLogin(paso) {
+    document.querySelectorAll(".recover-login-step").forEach(function (elemento) {
+        elemento.classList.toggle("active", elemento.dataset.step === paso);
+    });
+}
+
+function abrirRecuperacionLogin() {
+    correoRecuperacionActualLogin = "";
+    codigoRecuperacionValidadoLogin = "";
+    mostrarPasoRecuperacionLogin("correo");
+
+    const correoLogin = document.getElementById("email")?.value?.trim() || "";
+    if (correoRecuperacionLogin && correoLogin) {
+        correoRecuperacionLogin.value = correoLogin;
+    }
+
+    modalRecuperarPasswordLogin?.classList.add("show");
+}
+
+function cerrarRecuperacionLogin() {
+    modalRecuperarPasswordLogin?.classList.remove("show");
+}
+
+linkRecuperarPassword?.addEventListener("click", function (event) {
+    event.preventDefault();
+    abrirRecuperacionLogin();
+});
+
+btnCerrarRecuperarLogin?.addEventListener("click", cerrarRecuperacionLogin);
+
+modalRecuperarPasswordLogin?.addEventListener("click", function (event) {
+    if (event.target === modalRecuperarPasswordLogin) {
+        cerrarRecuperacionLogin();
+    }
+});
+
+formSolicitarRecuperacionLogin?.addEventListener("submit", async function (event) {
+    event.preventDefault();
+
+    const correo = correoRecuperacionLogin?.value.trim().toLowerCase() || "";
+    if (!validarCorreo(correo)) {
+        alert("Ingresa un correo electrónico válido.");
+        return;
+    }
+
+    const boton = document.getElementById("btnEnviarCodigoLogin");
+    if (boton) {
+        boton.disabled = true;
+        boton.textContent = "Enviando...";
+    }
+
+    try {
+        const respuesta = await fetch(`${API_URL}/recuperacion/solicitar`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ correo: correo })
+        });
+        const datos = await obtenerRespuestaJSON(respuesta);
+
+        if (!respuesta.ok) {
+            alert(datos.mensaje || "No fue posible enviar el código de recuperación.");
+            return;
+        }
+
+        correoRecuperacionActualLogin = correo;
+        if (textoCodigoRecuperacionLogin) {
+            textoCodigoRecuperacionLogin.textContent =
+                `Enviamos un código de 6 dígitos a ${correo}. Revisa también correo no deseado.`;
+        }
+        if (codigoRecuperacionLogin) codigoRecuperacionLogin.value = "";
+        mostrarPasoRecuperacionLogin("codigo");
+        codigoRecuperacionLogin?.focus();
+    } catch (error) {
+        console.error("Error al enviar recuperación:", error);
+        alert("No fue posible conectar con el servidor de recuperación.");
+    } finally {
+        if (boton) {
+            boton.disabled = false;
+            boton.textContent = "Enviar código";
+        }
+    }
+});
+
+formValidarCodigoLogin?.addEventListener("submit", async function (event) {
+    event.preventDefault();
+
+    const codigo = codigoRecuperacionLogin?.value.trim() || "";
+    if (!/^\d{6}$/.test(codigo)) {
+        alert("Ingresa el código de 6 dígitos.");
+        return;
+    }
+
+    const boton = document.getElementById("btnValidarCodigoLogin");
+    if (boton) {
+        boton.disabled = true;
+        boton.textContent = "Validando...";
+    }
+
+    try {
+        const respuesta = await fetch(`${API_URL}/recuperacion/validar-codigo`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                correo: correoRecuperacionActualLogin,
+                codigo: codigo
+            })
+        });
+        const datos = await obtenerRespuestaJSON(respuesta);
+
+        if (!respuesta.ok) {
+            alert(datos.mensaje || "El código no es correcto.");
+            return;
+        }
+
+        codigoRecuperacionValidadoLogin = codigo;
+        if (nuevaPasswordLogin) nuevaPasswordLogin.value = "";
+        if (confirmarPasswordLogin) confirmarPasswordLogin.value = "";
+        mostrarPasoRecuperacionLogin("password");
+        nuevaPasswordLogin?.focus();
+    } catch (error) {
+        console.error("Error al validar recuperación:", error);
+        alert("No fue posible validar el código.");
+    } finally {
+        if (boton) {
+            boton.disabled = false;
+            boton.textContent = "Validar código";
+        }
+    }
+});
+
+formCambiarPasswordLogin?.addEventListener("submit", async function (event) {
+    event.preventDefault();
+
+    const nueva = nuevaPasswordLogin?.value || "";
+    const confirmar = confirmarPasswordLogin?.value || "";
+
+    if (nueva.length < 6) {
+        alert("La nueva contraseña debe tener al menos 6 caracteres.");
+        return;
+    }
+    if (nueva !== confirmar) {
+        alert("Las contraseñas no coinciden.");
+        return;
+    }
+
+    const boton = document.getElementById("btnCambiarPasswordLogin");
+    if (boton) {
+        boton.disabled = true;
+        boton.textContent = "Guardando...";
+    }
+
+    try {
+        const respuesta = await fetch(`${API_URL}/recuperacion/cambiar-password`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                correo: correoRecuperacionActualLogin,
+                codigo: codigoRecuperacionValidadoLogin,
+                nuevaContrasena: nueva
+            })
+        });
+        const datos = await obtenerRespuestaJSON(respuesta);
+
+        if (!respuesta.ok) {
+            alert(datos.mensaje || "No fue posible cambiar la contraseña.");
+            return;
+        }
+
+        const inputEmail = document.getElementById("email");
+        if (inputEmail) inputEmail.value = correoRecuperacionActualLogin;
+        cerrarRecuperacionLogin();
+        mostrarExito(datos.mensaje || "Contraseña actualizada correctamente.");
+    } catch (error) {
+        console.error("Error al cambiar contraseña:", error);
+        alert("No fue posible cambiar la contraseña.");
+    } finally {
+        if (boton) {
+            boton.disabled = false;
+            boton.textContent = "Guardar contraseña";
+        }
+    }
+});

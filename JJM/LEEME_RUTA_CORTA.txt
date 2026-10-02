@@ -1,0 +1,5 @@
+JJM ProjectSphere - ZIP con rutas internas cortas
+
+Se eliminaron las carpetas repetidas del ZIP para evitar el error de Windows 0x80010135 (ruta demasiado larga).
+El contenido funcional del proyecto no fue modificado en este reempaquetado.
+Extrae la carpeta JJM directamente en C:\\JJM o C:\\Proyectos\JJM para mantener rutas cortas.

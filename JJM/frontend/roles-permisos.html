@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roles y permisos | Oficina de Proyectos</title>
+    <link rel="stylesheet" href="css/equipo.css?v=20260702-2">
+    <link rel="stylesheet" href="css/roles-permisos.css?v=20260829-1">
+</head>
+<body>
+<div class="dashboard-container">
+    <aside class="sidebar">
+        <div class="sidebar-logo"><img src="img/LOGO-J2M.png" alt="Logo JJM"></div>
+        <nav class="sidebar-menu">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="perfil.html">Perfil</a>
+            <a href="proyectos.html">Proyectos</a>
+            <a href="proyecto-avanzado.html">Proyecto Avanzado</a>
+            <a href="cursos.html">Cursos</a>
+            <a href="tablero-tareas.html">Tablero de tareas</a>
+            <a href="tareas.html">Tareas</a>
+            <a href="equipo.html">Equipo</a>
+            <a href="roles-permisos.html" class="active">Roles y permisos</a>
+            <a href="organizaciones.html">Organizaciones</a>
+            <a href="control-horas.html">Control de horas</a>
+            <a href="bitacora.html">Bitácora</a>
+            <a href="alertas.html">Alertas</a>
+            <a href="reportes.html">Reportes</a>
+            <a href="encuestas.html">Encuestas</a>
+            <a href="chatbot.html">Chatbot IA</a>
+        </nav>
+        <div class="sidebar-footer"><a href="login.html">Cerrar sesión</a></div>
+    </aside>
+
+    <main class="main-content roles-page">
+        <header class="roles-header">
+            <div>
+                <span class="security-kicker">SEGURIDAD</span>
+                <h1>Roles y permisos</h1>
+                <p>Crea perfiles de acceso sin entregar privilegios críticos de administrador.</p>
+            </div>
+            <button id="btnNuevoRol" type="button" class="btn-primary">+ Nuevo rol</button>
+        </header>
+
+        <section class="security-note">
+            <div class="security-icon">🔐</div>
+            <div>
+                <strong>Jerarquía protegida</strong>
+                <p>Solo el Superadministrador puede crear o modificar roles y nombrar Administradores. El rol Superadministrador no se asigna desde la página.</p>
+            </div>
+        </section>
+
+        <section class="roles-toolbar">
+            <input id="buscarRol" type="search" placeholder="Buscar rol...">
+            <span id="estadoRoles">Cargando roles...</span>
+        </section>
+
+        <section id="contenedorRoles" class="roles-grid">
+            <div class="roles-empty">Cargando configuración de seguridad...</div>
+        </section>
+    </main>
+</div>
+
+<div class="roles-modal" id="modalRol" aria-hidden="true">
+    <div class="roles-modal-card">
+        <div class="roles-modal-header">
+            <div>
+                <span class="security-kicker">CONFIGURACIÓN</span>
+                <h2 id="tituloModalRol">Nuevo rol</h2>
+            </div>
+            <button id="btnCerrarRol" type="button" class="roles-close">×</button>
+        </div>
+
+        <form id="formRol">
+            <input id="idRol" type="hidden">
+            <div class="roles-form-grid">
+                <label>
+                    <span>Nombre del rol</span>
+                    <input id="nombreRol" maxlength="50" required placeholder="Ej. Coordinador de estadías">
+                </label>
+                <label>
+                    <span>Descripción</span>
+                    <input id="descripcionRol" maxlength="255" placeholder="Responsabilidad principal del rol">
+                </label>
+            </div>
+
+            <div class="permissions-title">
+                <div>
+                    <h3>Permisos</h3>
+                    <p>Selecciona únicamente lo que este rol necesita.</p>
+                </div>
+                <div class="permission-actions">
+                    <button id="btnSeleccionarLectura" type="button" class="btn-secondary">Perfil de consulta</button>
+                    <button id="btnLimpiarPermisos" type="button" class="btn-secondary">Limpiar</button>
+                </div>
+            </div>
+
+            <div id="contenedorPermisos" class="permissions-groups"></div>
+
+            <div class="roles-form-actions">
+                <button id="btnCancelarRol" type="button" class="btn-secondary">Cancelar</button>
+                <button id="btnGuardarRol" type="submit" class="btn-primary">Guardar rol</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="js/api-config.js?v=20260825"></script>
+<script src="js/permisos-globales.js?v=20260922-menu"></script>
+<script src="js/roles-permisos.js?v=20260829-1"></script>
+</body>
+</html>

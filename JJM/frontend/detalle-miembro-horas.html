@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Historial de Horas | PMO Platform</title>
+
+    <link
+        rel="stylesheet"
+        href="css/detalle-miembro-horas.css?v=20260702-1"
+    >
+</head>
+
+<body>
+
+<div class="dashboard-container">
+
+    <!-- =====================================================
+         BARRA LATERAL
+    ====================================================== -->
+    <aside class="sidebar">
+
+        <div class="sidebar-logo">
+            <img
+                src="img/LOGO-J2M.png"
+                alt="Logo PMO"
+            >
+        </div>
+
+        <nav class="sidebar-menu">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="perfil.html">Perfil</a>
+            <a href="proyectos.html">Proyectos</a>
+            <a href="proyecto-avanzado.html">Proyecto Avanzado</a>
+            <a href="cursos.html">Cursos</a>
+            <a href="tablero-tareas.html">Tablero de tareas</a>
+            <a href="tareas.html">Tareas</a>
+            <a href="equipo.html">Equipo</a>
+            <a href="organizaciones.html">Organizaciones</a>
+            <a href="control-horas.html">Control de horas</a>
+            <a href="bitacora.html">Bitácora</a>
+            <a href="alertas.html">Alertas</a>
+            <a href="reportes.html">Reportes</a>
+            <a href="encuestas.html">Encuestas</a>
+            <a href="chatbot.html">Chatbot IA</a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="login.html">Cerrar sesión</a>
+        </div>
+
+    </aside>
+
+    <!-- =====================================================
+         CONTENIDO PRINCIPAL
+    ====================================================== -->
+    <main class="main-content">
+
+        <header class="page-header">
+
+            <div>
+                <a
+                    href="control-horas.html"
+                    class="back-link"
+                >
+                    ← Regresar a control de horas
+                </a>
+
+                <h1 id="tituloPagina">
+                    Historial de horas
+                </h1>
+
+                <p id="subtituloPagina">
+                    Consulta de jornadas y registros de tiempo.
+                </p>
+            </div>
+
+            <div class="header-actions">
+
+                <button
+                    type="button"
+                    class="btn-secondary"
+                    id="btnRegresar"
+                >
+                    ← Regresar
+                </button>
+
+                <button
+                    type="button"
+                    class="btn-download-format"
+                    id="btnDescargarFormato"
+                >
+                    ⬇ Descargar asistencia personal
+                </button>
+
+                <!-- Solo lo muestra JavaScript cuando el usuario es Administrador -->
+                <button
+                    type="button"
+                    class="btn-signature"
+                    id="btnFirmaEncargado"
+                    style="display: none;"
+                >
+                    ✍ Firma encargado
+                </button>
+
+                <button
+                    type="button"
+                    class="btn-refresh"
+                    id="btnActualizar"
+                    title="Actualizar historial"
+                >
+                    ↻
+                </button>
+
+            </div>
+
+        </header>
+
+        <!-- =================================================
+             RESUMEN DEL INTEGRANTE
+        ================================================== -->
+        <section
+            class="member-summary"
+            id="resumenMiembro"
+        >
+
+            <div
+                class="member-avatar"
+                id="avatarMiembro"
+            >
+                --
+            </div>
+
+            <div class="member-info">
+
+                <h2 id="nombreMiembro">
+                    Cargando integrante...
+                </h2>
+
+                <p id="correoMiembro">
+                    Consultando información...
+                </p>
+
+                <span
+                    class="member-role"
+                    id="rolMiembro"
+                >
+                    Sin rol asignado
+                </span>
+
+            </div>
+
+            <div
+                class="member-status"
+                id="estadoMiembro"
+            >
+                Consultando...
+            </div>
+
+        </section>
+
+        <!-- =================================================
+             FILTROS DE PERIODO
+        ================================================== -->
+        <section class="filter-panel">
+
+            <div class="filter-group">
+                <label for="mesFiltro">
+                    Mes
+                </label>
+
+                <select id="mesFiltro">
+                    <option value="1">Enero</option>
+                    <option value="2">Febrero</option>
+                    <option value="3">Marzo</option>
+                    <option value="4">Abril</option>
+                    <option value="5">Mayo</option>
+                    <option value="6">Junio</option>
+                    <option value="7">Julio</option>
+                    <option value="8">Agosto</option>
+                    <option value="9">Septiembre</option>
+                    <option value="10">Octubre</option>
+                    <option value="11">Noviembre</option>
+                    <option value="12">Diciembre</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="anioFiltro">
+                    Año
+                </label>
+
+                <select id="anioFiltro"></select>
+            </div>
+
+            <button
+                type="button"
+                class="btn-primary"
+                id="btnFiltrar"
+            >
+                Aplicar filtro
+            </button>
+
+        </section>
+
+        <!-- =================================================
+             ESTADÍSTICAS DEL PERIODO
+        ================================================== -->
+        <section class="stats-grid">
+
+            <div class="stat-card">
+                <div class="stat-icon blue">⏱</div>
+
+                <div>
+                    <p>Total registrado</p>
+                    <h2 id="horasRegistradas">0.00h</h2>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon green">✓</div>
+
+                <div>
+                    <p>Horas aprobadas</p>
+                    <h2 id="horasAprobadas">0.00h</h2>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon yellow">⌛</div>
+
+                <div>
+                    <p>Horas pendientes</p>
+                    <h2 id="horasPendientes">0.00h</h2>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon red">✕</div>
+
+                <div>
+                    <p>Horas rechazadas</p>
+                    <h2 id="horasRechazadas">0.00h</h2>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- =================================================
+             TABLA DEL HISTORIAL
+        ================================================== -->
+        <section class="table-panel">
+
+            <div class="panel-header">
+
+                <div>
+                    <h2>Registros del periodo</h2>
+
+                    <p id="textoPeriodo">
+                        Selecciona un periodo para consultar los registros.
+                    </p>
+                </div>
+
+                <span
+                    class="records-count"
+                    id="contadorRegistros"
+                >
+                    0 registros
+                </span>
+
+            </div>
+
+            <div class="table-wrapper">
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Tipo</th>
+                            <th>Proyecto / Tarea</th>
+                            <th>Descripción</th>
+                            <th>Horario</th>
+                            <th class="text-right">Horas</th>
+                            <th>Validación</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="tablaHistorialHoras">
+                        <tr>
+                            <td
+                                colspan="7"
+                                class="empty-table"
+                            >
+                                Cargando historial de horas...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+<!-- =========================================================
+     MODAL: FIRMA DIGITAL DEL ENCARGADO
+     Solo puede abrirlo Administrador.
+========================================================= -->
+<div
+    class="modal-signature"
+    id="modalFirmaEncargado"
+>
+
+    <div class="modal-signature-content">
+
+        <div class="modal-signature-header">
+
+            <div>
+                <h2>Firma digital del encargado</h2>
+
+                <p>
+                    La firma se integrará a los formatos y documentos
+                    descargables que generará la plataforma.
+                </p>
+            </div>
+
+            <button
+                type="button"
+                class="btn-close-signature"
+                id="btnCerrarModalFirma"
+                title="Cerrar ventana"
+            >
+                ×
+            </button>
+
+        </div>
+
+        <div class="signature-body">
+
+            <div class="signature-preview-box">
+
+                <p class="signature-preview-title">
+                    Vista previa de la firma
+                </p>
+
+                <div
+                    class="signature-preview"
+                    id="contenedorVistaFirma"
+                >
+
+                    <span id="textoSinFirma">
+                        No hay una firma registrada.
+                    </span>
+
+                    <img
+                        id="vistaFirma"
+                        src=""
+                        alt="Vista previa de la firma del encargado"
+                        style="display: none;"
+                    >
+
+                </div>
+
+            </div>
+
+            <div class="signature-upload-area">
+
+                <label for="inputFirmaEncargado">
+                    Seleccionar imagen de firma
+                </label>
+
+                <input
+                    type="file"
+                    id="inputFirmaEncargado"
+                    accept="image/png,image/jpeg,image/jpg"
+                >
+
+                <p class="signature-help">
+                    Formatos permitidos: PNG, JPG o JPEG.
+                    Se recomienda una imagen menor a 2 MB y con fondo
+                    blanco o transparente.
+                </p>
+
+                <p
+                    class="signature-file-name"
+                    id="nombreArchivoFirma"
+                >
+                    Ningún archivo seleccionado.
+                </p>
+
+            </div>
+
+        </div>
+
+        <div class="signature-actions">
+
+            <button
+                type="button"
+                class="btn-danger-outline"
+                id="btnEliminarFirma"
+            >
+                Eliminar firma
+            </button>
+
+            <div class="signature-actions-right">
+
+                <button
+                    type="button"
+                    class="btn-secondary"
+                    id="btnCancelarFirma"
+                >
+                    Cancelar
+                </button>
+
+                <button
+                    type="button"
+                    class="btn-signature-save"
+                    id="btnGuardarFirma"
+                >
+                    Guardar firma
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- =========================================================
+     JAVASCRIPT DE HISTORIAL
+========================================================= -->
+
+<script src="js/api-config.js?v=20260825"></script>
+<script src="js/permisos-globales.js?v=20260922-menu"></script>
+<script src="js/detalle-miembro-horas.js?v=20260713-docs-1"></script>
+
+</body>
+</html>
