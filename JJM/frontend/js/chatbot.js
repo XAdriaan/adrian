@@ -1,602 +1,158 @@
 /* =========================================================
-   CHATBOT ARD.IA - PMO
-   Versión corregida para responder consultas por rol
+   Ard.IA — Asistente contextual PMO con voz
+   Usa los datos permitidos por la sesión actual y Web Speech API.
 ========================================================= */
-
 const API_PROYECTOS = window.apiUrl("/api/proyectos");
 const API_TAREAS = window.apiUrl("/api/tareas");
 const API_ALERTAS = window.apiUrl("/api/alertas");
 const API_REGISTROS_HORAS = window.apiUrl("/api/registros-horas");
 const API_ENCUESTAS = window.apiUrl("/api/encuestas");
+const API_SEGUIMIENTO = window.apiUrl("/api/seguimiento-estadia/mi-seguimiento");
+const API_DOCUMENTOS = window.apiUrl("/api/documentos");
 
 let usuarioActivo = obtenerUsuarioActivo();
-const CLAVE_CHATBOT = usuarioActivo && obtenerIdUsuarioActivo()
-    ? `mensajesChatbot_${obtenerIdUsuarioActivo()}`
-    : "mensajesChatbot_invitado";
-
+let vozActiva = localStorage.getItem("ardiaVozActiva") === "1";
+let reconocimiento = null;
+let escuchando = false;
+let contextoCache = null;
+let contextoCacheEn = 0;
+const CLAVE_CHATBOT = usuarioActivo && obtenerIdUsuarioActivo() ? `mensajesChatbot_${obtenerIdUsuarioActivo()}` : "mensajesChatbot_invitado";
 let mensajesChatbot = obtenerMensajesGuardados();
 
 const chatMessages = document.getElementById("chatMessages");
 const formChatbot = document.getElementById("formChatbot");
 const inputChatbot = document.getElementById("inputChatbot");
 const btnLimpiarChatbot = document.getElementById("btnLimpiarChatbot");
+const btnVozChatbot = document.getElementById("btnVozChatbot");
+const btnDetenerVoz = document.getElementById("btnDetenerVoz");
+const btnMicrofonoChatbot = document.getElementById("btnMicrofonoChatbot");
 const suggestionButtons = document.querySelectorAll(".suggestion-btn");
+const estadoArdia = document.getElementById("estadoArdia");
+const contextoArdia = document.getElementById("contextoArdia");
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
     usuarioActivo = obtenerUsuarioActivo();
-    inicializarChatbot();
+    if (!usuarioActivo && typeof window.restaurarSesionPMO === "function") {
+        usuarioActivo = await window.restaurarSesionPMO();
+    }
+    inicializarVoz();
+    configurarEventosChatbot();
+    await inicializarChatbot();
 });
 
-function inicializarChatbot() {
+async function inicializarChatbot() {
     if (!usuarioActivo) {
-        mensajesChatbot = [
-            {
-                tipo: "bot",
-                texto: "No se detectó una sesión activa. Inicia sesión para usar Ard.IA.",
-                fecha: new Date().toISOString()
-            }
-        ];
-
+        mensajesChatbot = [{ id: `msg-${Date.now()}`, tipo: "bot", texto: "No detecté una sesión activa. Inicia sesión para poder consultar tu contexto de ProjectSphere.", fecha: new Date().toISOString() }];
         renderizarMensajesChatbot();
+        if (estadoArdia) estadoArdia.textContent = "Sin sesión";
         return;
     }
 
-    if (mensajesChatbot.length === 0) {
-        mensajesChatbot.push({
-            tipo: "bot",
-            texto: construirMensajeBienvenida(),
-            fecha: new Date().toISOString()
-        });
-
+    if (!mensajesChatbot.length) {
+        mensajesChatbot.push({ id:`msg-${Date.now()}`, tipo:"bot", texto:construirMensajeBienvenida(), fecha:new Date().toISOString() });
         guardarMensajesChatbot();
     }
-
     renderizarMensajesChatbot();
-    configurarEventosChatbot();
+    actualizarBotonVoz();
+
+    try {
+        const datos = await cargarDatosPermitidos(true);
+        const nombre = nombreCortoUsuario();
+        if (estadoArdia) estadoArdia.textContent = `Contexto conectado${nombre ? " · " + nombre : ""}`;
+        if (contextoArdia) contextoArdia.textContent = `${datos.proyectos.length} proyecto(s) · ${datos.tareas.length} tarea(s) · ${datos.registrosHoras.length} registro(s) de horas`;
+    } catch (_) {
+        if (estadoArdia) estadoArdia.textContent = "Sesión activa · contexto parcial";
+    }
 }
 
 function configurarEventosChatbot() {
-    if (formChatbot) {
-        formChatbot.addEventListener("submit", async function (event) {
-            event.preventDefault();
-            await enviarMensajeUsuario();
-        });
-    }
-
-    if (btnLimpiarChatbot) {
-        btnLimpiarChatbot.addEventListener("click", limpiarChatbot);
-    }
-
-    suggestionButtons.forEach(function (boton) {
-        boton.addEventListener("click", async function () {
-            const texto = boton.textContent.trim();
-
-            if (inputChatbot) {
-                inputChatbot.value = texto;
-            }
-
-            await enviarMensajeUsuario();
-        });
-    });
+    formChatbot?.addEventListener("submit", async e => { e.preventDefault(); await enviarMensajeUsuario(); });
+    btnLimpiarChatbot?.addEventListener("click", limpiarChatbot);
+    btnVozChatbot?.addEventListener("click", () => { vozActiva = !vozActiva; localStorage.setItem("ardiaVozActiva", vozActiva ? "1" : "0"); actualizarBotonVoz(); if (!vozActiva) detenerVoz(); });
+    btnDetenerVoz?.addEventListener("click", detenerVoz);
+    btnMicrofonoChatbot?.addEventListener("click", alternarMicrofono);
+    suggestionButtons.forEach(b => b.addEventListener("click", async () => { if(inputChatbot) inputChatbot.value=b.textContent.trim(); await enviarMensajeUsuario(); }));
 }
 
 async function enviarMensajeUsuario() {
-    if (!inputChatbot) {
-        return;
-    }
-
-    const texto = inputChatbot.value.trim();
-
-    if (texto === "") {
-        return;
-    }
-
+    const texto = inputChatbot?.value.trim() || "";
+    if (!texto) return;
     agregarMensaje("user", texto);
     inputChatbot.value = "";
-
-    const idTemporal = agregarMensaje(
-        "bot",
-        "Analizando la información disponible..."
-    );
-
+    const idTemporal = agregarMensaje("bot", "Analizando tu contexto de ProjectSphere...", true);
     try {
         const respuesta = await generarRespuestaChatbot(texto);
-        actualizarMensaje(idTemporal, respuesta);
+        actualizarMensaje(idTemporal, respuesta, true);
     } catch (error) {
-        console.error("Error en Ard.IA:", error);
-        actualizarMensaje(
-            idTemporal,
-            "No fue posible completar la consulta. Verifica que el backend esté activo y vuelve a intentarlo."
-        );
+        console.error("Ard.IA:", error);
+        actualizarMensaje(idTemporal, "No pude completar esa consulta en este momento. Tu sesión sigue activa; intenta de nuevo o pregúntame por proyectos, tareas, documentos, asistencia u horas.", true);
     }
 }
 
-function agregarMensaje(tipo, texto) {
-    const id = `msg-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-
-    mensajesChatbot.push({
-        id: id,
-        tipo: tipo,
-        texto: texto,
-        fecha: new Date().toISOString()
-    });
-
-    guardarMensajesChatbot();
-    renderizarMensajesChatbot();
-
-    return id;
-}
-
-function actualizarMensaje(id, texto) {
-    mensajesChatbot = mensajesChatbot.map(function (mensaje) {
-        if (mensaje.id === id) {
-            return {
-                ...mensaje,
-                texto: texto,
-                fecha: new Date().toISOString()
-            };
-        }
-
-        return mensaje;
-    });
-
-    guardarMensajesChatbot();
-    renderizarMensajesChatbot();
-}
-
-function obtenerMensajesGuardados() {
-    try {
-        const datos = JSON.parse(localStorage.getItem(CLAVE_CHATBOT));
-        return Array.isArray(datos) ? datos : [];
-    } catch (error) {
-        return [];
-    }
-}
-
-function guardarMensajesChatbot() {
-    localStorage.setItem(CLAVE_CHATBOT, JSON.stringify(mensajesChatbot));
-}
-
-function renderizarMensajesChatbot() {
-    if (!chatMessages) {
-        return;
-    }
-
-    chatMessages.innerHTML = "";
-
-    mensajesChatbot.forEach(function (mensaje) {
-        const div = document.createElement("div");
-        div.className = "message " + mensaje.tipo;
-        div.innerHTML = formatearTextoMensaje(mensaje.texto);
-        chatMessages.appendChild(div);
-    });
-
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-function limpiarChatbot() {
-    const confirmar = confirm("¿Deseas limpiar la conversación con Ard.IA?");
-
-    if (!confirmar) {
-        return;
-    }
-
-    localStorage.removeItem(CLAVE_CHATBOT);
-
-    mensajesChatbot = [
-        {
-            id: `msg-${Date.now()}`,
-            tipo: "bot",
-            texto: construirMensajeBienvenida(),
-            fecha: new Date().toISOString()
-        }
-    ];
-
-    guardarMensajesChatbot();
-    renderizarMensajesChatbot();
-}
+function agregarMensaje(tipo,texto,processing=false){const id=`msg-${Date.now()}-${Math.random().toString(16).slice(2)}`;mensajesChatbot.push({id,tipo,texto,processing,fecha:new Date().toISOString()});guardarMensajesChatbot();renderizarMensajesChatbot();return id;}
+function actualizarMensaje(id,texto,leer=false){mensajesChatbot=mensajesChatbot.map(m=>m.id===id?{...m,texto,processing:false,fecha:new Date().toISOString()}:m);guardarMensajesChatbot();renderizarMensajesChatbot();if(leer&&vozActiva)hablarTexto(texto);}
+function obtenerMensajesGuardados(){try{const d=JSON.parse(localStorage.getItem(CLAVE_CHATBOT));return Array.isArray(d)?d:[]}catch(_){return[]}}
+function guardarMensajesChatbot(){localStorage.setItem(CLAVE_CHATBOT,JSON.stringify(mensajesChatbot.slice(-80)))}
+function renderizarMensajesChatbot(){if(!chatMessages)return;chatMessages.innerHTML="";mensajesChatbot.forEach(m=>{const d=document.createElement("div");d.className=`message ${m.tipo}${m.processing?" processing":""}`;d.innerHTML=formatearTextoMensaje(m.texto);chatMessages.appendChild(d)});chatMessages.scrollTop=chatMessages.scrollHeight}
+function limpiarChatbot(){if(!confirm("¿Limpiar la conversación con Ard.IA?"))return;detenerVoz();mensajesChatbot=[{id:`msg-${Date.now()}`,tipo:"bot",texto:construirMensajeBienvenida(),fecha:new Date().toISOString()}];guardarMensajesChatbot();renderizarMensajesChatbot()}
 
 async function generarRespuestaChatbot(pregunta) {
-    const texto = normalizarTexto(pregunta);
-    const datos = await cargarDatosPermitidos();
-
-    if (contieneAlguna(texto, ["permiso", "permisos", "rol", "que puedo hacer", "qué puedo hacer", "acceso"])) {
-        return responderPermisos();
-    }
-
-    if (contieneAlguna(texto, ["control de horas", "horas", "jornada", "jornadas", "registros de horas", "timesheet"])) {
-        return responderHoras(datos.registrosHoras);
-    }
-
-    if (contieneAlguna(texto, ["alerta", "alertas", "riesgo", "riesgos"])) {
-        return responderAlertas(datos.alertas, datos.proyectos, datos.tareas);
-    }
-
-    if (contieneAlguna(texto, ["tarea", "tareas", "vencida", "vencidas", "bloqueada", "bloqueadas", "pendiente", "pendientes"])) {
-        return responderTareas(datos.tareas);
-    }
-
-    if (contieneAlguna(texto, ["proyecto", "proyectos", "portafolio", "avance", "avances"])) {
-        return responderProyectos(datos.proyectos);
-    }
-
-    if (contieneAlguna(texto, ["encuesta", "encuestas", "satisfaccion", "satisfacción", "calificacion", "calificación"])) {
-        return responderEncuestas(datos.encuestas);
-    }
-
-    if (contieneAlguna(texto, ["usuario", "usuarios", "equipo", "miembros"])) {
-        if (esAdministrador()) {
-            return "Puedo orientarte sobre usuarios y equipo, pero para consultar el listado completo entra al módulo Equipo, donde se aplican los permisos administrativos.";
-        }
-
-        return "Tu rol no tiene acceso al listado interno de usuarios o equipo. Puedo ayudarte con tus proyectos, tareas, alertas o encuestas visibles.";
-    }
-
-    if (contieneAlguna(texto, ["recomendacion", "recomendación", "recomendaciones", "retraso", "retrasos", "mejorar"])) {
-        return responderRecomendaciones(datos);
-    }
-
-    if (contieneAlguna(texto, ["resumen", "semana", "desempeno", "desempeño", "general"])) {
-        return responderResumen(datos);
-    }
-
-    return responderAyuda();
+    const t=normalizarTexto(pregunta);const d=await cargarDatosPermitidos();
+    if(contieneAlguna(t,["hola","buenos dias","buenas tardes","buenas noches","que tal"]))return `Hola${nombreCortoUsuario()?", "+nombreCortoUsuario():""}. Estoy conectado a tu contexto de ProjectSphere. Puedo revisar contigo proyecto, tareas, horas, asistencia, documentos, FO-EST y riesgos.`;
+    if(contieneAlguna(t,["quien soy","mi cuenta","mi rol"]))return responderIdentidad();
+    if(contieneAlguna(t,["que debo hacer hoy","qué debo hacer hoy","prioridad","prioridades","hoy"]))return responderPrioridades(d);
+    if(contieneAlguna(t,["pase de lista","pases de lista","asistencia","entrada","salida","jornada"]))return responderAsistencia(d.registrosHoras);
+    if(contieneAlguna(t,["fo-est","fo est","foest","documento","documentos","carta","expediente","estadía","estadia"]))return responderSeguimiento(d.seguimiento,d.documentos);
+    if(contieneAlguna(t,["pmbok","principio","focus area","area de enfoque"]))return responderPmbok(d);
+    if(contieneAlguna(t,["permiso","permisos","rol","que puedo hacer","acceso"]))return responderPermisos();
+    if(contieneAlguna(t,["hora","horas","timesheet"]))return responderHoras(d.registrosHoras);
+    if(contieneAlguna(t,["alerta","alertas","riesgo","riesgos"]))return responderAlertas(d.alertas,d.proyectos,d.tareas);
+    if(contieneAlguna(t,["tarea","tareas","vencida","bloqueada","pendiente"]))return responderTareas(d.tareas);
+    if(contieneAlguna(t,["proyecto","proyectos","avance","portafolio"]))return responderProyectos(d.proyectos,d.tareas);
+    if(contieneAlguna(t,["encuesta","satisfaccion","calificacion"]))return responderEncuestas(d.encuestas);
+    if(contieneAlguna(t,["recomendacion","retraso","mejorar"]))return responderRecomendaciones(d);
+    if(contieneAlguna(t,["resumen","semana","desempeno","general"]))return responderResumen(d);
+    return responderAyuda(d);
 }
 
-async function cargarDatosPermitidos() {
-    const resultados = await Promise.allSettled([
-        obtenerDatosAPI(API_PROYECTOS, ["proyectos", "data"]),
-        obtenerDatosAPI(API_TAREAS, ["tareas", "data"]),
-        obtenerDatosAPI(API_ALERTAS, ["alertas", "data"]),
-        obtenerDatosAPI(API_REGISTROS_HORAS, ["registros", "data"]),
-        obtenerDatosAPI(API_ENCUESTAS, ["encuestas", "data"])
-    ]);
-
-    return {
-        proyectos: obtenerResultado(resultados[0], "proyectos"),
-        tareas: obtenerResultado(resultados[1], "tareas"),
-        alertas: obtenerResultado(resultados[2], "alertas"),
-        registrosHoras: obtenerResultado(resultados[3], "registrosHoras"),
-        encuestas: obtenerResultado(resultados[4], "encuestas")
-    };
-}
-
-function obtenerResultado(resultado, claveLocal) {
-    if (resultado.status === "fulfilled") {
-        return resultado.value;
-    }
-
-    return obtenerLocalStorage(claveLocal);
-}
-
-async function obtenerDatosAPI(url, posiblesClaves) {
-    const respuesta = await fetch(url, {
-        headers: obtenerHeadersSesion()
-    });
-
-    const datos = await obtenerRespuestaJSON(respuesta);
-
-    if (!respuesta.ok) {
-        throw new Error(datos.mensaje || "No fue posible consultar datos.");
-    }
-
-    return extraerArreglo(datos, posiblesClaves);
-}
-
-async function obtenerRespuestaJSON(respuesta) {
-    try {
-        return await respuesta.json();
-    } catch (error) {
-        return {};
-    }
-}
-
-function extraerArreglo(datos, posiblesClaves) {
-    if (Array.isArray(datos)) {
-        return datos;
-    }
-
-    for (let i = 0; i < posiblesClaves.length; i++) {
-        const clave = posiblesClaves[i];
-
-        if (Array.isArray(datos?.[clave])) {
-            return datos[clave];
-        }
-    }
-
-    return [];
-}
-
-function responderPermisos() {
-    const rol = obtenerNombreRolUsuario() || "Sin rol";
-
-    if (esAdministrador()) {
-        return "**Permisos detectados:** Administrador PMO.\nPuedes consultar información general de proyectos, tareas, alertas, reportes, horas, encuestas y operación de la plataforma.";
-    }
-
-    if (esClienteOConsulta()) {
-        return `**Permisos detectados:** ${rol}.\nPuedes consultar información general, revisar tu perfil, responder encuestas y usar el chatbot. No se muestran datos internos de horas, bitácora, equipo ni reportes administrativos.`;
-    }
-
-    return `**Permisos detectados:** ${rol}.\nPuedes consultar información relacionada con tus proyectos, tareas, alertas y registros permitidos por tu rol.`;
-}
-
-function responderHoras(registrosHoras) {
-    if (esClienteOConsulta()) {
-        return "Tu rol no tiene acceso al control interno de horas. Solo puedes consultar información general, perfil, encuestas y soporte.";
-    }
-
-    const totalRegistros = registrosHoras.length;
-    const horasTotales = registrosHoras.reduce(function (total, registro) {
-        return total + Number(registro.horasTrabajadas || registro.horas || 0);
-    }, 0);
-
-    const pendientes = registrosHoras.filter(function (registro) {
-        return normalizarTexto(registro.estadoValidacion || registro.estado).includes("pendiente");
-    }).length;
-
-    const rechazados = registrosHoras.filter(function (registro) {
-        return normalizarTexto(registro.estadoValidacion || registro.estado).includes("rechaz");
-    }).length;
-
-    if (totalRegistros === 0) {
-        if (esAdministrador()) {
-            return "No se encontraron registros de horas cargados o visibles desde el backend.";
-        }
-
-        return "No se encontraron registros de horas visibles para tu sesión.";
-    }
-
-    if (esAdministrador()) {
-        return `**Control de horas general:**\nRegistros encontrados: ${totalRegistros}.\nHoras acumuladas: ${horasTotales.toFixed(1)}.\nPendientes de validación: ${pendientes}.\nRechazados: ${rechazados}.`;
-    }
-
-    return `**Tu control de horas:**\nRegistros visibles: ${totalRegistros}.\nHoras registradas: ${horasTotales.toFixed(1)}.\nPendientes de validación: ${pendientes}.\nRechazados: ${rechazados}.`;
-}
-
-function responderAlertas(alertas, proyectos, tareas) {
-    const abiertas = alertas.filter(function (alerta) {
-        return normalizarTexto(alerta.estado).includes("abierta");
-    }).length;
-
-    const criticas = alertas.filter(function (alerta) {
-        const severidad = normalizarTexto(alerta.severidad);
-        return severidad.includes("critica") || severidad.includes("alta");
-    }).length;
-
-    const tareasBloqueadas = tareas.filter(function (tarea) {
-        return normalizarTexto(tarea.estado).includes("bloqueada");
-    }).length;
-
-    if (alertas.length === 0 && tareasBloqueadas === 0) {
-        return "No se encontraron alertas visibles para tu sesión.";
-    }
-
-    return `**Alertas visibles:**\nAlertas registradas: ${alertas.length}.\nAlertas abiertas: ${abiertas}.\nAlertas críticas o altas: ${criticas}.\nTareas bloqueadas detectadas: ${tareasBloqueadas}.`;
-}
-
-function responderTareas(tareas) {
-    const total = tareas.length;
-
-    if (total === 0) {
-        return "No se encontraron tareas visibles para tu sesión.";
-    }
-
-    const pendientes = tareas.filter(function (tarea) {
-        return normalizarTexto(tarea.estado).includes("pendiente");
-    }).length;
-
-    const progreso = tareas.filter(function (tarea) {
-        return normalizarTexto(tarea.estado).includes("progreso");
-    }).length;
-
-    const bloqueadas = tareas.filter(function (tarea) {
-        return normalizarTexto(tarea.estado).includes("bloqueada");
-    }).length;
-
-    const completadas = tareas.filter(function (tarea) {
-        const estado = normalizarTexto(tarea.estado);
-        return estado.includes("complet") || estado.includes("finaliz") || estado.includes("cerrad");
-    }).length;
-
-    return `**Tareas visibles:**\nTotal: ${total}.\nPendientes: ${pendientes}.\nEn progreso: ${progreso}.\nBloqueadas: ${bloqueadas}.\nCompletadas: ${completadas}.`;
-}
-
-function responderProyectos(proyectos) {
-    const total = proyectos.length;
-
-    if (total === 0) {
-        return "No se encontraron proyectos visibles para tu sesión.";
-    }
-
-    const sumaAvance = proyectos.reduce(function (totalAvance, proyecto) {
-        return totalAvance + Number(proyecto.avance || proyecto.porcentajeAvance || proyecto.progreso || 0);
-    }, 0);
-
-    const promedio = total > 0
-        ? Math.round(sumaAvance / total)
-        : 0;
-
-    const enRiesgo = proyectos.filter(function (proyecto) {
-        const estado = normalizarTexto(proyecto.estado || proyecto.estadoActual);
-        const prioridad = normalizarTexto(proyecto.prioridad);
-
-        return estado.includes("riesgo") ||
-            estado.includes("bloque") ||
-            prioridad.includes("alta") ||
-            prioridad.includes("critica");
-    }).length;
-
-    return `**Proyectos visibles:**\nTotal: ${total}.\nAvance promedio estimado: ${promedio}%.\nProyectos con posible riesgo: ${enRiesgo}.`;
-}
-
-function responderEncuestas(encuestas) {
-    if (encuestas.length === 0) {
-        return "No se encontraron encuestas visibles para tu sesión.";
-    }
-
-    const suma = encuestas.reduce(function (total, encuesta) {
-        return total + Number(encuesta.calificacion || 0);
-    }, 0);
-
-    const promedio = (suma / encuestas.length).toFixed(1);
-
-    const videosAutorizados = encuestas.filter(function (encuesta) {
-        return normalizarTexto(encuesta.consentimiento || encuesta.consentimientoVideo) === "autorizado";
-    }).length;
-
-    return `**Encuestas visibles:**\nTotal: ${encuestas.length}.\nPromedio de satisfacción: ${promedio}/5.\nVideos con difusión autorizada: ${videosAutorizados}.`;
-}
-
-function responderRecomendaciones(datos) {
-    const tareasBloqueadas = datos.tareas.filter(function (tarea) {
-        return normalizarTexto(tarea.estado).includes("bloqueada");
-    }).length;
-
-    const alertasCriticas = datos.alertas.filter(function (alerta) {
-        const severidad = normalizarTexto(alerta.severidad);
-        return severidad.includes("critica") || severidad.includes("alta");
-    }).length;
-
-    if (tareasBloqueadas > 0 || alertasCriticas > 0) {
-        return `**Recomendación de Ard.IA:**\nPrioriza ${tareasBloqueadas} tarea(s) bloqueada(s) y ${alertasCriticas} alerta(s) crítica(s) o altas. Revisa responsables, fechas límite y evidencias pendientes antes de continuar con nuevas tareas.`;
-    }
-
-    return "**Recomendación de Ard.IA:**\nMantén actualizado el avance de proyectos, valida horas pendientes y registra alertas preventivas cuando detectes riesgos de retraso.";
-}
-
-function responderResumen(datos) {
-    return `**Resumen visible para tu sesión:**\nProyectos: ${datos.proyectos.length}.\nTareas: ${datos.tareas.length}.\nAlertas: ${datos.alertas.length}.\nRegistros de horas: ${datos.registrosHoras.length}.\nEncuestas: ${datos.encuestas.length}.`;
-}
-
-function responderAyuda() {
-    return "Puedo ayudarte con consultas como:\n- ¿Qué alertas tengo?\n- ¿Cómo va mi control de horas?\n- ¿Cuántas tareas hay?\n- ¿Qué proyectos están en riesgo?\n- Dame un resumen general\n- ¿Qué recomendaciones tienes?";
-}
-
-/* =========================================================
-   SESIÓN Y ROLES
-========================================================= */
-
-function obtenerUsuarioActivo() {
-    try {
-        return JSON.parse(localStorage.getItem("usuarioActivo")) || null;
-    } catch (error) {
-        return null;
-    }
-}
-
-function obtenerIdUsuarioActivo() {
-    if (!usuarioActivo) {                 
-        return null;
-    }
-
-    return usuarioActivo.id ||
-        usuarioActivo.idUsuario ||
-        usuarioActivo.id_usuario ||
-        null;
-}
-
-function obtenerNombreRolUsuario() {
-    if (!usuarioActivo) {
-        return "";
-    }
-
-    if (usuarioActivo.rol && typeof usuarioActivo.rol === "object") {
-        return usuarioActivo.rol.nombre || "";
-    }
-
-    return usuarioActivo.rol ||
-        usuarioActivo.rolNombre ||
-        usuarioActivo.nombreRol ||
-        "";
-}
-
-function esAdministrador() {
-    const rol = normalizarTexto(obtenerNombreRolUsuario());
-
-    return rol === "administrador" ||
-        rol === "admin pmo" ||
-        rol === "admin_pmo" ||
-        rol === "administrador pmo";
-}
-
-function esClienteOConsulta() {
-    const rol = normalizarTexto(obtenerNombreRolUsuario());
-
-    return rol === "cliente" ||
-        rol === "consulta" ||
-        rol === "usuario consulta" ||
-        rol === "usuario de consulta"  ||
-        rol === "enlace universidad" ||
-        rol === "enlace de universidad" ||
-        rol === "enlace empresa" ||
-        rol === "enlace de empresa";
-}
-
-function obtenerHeadersSesion() {
-    const idUsuario = obtenerIdUsuarioActivo();
-
-    if (!idUsuario) {
-        return {};
-    }
-
-    return {
-        "X-Usuario-Id": String(idUsuario)
-    };
-}
-
-function construirMensajeBienvenida() {
-    const rol = obtenerNombreRolUsuario() || "usuario";
-
-    if (esAdministrador()) {
-        return "Soy Ard.IA. Puedes preguntarme por proyectos, tareas, alertas, control de horas, encuestas, riesgos o recomendaciones. Tu sesión tiene permisos de Administrador PMO.";
-    }
-
-    if (esClienteOConsulta()) {
-        return "Soy Ard.IA. Puedes consultarme información general, soporte, perfil y encuestas. No mostraré datos internos del equipo ni control de horas.";
-    }
-
-    return `Soy Ard.IA. Puedo apoyarte con información visible para tu rol: ${rol}. Pregúntame por tus proyectos, tareas, alertas u horas.`;
-}
-
-/* =========================================================
-   UTILIDADES
-========================================================= */
-
-function obtenerLocalStorage(clave) {
-    try {
-        const datos = JSON.parse(localStorage.getItem(clave));
-        return Array.isArray(datos) ? datos : [];
-    } catch (error) {
-        return [];
-    }
-}
-
-function contieneAlguna(texto, palabras) {
-    return palabras.some(function (palabra) {
-        return texto.includes(normalizarTexto(palabra));
-    });
-}
-
-function normalizarTexto(valor) {
-    return String(valor || "")
-        .trim()
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
-}
-
-function escaparHTML(valor) {
-    return String(valor ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
-
-function formatearTextoMensaje(texto) {
-    return escaparHTML(texto)
-        .replace(/\n/g, "<br>")
-        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-}
+async function cargarDatosPermitidos(forzar=false){if(!forzar&&contextoCache&&Date.now()-contextoCacheEn<30000)return contextoCache;const resultados=await Promise.allSettled([obtenerDatosAPI(API_PROYECTOS,["proyectos","data"]),obtenerDatosAPI(API_TAREAS,["tareas","data"]),obtenerDatosAPI(API_ALERTAS,["alertas","data"]),obtenerDatosAPI(API_REGISTROS_HORAS,["registros","data"]),obtenerDatosAPI(API_ENCUESTAS,["encuestas","data"]),obtenerObjetoAPI(API_SEGUIMIENTO),obtenerDatosAPI(API_DOCUMENTOS,["documentos","data"])]);contextoCache={proyectos:arrResultado(resultados[0]),tareas:arrResultado(resultados[1]),alertas:arrResultado(resultados[2]),registrosHoras:arrResultado(resultados[3]),encuestas:arrResultado(resultados[4]),seguimiento:objResultado(resultados[5]),documentos:arrResultado(resultados[6])};contextoCacheEn=Date.now();return contextoCache}
+function arrResultado(r){return r.status==="fulfilled"&&Array.isArray(r.value)?r.value:[]}
+function objResultado(r){return r.status==="fulfilled"&&r.value&&typeof r.value==="object"?r.value:{}}
+async function obtenerDatosAPI(url,claves){const r=await fetch(url);const d=await json(r);if(!r.ok)throw new Error(d.mensaje||"No fue posible consultar datos.");if(Array.isArray(d))return d;for(const k of claves)if(Array.isArray(d?.[k]))return d[k];return[]}
+async function obtenerObjetoAPI(url){const r=await fetch(url);const d=await json(r);if(!r.ok)throw new Error(d.mensaje||"No fue posible consultar el seguimiento.");return d||{}}
+async function json(r){try{return await r.json()}catch(_){return{}}}
+
+function responderIdentidad(){const rol=obtenerNombreRolUsuario()||"Usuario";return `Eres **${nombreCompletoUsuario()||"usuario de ProjectSphere"}**. Tu rol actual es **${rol}**. Solo consultaré información autorizada para tu sesión.`}
+function responderPermisos(){const rol=obtenerNombreRolUsuario()||"Sin rol";return esAdministrador()?`Tu rol es **${rol}**. Puedes consultar operación general, proyectos, tareas, alertas, horas, documentos y seguimiento.`:`Tu rol es **${rol}**. Puedo ayudarte con tu proyecto, tareas, horas, asistencia, documentos y seguimiento visibles.`}
+function responderAsistencia(registros){const hoy=new Date();const ym=`${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,"0")}`;const mes=registros.filter(r=>String(r.fecha||"").slice(0,7)===ym);const dias=new Set(mes.map(r=>String(r.fecha||"").slice(0,10)).filter(Boolean)).size;const horas=mes.reduce((a,r)=>a+num(r.horasTrabajadas??r.horas),0);const abiertas=mes.filter(r=>r.horaEntrada&&!r.horaSalida).length;return `**Pases de lista de este mes:**\n- Días registrados: ${dias}.\n- Horas acumuladas: ${horas.toFixed(1)} h.\n- Jornadas abiertas sin salida: ${abiertas}.\nPuedes registrar entrada/salida en **Control de horas** y generar el PDF oficial desde **Mi seguimiento de estadía → Pases de lista**.`}
+function responderSeguimiento(seg,docs){const s=seg?.seguimiento||{};const e=seg?.documentos||{};const lista=[];lista.push(`Carta de presentación: ${e.cartaPresentacion?"aceptada":"pendiente"}`);lista.push(`Carta de aceptación: ${e.cartaAceptacion?"liberada":"pendiente"}`);lista.push(`Carta de término: ${e.cartaTermino?"liberada":"pendiente"}`);lista.push(`FO-EST-02: ${s.empresa?"contestado":"pendiente"}`);lista.push(`FO-EST-03: ${s.foEst03?"evaluado":"disponible / pendiente de evaluación"}`);lista.push(`FO-EST-08: ${s.satisfaccion?"contestado":"pendiente"}`);return `**Tu seguimiento de estadía:**\n- ${lista.join(".\n- ")}.\nEl FO-EST-03 y los pases de lista están disponibles desde **Mi seguimiento de estadía**.`}
+function responderPmbok(d){return `**PMBOK® 8 aplicado a tu trabajo:**\n1. Mantén visión integral y foco en valor.\n2. Integra calidad en tareas y entregables.\n3. Trabaja con las áreas de enfoque de iniciación, planificación, ejecución, monitoreo y control, y cierre.\n4. Revisa gobernanza, alcance, cronograma, finanzas, interesados, recursos y riesgos.\nAhora mismo tienes ${d.tareas.length} tarea(s) visible(s) y ${d.alertas.length} alerta(s), que son buenos puntos de entrada para monitoreo y control.`}
+function responderPrioridades(d){const pend=d.tareas.filter(t=>{const e=normalizarTexto(t.estado);return !e.includes("complet")&&!e.includes("finaliz")&&!e.includes("cerrad")});const bloq=pend.filter(t=>normalizarTexto(t.estado).includes("bloque"));const sinSalida=d.registrosHoras.filter(r=>r.horaEntrada&&!r.horaSalida).length;let r="**Prioridades sugeridas para hoy:**";if(bloq.length)r+=`\n1. Atender ${bloq.length} tarea(s) bloqueada(s).`;if(pend.length)r+=`\n2. Revisar ${pend.length} tarea(s) todavía abiertas.`;if(sinSalida)r+=`\n3. Cerrar ${sinSalida} jornada(s) con entrada pero sin salida.`;if(!bloq.length&&!pend.length&&!sinSalida)r+="\nNo detecté pendientes críticos. Actualiza evidencias, horas y avance del proyecto.";return r}
+function responderHoras(r){const h=r.reduce((a,x)=>a+num(x.horasTrabajadas??x.horas),0);const p=r.filter(x=>normalizarTexto(x.estadoValidacion||x.estado).includes("pendiente")).length;return `**Control de horas:** ${r.length} registro(s), ${h.toFixed(1)} h acumuladas y ${p} pendiente(s) de validación.`}
+function responderAlertas(a,p,t){const altas=a.filter(x=>{const s=normalizarTexto(x.severidad);return s.includes("alta")||s.includes("critica")}).length;const b=t.filter(x=>normalizarTexto(x.estado).includes("bloque")).length;return `**Riesgos detectados:** ${a.length} alerta(s), ${altas} de severidad alta/crítica y ${b} tarea(s) bloqueada(s).`}
+function responderTareas(t){if(!t.length)return"No encontré tareas visibles en tu sesión.";const p=t.filter(x=>normalizarTexto(x.estado).includes("pendiente")).length;const c=t.filter(x=>{const e=normalizarTexto(x.estado);return e.includes("complet")||e.includes("finaliz")}).length;return `**Tareas:** ${t.length} total, ${p} pendiente(s) y ${c} completada(s). En **Ver detalles** del proyecto puedes consultar el listado de actividades.`}
+function responderProyectos(p,t){if(!p.length)return"No encontré proyectos visibles para tu sesión.";const prom=Math.round(p.reduce((a,x)=>a+num(x.porcentajeAvance??x.avance??x.progreso),0)/p.length);return `**Proyectos visibles:** ${p.length}. Avance promedio registrado: ${prom}%. Tareas relacionadas visibles: ${t.length}.`}
+function responderEncuestas(e){if(!e.length)return"No encontré encuestas visibles.";const prom=e.length?e.reduce((a,x)=>a+num(x.calificacion),0)/e.length:0;return `Tienes ${e.length} encuesta(s) visible(s), con promedio registrado de ${prom.toFixed(1)}/5.`}
+function responderRecomendaciones(d){const b=d.tareas.filter(x=>normalizarTexto(x.estado).includes("bloque")).length;return b?`Mi recomendación es resolver primero las ${b} tarea(s) bloqueada(s), validar dependencias y después actualizar horas/evidencias.`:"Mantén tareas, horas, asistencia y evidencias actualizadas; revisa riesgos antes de iniciar nuevas actividades."}
+function responderResumen(d){return `**Resumen de tu contexto:**\n- Proyectos: ${d.proyectos.length}\n- Tareas: ${d.tareas.length}\n- Alertas: ${d.alertas.length}\n- Registros de horas: ${d.registrosHoras.length}\n- Documentos visibles: ${d.documentos.length}`}
+function responderAyuda(d){return `Puedo conversar contigo usando el contexto de ProjectSphere. Por ejemplo: **¿qué debo hacer hoy?**, **¿cómo va mi asistencia?**, **¿qué FO-EST tengo pendiente?**, **¿cómo va mi proyecto?**, **explícame PMBOK 8** o **dame un resumen**.`}
+
+function inicializarVoz(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(SR){reconocimiento=new SR();reconocimiento.lang="es-MX";reconocimiento.interimResults=false;reconocimiento.continuous=false;reconocimiento.onstart=()=>{escuchando=true;btnMicrofonoChatbot?.classList.add("listening");if(estadoArdia)estadoArdia.textContent="Escuchando..."};reconocimiento.onresult=e=>{const texto=e.results?.[0]?.[0]?.transcript||"";if(inputChatbot)inputChatbot.value=texto};reconocimiento.onend=()=>{escuchando=false;btnMicrofonoChatbot?.classList.remove("listening");if(estadoArdia)estadoArdia.textContent="Contexto conectado";if(inputChatbot?.value.trim())enviarMensajeUsuario()};reconocimiento.onerror=()=>{escuchando=false;btnMicrofonoChatbot?.classList.remove("listening")}}else if(btnMicrofonoChatbot){btnMicrofonoChatbot.disabled=true;btnMicrofonoChatbot.title="Tu navegador no ofrece reconocimiento de voz"}actualizarBotonVoz()}
+function alternarMicrofono(){if(!reconocimiento)return;if(escuchando){try{reconocimiento.stop()}catch(_){}}else{detenerVoz();try{reconocimiento.start()}catch(_){}}}
+function actualizarBotonVoz(){if(!btnVozChatbot)return;btnVozChatbot.classList.toggle("active",vozActiva);btnVozChatbot.setAttribute("aria-pressed",vozActiva?"true":"false");btnVozChatbot.textContent=vozActiva?"🔊 Voz activada":"🔈 Activar voz"}
+function hablarTexto(texto){if(!("speechSynthesis"in window)||!vozActiva)return;detenerVoz();const u=new SpeechSynthesisUtterance(textoParaVoz(texto));u.lang="es-MX";u.rate=.98;u.pitch=1.02;const voces=speechSynthesis.getVoices();u.voice=voces.find(v=>String(v.lang).toLowerCase().startsWith("es-mx"))||voces.find(v=>String(v.lang).toLowerCase().startsWith("es"))||null;speechSynthesis.speak(u)}
+function detenerVoz(){if("speechSynthesis"in window)speechSynthesis.cancel()}
+function textoParaVoz(t){return String(t||"").replace(/\*\*/g,"").replace(/[•#]/g,"").replace(/\n+/g,". ")}
+
+function obtenerUsuarioActivo(){try{return JSON.parse(localStorage.getItem("usuarioActivo"))||null}catch(_){return null}}
+function obtenerIdUsuarioActivo(){return usuarioActivo?.id||usuarioActivo?.idUsuario||usuarioActivo?.id_usuario||null}
+function nombreCompletoUsuario(){if(!usuarioActivo)return"";return usuarioActivo.nombreCompleto||[usuarioActivo.nombre,usuarioActivo.apellidoPaterno,usuarioActivo.apellidoMaterno].filter(Boolean).join(" ")||usuarioActivo.correo||""}
+function nombreCortoUsuario(){return String(usuarioActivo?.nombre||nombreCompletoUsuario()).split(" ")[0]||""}
+function obtenerNombreRolUsuario(){if(!usuarioActivo)return"";if(usuarioActivo.rol&&typeof usuarioActivo.rol==="object")return usuarioActivo.rol.nombre||"";return usuarioActivo.rol||usuarioActivo.rolNombre||usuarioActivo.nombreRol||""}
+function esAdministrador(){const r=normalizarTexto(obtenerNombreRolUsuario());return ["administrador","admin pmo","admin_pmo","administrador pmo","superadministrador"].includes(r)}
+function construirMensajeBienvenida(){return `Hola${nombreCortoUsuario()?", "+nombreCortoUsuario():""}. Soy **Ard.IA**. Estoy preparada para ayudarte con tu proyecto, tareas, horas, pases de lista, documentos, FO-EST y PMBOK® 8. Puedes escribirme o usar el micrófono.`}
+function contieneAlguna(t,p){return p.some(x=>t.includes(normalizarTexto(x)))}
+function normalizarTexto(v){return String(v||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
+function num(v){const n=Number(v);return Number.isFinite(n)?n:0}
+function escaparHTML(v){return String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;")}
+function formatearTextoMensaje(t){return escaparHTML(t).replace(/\n/g,"<br>").replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>")}

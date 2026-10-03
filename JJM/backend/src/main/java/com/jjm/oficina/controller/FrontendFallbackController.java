@@ -6,32 +6,26 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Respaldo para las páginas críticas del frontend.
+ * Respaldo universal del frontend.
  *
- * Producción usa Nginx para servir la web. Si por una actualización del proxy
- * una petición HTML llega temporalmente al contenedor Spring Boot, estas rutas
- * evitan terminar en Whitelabel 404 y entregan la copia estática incluida en
- * el JAR.
+ * La ruta normal de producción es Nginx -> archivos estáticos y /api -> Spring.
+ * Si Coolify/Traefik envía accidentalmente una URL .html al backend, este
+ * controlador entrega la misma página incluida dentro del JAR y evita la
+ * pantalla Whitelabel 404.
  */
 @RestController
 public class FrontendFallbackController {
 
-    @GetMapping(value = "/detalle-proyecto.html", produces = MediaType.TEXT_HTML_VALUE)
-    public ResponseEntity<Resource> detalleProyecto() {
-        return pagina("detalle-proyecto.html");
-    }
-
-    @GetMapping(value = "/proyectos.html", produces = MediaType.TEXT_HTML_VALUE)
-    public ResponseEntity<Resource> proyectos() {
-        return pagina("proyectos.html");
-    }
-
-    @GetMapping(value = "/reunion.html", produces = MediaType.TEXT_HTML_VALUE)
-    public ResponseEntity<Resource> reunion() {
-        return pagina("reunion.html");
+    @GetMapping(value = "/{pagina}.html", produces = MediaType.TEXT_HTML_VALUE)
+    public ResponseEntity<Resource> paginaHtml(@PathVariable String pagina) {
+        if (pagina == null || !pagina.matches("[A-Za-z0-9_-]+")) {
+            return ResponseEntity.notFound().build();
+        }
+        return pagina(pagina + ".html");
     }
 
     private ResponseEntity<Resource> pagina(String nombre) {

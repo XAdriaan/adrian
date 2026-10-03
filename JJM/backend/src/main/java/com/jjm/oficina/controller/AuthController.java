@@ -189,6 +189,24 @@ public class AuthController {
         return ResponseEntity.ok(respuesta);
     }
 
+    @GetMapping("/sesion")
+    public ResponseEntity<Map<String, Object>> sesionActual(
+            @RequestHeader(value = "X-Usuario-Id", required = false) Integer idUsuarioActivo
+    ) {
+        Usuario usuario = obtenerUsuarioActivo(idUsuarioActivo);
+        if (usuario == null) {
+            return respuestaError(HttpStatus.UNAUTHORIZED, "La sesión no existe o venció. Inicia sesión nuevamente.");
+        }
+
+        Optional<MiembroEquipo> miembroEncontrado =
+                miembroEquipoRepository.findByUsuarioId(usuario.getId());
+
+        Map<String, Object> respuesta = new LinkedHashMap<>();
+        respuesta.put("estado", "correcto");
+        respuesta.put("usuario", convertirUsuario(usuario, miembroEncontrado.orElse(null)));
+        return ResponseEntity.ok(respuesta);
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<Map<String, Object>> cerrarSesion(
             @RequestHeader(value = "Authorization", required = false) String authorization

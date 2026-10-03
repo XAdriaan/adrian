@@ -63,20 +63,20 @@ loginForm.addEventListener("submit", async function (event) {
         localStorage.setItem("sesionTokenPMO", datos.token);
 
         const expedienteCompleto = await datosAcademicosCompletos(datos.usuario);
-        mostrarExito("Inicio de sesión correcto. Redirigiendo...");
+        mostrarExito("Inicio de sesión correcto. Abriendo tu espacio...");
 
+        // Siempre deja entrar a la plataforma. Si faltan datos académicos,
+        // el Dashboard/menú mostrará el acceso para completarlos sin romper
+        // el inicio de sesión ni generar ciclos de redirección.
         setTimeout(function () {
-            window.location.href = expedienteCompleto
-                ? "dashboard.html"
-                : "datos-academicos.html";
-        }, 500);
+            window.location.replace(expedienteCompleto ? "dashboard.html" : "dashboard.html?completarDatos=1");
+        }, 350);
 
     } catch (error) {
         console.error("Error al iniciar sesión:", error);
 
         mostrarError(
-            "No fue posible conectar con el servidor. " +
-            "Verifica que el backend de Java esté ejecutándose."
+            "No fue posible iniciar sesión. Revisa tu conexión y vuelve a intentarlo."
         );
     } finally {
         bloquearBotonLogin(false);
@@ -148,7 +148,7 @@ async function datosAcademicosCompletos(usuario) {
     if (!idUsuario) return false;
 
     try {
-        const respuesta = await fetch(window.apiUrl("/api/datos-academicos/mi-sesion"));
+        const respuesta = await fetch(window.apiUrl("/api/datos-registro/mi-sesion"));
         if (!respuesta.ok) return false;
         const datos = await respuesta.json();
         if (datos?.datos) {

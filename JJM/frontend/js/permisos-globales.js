@@ -40,14 +40,18 @@ const RUTAS_CLIENTE_BLOQUEADAS = [
 let observadorIdiomaPMO = null;
 let aplicandoIdiomaPMO = false;
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
     cargarEstiloSidebarUnificadoPMO();
+
+    // Si localStorage perdió solo el objeto del usuario pero conserva un token
+    // válido, restaura primero la identidad desde MySQL antes de redirigir.
+    if (!obtenerUsuarioActivoGlobal() && localStorage.getItem("sesionTokenPMO") && typeof window.restaurarSesionPMO === "function") {
+        await window.restaurarSesionPMO();
+    }
+
     aplicarPermisosGlobales();
     iniciarIdiomaGlobalPMO();
 
-    // Refresca rol y permisos desde el backend para que los cambios hechos
-    // por el Superadministrador se reflejen sin depender de datos viejos
-    // guardados en localStorage.
     refrescarPermisosUsuarioGlobal().finally(function () {
         aplicarPermisosGlobales();
         sincronizarIndicadoresRolGlobal();
@@ -597,7 +601,39 @@ function agregarEnlaceSeguimientoEstadiaGlobal() {
         }
     }
 
+    agregarEnlacesEstadiaRapidosGlobal();
     agregarEnlaceRolesPermisosGlobal();
+}
+
+function agregarEnlacesEstadiaRapidosGlobal() {
+    const sidebar = document.querySelector(".sidebar-menu");
+    if (!sidebar) return;
+    const usuario = obtenerUsuarioActivoGlobal();
+    if (!usuario) return;
+    const esAdmin = esAdministradorGlobal(usuario);
+
+    const items = esAdmin
+        ? [
+            { key: "pases", href: "control-horas.html", texto: "Pases de lista" },
+            { key: "foest03", href: "seguimiento-estadia.html#foEst03Admin", texto: "FO-EST-03" }
+          ]
+        : [
+            { key: "pases", href: "mi-estadia.html#pasesLista", texto: "Pases de lista" },
+            { key: "foest03", href: "mi-estadia.html#foEst03", texto: "FO-EST-03" }
+          ];
+
+    items.forEach(function (item) {
+        let enlace = sidebar.querySelector(`a[data-pmo-estadia-rapido="${item.key}"]`);
+        if (!enlace) {
+            enlace = document.createElement("a");
+            enlace.dataset.pmoEstadiaRapido = item.key;
+            enlace.className = "pmo-estadia-quick-link";
+            sidebar.appendChild(enlace);
+        }
+        enlace.href = item.href;
+        enlace.textContent = item.texto;
+        enlace.title = item.texto;
+    });
 }
 
 function agregarEnlaceRolesPermisosGlobal() {

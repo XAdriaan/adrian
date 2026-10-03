@@ -3,119 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ard.IA | PMO Platform</title>
-    <link rel="stylesheet" href="css/chatbot.css">
+    <title>Ard.IA | JJM ProjectSphere</title>
+    <link rel="stylesheet" href="css/chatbot.css?v=20261003-voz-ia">
+    <link rel="stylesheet" href="css/sidebar-global.css?v=20261003">
 </head>
 <body>
-
 <div class="dashboard-container">
-
     <aside class="sidebar">
-        <div class="sidebar-logo">
-            <img src="img/LOGO-J2M.png" alt="Logo PMO">
-        </div>
-
+        <div class="sidebar-logo"><img src="img/LOGO-J2M.png" alt="Logo PMO"></div>
         <nav class="sidebar-menu">
             <a href="dashboard.html">Dashboard</a>
             <a href="perfil.html">Perfil</a>
             <a href="proyectos.html">Proyectos</a>
-            <a href="proyecto-avanzado.html">Proyecto Avanzado</a>
-            <a href="cursos.html">Cursos</a>
-            <a href="tablero-tareas.html">Tablero de tareas</a>
             <a href="tareas.html">Tareas</a>
-            <a href="equipo.html">Equipo</a>
-            <a href="organizaciones.html">Organizaciones</a>
             <a href="control-horas.html">Control de horas</a>
-            <a href="bitacora.html">Bitácora</a>
-            <a href="alertas.html">Alertas</a>
-            <a href="reportes.html">Reportes</a>
-            <a href="encuestas.html">Encuestas</a>
-            <a href="chatbot.html" class="active">Chatbot IA</a>
+            <a href="documentos.html">Documentos</a>
+            <a href="chatbot.html" class="active">Ard.IA</a>
         </nav>
-
-        <div class="sidebar-footer">
-            <a href="login.html">Cerrar sesión</a>
-        </div>
+        <div class="sidebar-footer"><a href="login.html">Cerrar sesión</a></div>
     </aside>
 
     <main class="main-content">
-
-        <section class="page-header">
+        <section class="page-header ai-page-header">
             <div>
+                <span class="ai-kicker">ASISTENTE CONTEXTUAL PMO</span>
                 <h1>Ard.IA</h1>
-                <p>Asistente inteligente para consultar proyectos, tareas, alertas, horas y recomendaciones PMO.</p>
+                <p>Consulta tu proyecto, tareas, documentos, pases de lista, horas, riesgos y PMBOK® 8 con respuestas por voz.</p>
             </div>
+            <div class="ai-live-status"><span class="ai-live-dot"></span><span id="estadoArdia">Conectando con tu contexto...</span></div>
         </section>
 
         <section class="chatbot-layout">
-
             <aside class="chatbot-panel">
-                <div class="assistant-card">
-                    <img src="img/chatbot-avatar.png" alt="Ard.IA" onerror="this.style.display='none'">
+                <div class="assistant-card ai-assistant-card">
+                    <div class="ai-avatar-wrap"><img src="img/chatbot-avatar.png" alt="Ard.IA" onerror="this.style.display='none'"><span class="ai-orbit"></span></div>
+                    <div><h2>Ard.IA</h2><p>Asistente de Oficina de Proyectos con acceso al contexto permitido por tu rol.</p></div>
+                </div>
 
-                    <div>
-                        <h2>Ard.IA</h2>
-                        <p>Asistente inteligente para la gestión de proyectos.</p>
-                    </div>
+                <div class="voice-card">
+                    <div><strong>Modo voz</strong><p>Ard.IA puede leer sus respuestas y escuchar tus preguntas.</p></div>
+                    <button type="button" id="btnVozChatbot" class="voice-toggle" aria-pressed="false">🔊 Activar voz</button>
                 </div>
 
                 <div class="suggestions-card">
-                    <h3>Preguntas sugeridas</h3>
-
-                    <button type="button" class="suggestion-btn">
-                        ¿Qué proyectos están en riesgo?
-                    </button>
-
-                    <button type="button" class="suggestion-btn">
-                        ¿Cuáles son las tareas vencidas?
-                    </button>
-
-                    <button type="button" class="suggestion-btn">
-                        ¿Cuál es el avance general del portafolio?
-                    </button>
-
-                    <button type="button" class="suggestion-btn">
-                        Resume el desempeño de esta semana
-                    </button>
-
-                    <button type="button" class="suggestion-btn">
-                        ¿Qué recomendaciones tienes para reducir retrasos?
-                    </button>
+                    <h3>Prueba preguntando</h3>
+                    <button type="button" class="suggestion-btn">¿Qué debo hacer hoy?</button>
+                    <button type="button" class="suggestion-btn">¿Cómo va mi proyecto y mis tareas?</button>
+                    <button type="button" class="suggestion-btn">¿Cómo va mi pase de lista y mis horas?</button>
+                    <button type="button" class="suggestion-btn">¿Qué documentos y FO-EST tengo pendientes?</button>
+                    <button type="button" class="suggestion-btn">Explícame PMBOK 8 aplicado a mi proyecto</button>
                 </div>
             </aside>
 
             <section class="chat-window">
-
                 <div class="chat-header">
-                    <div>
-                        <h2>Conversación con Ard.IA</h2>
-                        <p>Consulta información de la PMO.</p>
+                    <div><h2>Conversación</h2><p id="contextoArdia">Analizando datos de tu sesión...</p></div>
+                    <div class="chat-header-actions">
+                        <button type="button" id="btnDetenerVoz" class="btn-secondary-ai" title="Detener voz">■ Voz</button>
+                        <button type="button" id="btnLimpiarChatbot" class="btn-clear-chat">Limpiar</button>
                     </div>
-
-                    <button type="button" id="btnLimpiarChatbot" class="btn-clear-chat">
-                        Limpiar chat
-                    </button>
                 </div>
 
-                <div class="chat-messages" id="chatMessages">
-                    <!-- Mensajes desde JS -->
-                </div>
+                <div class="chat-messages" id="chatMessages" aria-live="polite"></div>
 
                 <form class="chat-input-area" id="formChatbot">
-                    <input type="text" id="inputChatbot" placeholder="Escribe tu pregunta..." autocomplete="off">
-                    <button type="submit">Enviar</button>
+                    <button type="button" id="btnMicrofonoChatbot" class="btn-microphone" title="Hablar con Ard.IA" aria-label="Hablar con Ard.IA">🎙</button>
+                    <input type="text" id="inputChatbot" placeholder="Pregúntame sobre tu estadía, proyecto, tareas, horas o documentos..." autocomplete="off">
+                    <button type="submit" class="btn-send-ai">Enviar <span>➜</span></button>
                 </form>
-
+                <div class="ai-disclaimer">Las respuestas usan la información disponible en JJM ProjectSphere. La voz funciona con las capacidades de voz del navegador.</div>
             </section>
-
         </section>
-
     </main>
-
 </div>
-
-<script src="js/api-config.js?v=20260825"></script>
-<script src="js/permisos-globales.js?v=20260922-menu"></script>
-<script src="js/chatbot.js?v=20260709-1"></script>
+<script src="js/api-config.js?v=20261003-fixlogin"></script>
+<script src="js/permisos-globales.js?v=20261003-sessionfix"></script>
+<script src="js/chatbot.js?v=20261003-voz-contexto"></script>
 </body>
 </html>

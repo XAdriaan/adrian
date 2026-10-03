@@ -13,7 +13,7 @@
 <div class="dashboard-container">
 <aside class="sidebar"><div class="sidebar-logo"><img src="img/LOGO-J2M.png" alt="Logo PMO"></div><nav class="sidebar-menu"><a href="dashboard.html">Dashboard</a><a href="perfil.html">Perfil</a><a href="datos-academicos.html">Datos académicos</a><a href="proyectos.html">Proyectos</a><a href="cursos.html">Cursos</a><a href="tablero-tareas.html">Tablero de tareas</a><a href="tareas.html">Tareas</a><a href="control-horas.html">Control de horas</a><a href="alertas.html">Alertas</a><a href="encuestas.html">Encuestas</a><a href="documentos.html">Documentos</a><a href="chatbot.html">Chatbot IA</a></nav><div class="sidebar-footer"><a href="login.html">Cerrar sesión</a></div></aside>
 <main class="main-content">
-<section class="page-header"><h1>Mi seguimiento de estadía</h1><p>Consulta documentos, asesor, formularios, pases de lista y avance de tu proceso de estadía.</p></section>
+<section class="page-header"><h1>Mi seguimiento de estadía</h1><p>Consulta documentos, asesor, formularios, pases de lista y avance de tu proceso de estadía.</p><div class="form-actions" style="margin-top:14px"><a class="btn-link" href="#pasesLista">Ver pases de lista</a><a class="btn-link secondary" href="#foEst03">Ver FO-EST-03</a></div></section>
 
 <section class="card"><div id="estadoDocumental" class="status-banner warn">Cargando seguimiento...</div><div id="documentosGrid" class="profile-grid"></div></section>
 
@@ -23,9 +23,9 @@
 
 <section class="card"><div class="card-title"><div><h2>Formularios y evaluación de estadía</h2><p>Consulta el estado de FO-EST-02, FO-EST-03 y FO-EST-08. FO-EST-03 está disponible como formato oficial en Excel.</p></div></div><div class="forms-grid">
 <article class="form-card"><h3>FO-EST-02 — Evaluación por la empresa</h3><p id="textoEmpresa">Pendiente.</p><span id="badgeEmpresa" class="badge locked">Bloqueado</span></article>
-<article class="form-card"><h3>FO-EST-03 — Lista de cotejo de proyecto / Actitud-SER</h3><p id="textoFoEst03">Formato para valorar entregas parciales del proyecto y la actitud del estudiante.</p><div class="form-actions"><a class="btn-link" href="documentos/plantillas/FO-EST-03_Ed_06.xlsx" download>Descargar FO-EST-03</a></div><span id="badgeFoEst03" class="badge available">Disponible</span></article>
+<article class="form-card" id="foEst03"><h3>FO-EST-03 — Lista de cotejo de proyecto / Actitud-SER</h3><p id="textoFoEst03">Formato para valorar entregas parciales del proyecto y la actitud del estudiante.</p><div class="form-actions"><a class="btn-link" href="documentos/plantillas/FO-EST-03_Ed_06.xlsx" download>Descargar FO-EST-03</a></div><span id="badgeFoEst03" class="badge available">Disponible</span></article>
 <article class="form-card"><h3>FO-EST-08 — Encuesta de satisfacción</h3><p id="textoSatisfaccion">Pendiente.</p><span id="badgeSatisfaccion" class="badge locked">Bloqueado</span></article>
 </div></section>
 </main></div>
-<script src="js/api-config.js?v=20261003"></script><script src="js/permisos-globales.js?v=20261003-menu"></script><script src="js/mi-estadia.js?v=20261003-asistencia-foest03"></script>
+<script src="js/api-config.js?v=20261003-fixlogin"></script><script src="js/permisos-globales.js?v=20261003-sessionfix"></script><script src="js/mi-estadia.js?v=20261003-asistencia-foest03-v2"></script>
 </body></html>
