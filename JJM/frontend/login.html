@@ -3,242 +3,171 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | PMO Platform</title>
-    <link rel="stylesheet" href="css/login.css">
+    <title>Acceso | JJM ProjectSphere</title>
+    <meta name="theme-color" content="#0b1220">
+    <link rel="stylesheet" href="css/login.css?v=20261003-optimizado">
 </head>
 <body>
+<main class="login-shell">
+    <section class="login-brand" aria-label="JJM ProjectSphere">
+        <div class="brand-glow brand-glow-one"></div>
+        <div class="brand-glow brand-glow-two"></div>
 
-    <main class="login-container">
-
-        <section class="login-left">
-            <div class="decoracion decoracion-uno"></div>
-            <div class="decoracion decoracion-dos"></div>
-
-            <div class="login-info">
-
-                <div class="brand-image-box">
-                    <img src="img/LOGO-J2M.png" alt="Logo PMO Platform">
-                </div>
-
-                <small>JJM Tecnologías Innovadoras, S.A. de C.V.</small>
-            </div>
-        </section>
-
-        <section class="login-right">
-            <div class="login-card">
-
-                <div class="mobile-logo">
-                    <div class="mobile-icon">📁</div>
-                    <span>PMO Platform</span>
-                </div>
-
-                <div class="login-header">
-                    <h2>Bienvenido</h2>
-                    <p>Inicia sesión en tu cuenta</p>
-                </div>
-
-                <button class="btn-google" type="button">
-                    Continuar con Google
-                </button>
-
-                <div class="separator">
-                    <span>o con email</span>
-                </div>
-
-                <div id="error-message" class="error-message"></div>
-                <div id="success-message" class="success-message"></div>
-
-                <form class="login-form" id="loginForm">
-
-                    <div class="form-group">
-                        <label for="email">Correo electrónico</label>
-
-                        <div class="input-icon">
-                            <span>✉</span>
-                            <input
-                                type="email"
-                                id="email"
-                                name="email"
-                                placeholder="tu@empresa.com"
-                                required
-                            >
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <div class="password-header">
-                            <label for="password">Contraseña</label>
-                            <a href="#" id="linkRecuperarPassword">¿Olvidaste tu contraseña?</a>
-                        </div>
-
-                        <div class="input-icon">
-                            <span>🔒</span>
-                            <input
-                                type="password"
-                                id="password"
-                                name="password"
-                                placeholder="••••••••"
-                                required
-                            >
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn-login" id="btnLogin">
-                        Iniciar sesión
-                    </button>
-
-                </form>
-
-                <p class="register-text">
-                    ¿No tienes cuenta?
-                    <a href="register.html">Regístrate aquí</a>
-                </p>
-
-            </div>
-        </section>
-
-    </main>
-
-
-    <!-- MODAL RECUPERAR CONTRASEÑA -->
-    <div class="login-modal" id="modalRecuperarPasswordLogin">
-        <div class="login-modal-content">
-            <div class="login-modal-header">
-                <div>
-                    <h2>Recuperar contraseña</h2>
-                    <p>Valida tu correo y crea una nueva contraseña.</p>
-                </div>
-                <button type="button" class="login-modal-close" id="btnCerrarRecuperarLogin">×</button>
+        <div class="brand-content">
+            <div class="brand-logo-wrap">
+                <img src="img/LOGO-J2M.png" alt="JJM Tecnologías Innovadoras">
             </div>
 
-            <form id="formSolicitarRecuperacionLogin" class="recover-login-step active" data-step="correo">
-                <div class="form-group">
-                    <label for="correoRecuperacionLogin">Correo electrónico</label>
-                    <div class="input-icon">
-                        <span>✉</span>
-                        <input type="email" id="correoRecuperacionLogin" placeholder="tu@empresa.com" required>
-                    </div>
-                </div>
+            <span class="brand-eyebrow">OFICINA DE PROYECTOS 2026</span>
+            <h1>JJM ProjectSphere</h1>
+            <p class="brand-copy">
+                Proyectos, tareas, horas, expediente de estadía y seguimiento administrativo en un solo espacio.
+            </p>
 
-                <button type="submit" class="btn-login" id="btnEnviarCodigoLogin">
-                    Enviar código
-                </button>
-            </form>
+            <div class="brand-chips" aria-label="Módulos principales">
+                <span>PMBOK® 8</span>
+                <span>Proyectos</span>
+                <span>Estadía</span>
+                <span>Documentos</span>
+            </div>
 
-            <form id="formValidarCodigoLogin" class="recover-login-step" data-step="codigo">
-                <p class="recover-login-info" id="textoCodigoRecuperacionLogin">
-                    Ingresa el código enviado.
-                </p>
-
-                <div class="form-group">
-                    <label for="codigoRecuperacionLogin">Código de recuperación</label>
-                    <div class="input-icon">
-                        <span>🔐</span>
-                        <input type="text" id="codigoRecuperacionLogin" maxlength="6" placeholder="000000" required>
-                    </div>
-                </div>
-
-                <button type="submit" class="btn-login" id="btnValidarCodigoLogin">
-                    Validar código
-                </button>
-            </form>
-
-            <form id="formCambiarPasswordLogin" class="recover-login-step" data-step="password">
-                <div class="form-group">
-                    <label for="nuevaPasswordLogin">Nueva contraseña</label>
-                    <div class="input-icon">
-                        <span>🔒</span>
-                        <input type="password" id="nuevaPasswordLogin" placeholder="Nueva contraseña" required>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="confirmarPasswordLogin">Confirmar contraseña</label>
-                    <div class="input-icon">
-                        <span>🔒</span>
-                        <input type="password" id="confirmarPasswordLogin" placeholder="Confirmar contraseña" required>
-                    </div>
-                </div>
-
-                <button type="submit" class="btn-login" id="btnCambiarPasswordLogin">
-                    Guardar contraseña
-                </button>
-            </form>
+            <div class="brand-note">
+                <strong>Gestión alineada a PMBOK® 8</strong>
+                <span>Valor, calidad, gobernanza, alcance, cronograma, recursos y riesgo.</span>
+            </div>
         </div>
+    </section>
+
+    <section class="login-access">
+        <div class="login-card">
+            <div class="mobile-brand">
+                <img src="img/LOGO-J2M.png" alt="JJM">
+                <div>
+                    <strong>JJM ProjectSphere</strong>
+                    <span>Oficina de Proyectos</span>
+                </div>
+            </div>
+
+            <div class="login-header">
+                <span class="login-kicker">ACCESO SEGURO</span>
+                <h2>Bienvenido</h2>
+                <p>Ingresa con tu cuenta de la Oficina de Proyectos.</p>
+            </div>
+
+            <div id="error-message" class="error-message" role="alert"></div>
+            <div id="success-message" class="success-message" role="status"></div>
+
+            <form class="login-form" id="loginForm" novalidate>
+                <div class="form-group">
+                    <label for="email">Correo electrónico</label>
+                    <div class="input-icon">
+                        <span aria-hidden="true">✉</span>
+                        <input
+                            type="email"
+                            id="email"
+                            name="email"
+                            placeholder="nombre@empresa.com"
+                            autocomplete="username"
+                            required
+                        >
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="password-header">
+                        <label for="password">Contraseña</label>
+                        <a href="#" id="linkRecuperarPassword">¿Olvidaste tu contraseña?</a>
+                    </div>
+                    <div class="input-icon">
+                        <span aria-hidden="true">🔒</span>
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            placeholder="••••••••"
+                            autocomplete="current-password"
+                            required
+                        >
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-login" id="btnLogin">
+                    <span>Iniciar sesión</span>
+                    <span aria-hidden="true">→</span>
+                </button>
+            </form>
+
+            <div class="login-trust">
+                <span class="trust-dot"></span>
+                <span>Conexión protegida · Sesión persistente en el servidor</span>
+            </div>
+
+            <p class="register-text">
+                ¿Aún no tienes cuenta?
+                <a href="register.html">Crear cuenta</a>
+            </p>
+        </div>
+
+        <p class="login-footer-copy">JJM Tecnologías Innovadoras, S.A. de C.V.</p>
+    </section>
+</main>
+
+<!-- MODAL RECUPERAR CONTRASEÑA -->
+<div class="login-modal" id="modalRecuperarPasswordLogin">
+    <div class="login-modal-content">
+        <div class="login-modal-header">
+            <div>
+                <span class="login-kicker">RECUPERACIÓN</span>
+                <h2>Recuperar contraseña</h2>
+                <p>Valida tu correo y crea una nueva contraseña.</p>
+            </div>
+            <button type="button" class="login-modal-close" id="btnCerrarRecuperarLogin" aria-label="Cerrar">×</button>
+        </div>
+
+        <form id="formSolicitarRecuperacionLogin" class="recover-login-step active" data-step="correo">
+            <div class="form-group">
+                <label for="correoRecuperacionLogin">Correo electrónico</label>
+                <div class="input-icon">
+                    <span>✉</span>
+                    <input type="email" id="correoRecuperacionLogin" placeholder="tu@empresa.com" autocomplete="email" required>
+                </div>
+            </div>
+            <button type="submit" class="btn-login" id="btnEnviarCodigoLogin">Enviar código <span>→</span></button>
+        </form>
+
+        <form id="formValidarCodigoLogin" class="recover-login-step" data-step="codigo">
+            <p class="recover-login-info" id="textoCodigoRecuperacionLogin">Ingresa el código enviado.</p>
+            <div class="form-group">
+                <label for="codigoRecuperacionLogin">Código de recuperación</label>
+                <div class="input-icon">
+                    <span>🔐</span>
+                    <input type="text" id="codigoRecuperacionLogin" maxlength="6" inputmode="numeric" placeholder="000000" required>
+                </div>
+            </div>
+            <button type="submit" class="btn-login" id="btnValidarCodigoLogin">Validar código <span>→</span></button>
+        </form>
+
+        <form id="formCambiarPasswordLogin" class="recover-login-step" data-step="password">
+            <div class="form-group">
+                <label for="nuevaPasswordLogin">Nueva contraseña</label>
+                <div class="input-icon">
+                    <span>🔒</span>
+                    <input type="password" id="nuevaPasswordLogin" placeholder="Nueva contraseña" autocomplete="new-password" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="confirmarPasswordLogin">Confirmar contraseña</label>
+                <div class="input-icon">
+                    <span>🔒</span>
+                    <input type="password" id="confirmarPasswordLogin" placeholder="Confirmar contraseña" autocomplete="new-password" required>
+                </div>
+            </div>
+            <button type="submit" class="btn-login" id="btnCambiarPasswordLogin">Guardar contraseña <span>→</span></button>
+        </form>
     </div>
+</div>
 
-    <style>
-        .login-modal {
-            position: fixed;
-            inset: 0;
-            background: rgba(15, 23, 42, 0.65);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            z-index: 9999;
-        }
-
-        .login-modal.show {
-            display: flex;
-        }
-
-        .login-modal-content {
-            width: min(520px, 100%);
-            background: #ffffff;
-            border-radius: 18px;
-            padding: 26px;
-            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
-        }
-
-        .login-modal-header {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 18px;
-            margin-bottom: 20px;
-        }
-
-        .login-modal-header h2 {
-            margin: 0 0 6px;
-        }
-
-        .login-modal-header p {
-            margin: 0;
-            color: #64748b;
-        }
-
-        .login-modal-close {
-            border: none;
-            background: #f1f5f9;
-            border-radius: 10px;
-            width: 36px;
-            height: 36px;
-            cursor: pointer;
-            font-size: 22px;
-            line-height: 1;
-        }
-
-        .recover-login-step {
-            display: none;
-        }
-
-        .recover-login-step.active {
-            display: block;
-        }
-
-        .recover-login-info {
-            background: #eff6ff;
-            border: 1px solid #bfdbfe;
-            color: #1e3a8a;
-            padding: 12px 14px;
-            border-radius: 12px;
-            margin-bottom: 16px;
-            font-size: 14px;
-        }
-    </style>
-
-    <script src="js/api-config.js?v=20260825"></script>
-<script src="js/login.js?v=20260712-1"></script>
+<script src="js/api-config.js?v=20261003-session"></script>
+<script src="js/login.js?v=20261003-optimizado"></script>
 </body>
 </html>

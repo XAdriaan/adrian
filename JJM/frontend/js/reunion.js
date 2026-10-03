@@ -10,6 +10,7 @@ const meetingLoadingMessage = document.getElementById("meetingLoadingMessage");
 const meetingReconnect = document.getElementById("meetingReconnect");
 const estadoReunion = document.getElementById("estadoReunion");
 const btnCopiarEnlace = document.getElementById("btnCopiarEnlace");
+const btnColgarReunion = document.getElementById("btnColgarReunion");
 const btnVolverProyecto = document.getElementById("btnVolverProyecto");
 const btnReconectar = document.getElementById("btnReconectar");
 const btnGrabar = document.getElementById("btnGrabar");
@@ -81,6 +82,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
 function configurarEventos() {
     btnCopiarEnlace?.addEventListener("click", copiarInvitacion);
+    btnColgarReunion?.addEventListener("click", colgarVideollamada);
     btnVolverProyecto?.addEventListener("click", volverAlProyecto);
     btnReconectar?.addEventListener("click", function () {
         intentosReconexion = 0;
@@ -666,6 +668,29 @@ async function copiarInvitacion() {
     } catch (error) {
         window.prompt("Copia este enlace de reunión:", url);
     }
+}
+
+async function colgarVideollamada() {
+    if (grabando) {
+        const confirmarGrabacion = confirm(
+            "Hay una grabación en curso. ¿Deseas detenerla y colgar la videollamada?"
+        );
+        if (!confirmarGrabacion) return;
+        try { await detenerGrabacionLocal(); } catch (_) {}
+    }
+
+    saliendo = true;
+    estadoReunion.textContent = "Saliendo de la videollamada...";
+
+    try {
+        await registrarSalida();
+    } catch (_) {}
+
+    try {
+        jitsiApi?.executeCommand("hangup");
+    } catch (_) {}
+
+    setTimeout(volverAlProyectoSinConfirmar, 250);
 }
 
 async function finalizarReunion() {

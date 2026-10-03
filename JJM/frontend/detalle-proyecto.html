@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detalle del Proyecto | PMO Platform</title>
-    <link rel="stylesheet" href="css/detalle-proyecto.css?v=20260828-2">
+    <link rel="stylesheet" href="css/detalle-proyecto.css?v=20261003-plan">
 </head>
 <body>
 
@@ -80,6 +80,20 @@
                     <div class="progress-fill" id="progressFill"></div>
                 </div>
             </div>
+
+            <section class="task-overview-card" aria-labelledby="tituloPlanTrabajo">
+                <div class="task-overview-head">
+                    <div>
+                        <span class="task-overview-kicker">PLAN DE TRABAJO</span>
+                        <h2 id="tituloPlanTrabajo">Tareas que se deben realizar</h2>
+                        <p>Actividades del proyecto con responsable, horas estimadas, fecha límite y estado.</p>
+                    </div>
+                    <span class="task-overview-summary" id="taskPlanSummary">Cargando tareas...</span>
+                </div>
+                <div class="task-overview-list" id="taskPlanList">
+                    <div class="task-overview-empty">Consultando el plan de trabajo del proyecto...</div>
+                </div>
+            </section>
 
             <div class="tabs">
                 <button type="button" class="tab-button active" data-tab="fases">Fases del Proyecto</button>
@@ -328,8 +342,8 @@
     </div>
 </div>
 
-<script src="js/api-config.js?v=20260825"></script>
-<script src="js/permisos-globales.js?v=20260922-menu"></script>
-<script src="js/detalle-proyecto.js?v=20260828-2"></script>
+<script src="js/api-config.js?v=20261003"></script>
+<script src="js/permisos-globales.js?v=20261003-menu"></script>
+<script src="js/detalle-proyecto.js?v=20261003-plan"></script>
 </body>
 </html>

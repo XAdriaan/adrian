@@ -3,9 +3,11 @@ package com.jjm.oficina.servicio;
 import com.jjm.oficina.modelo.MiembroEquipo;
 import com.jjm.oficina.modelo.MiembroProyecto;
 import com.jjm.oficina.modelo.Proyecto;
+import com.jjm.oficina.modelo.Tarea;
 import com.jjm.oficina.repositorio.MiembroEquipoRepository;
 import com.jjm.oficina.repositorio.MiembroProyectoRepository;
 import com.jjm.oficina.repositorio.ProyectoRepository;
+import com.jjm.oficina.repositorio.TareaRepository;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
@@ -184,6 +186,7 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
     private final ProyectoRepository proyectoRepository;
     private final MiembroEquipoRepository miembroEquipoRepository;
     private final MiembroProyectoRepository miembroProyectoRepository;
+    private final TareaRepository tareaRepository;
 
     @Value("${jjm.catalogo.sep-dic-2026.enabled:true}")
     private boolean habilitado;
@@ -191,11 +194,13 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
     public CatalogoProyectosSepDic2026Service(
             ProyectoRepository proyectoRepository,
             MiembroEquipoRepository miembroEquipoRepository,
-            MiembroProyectoRepository miembroProyectoRepository
+            MiembroProyectoRepository miembroProyectoRepository,
+            TareaRepository tareaRepository
     ) {
         this.proyectoRepository = proyectoRepository;
         this.miembroEquipoRepository = miembroEquipoRepository;
         this.miembroProyectoRepository = miembroProyectoRepository;
+        this.tareaRepository = tareaRepository;
     }
 
     @Override
@@ -245,6 +250,7 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
 
             Proyecto guardado = proyectoRepository.save(proyecto);
             sincronizarAlumno(guardado, item);
+            sincronizarTareasBase(guardado, item);
         }
     }
 
@@ -301,6 +307,116 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
         );
 
         miembroProyectoRepository.save(asignacion);
+    }
+
+
+    /**
+     * Crea un plan de trabajo de 600 horas únicamente cuando el proyecto
+     * todavía no tiene tareas. Nunca borra ni reemplaza tareas capturadas por
+     * el equipo.
+     */
+    private void sincronizarTareasBase(Proyecto proyecto, ProyectoCatalogo item) {
+        if (proyecto == null || proyecto.getId() == null) {
+            return;
+        }
+
+        if (tareaRepository.countByIdProyecto(proyecto.getId()) > 0) {
+            return;
+        }
+
+        Integer idAlumno = null;
+        if (item.alumnoFuente() != null && !item.alumnoFuente().isBlank()) {
+            List<MiembroEquipo> coincidencias = buscarMiembros(item.alumnoFuente());
+            if (coincidencias.size() == 1) {
+                idAlumno = coincidencias.get(0).getId();
+            }
+        }
+
+        record TareaBase(
+                String titulo,
+                String descripcion,
+                int horas,
+                String prioridad,
+                LocalDate inicio,
+                LocalDate limite
+        ) {}
+
+        String alcance = item.clavesFuente() == null || item.clavesFuente().isBlank()
+                ? item.etiquetaCorta()
+                : item.clavesFuente();
+
+        List<TareaBase> plan = List.of(
+                new TareaBase(
+                        "Levantamiento y análisis de requerimientos",
+                        "Identificar usuarios, necesidades, reglas de negocio, alcance y criterios de aceptación para " + alcance + ".",
+                        60, "Alta", LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 11)
+                ),
+                new TareaBase(
+                        "Diseño funcional, UX/UI y arquitectura",
+                        "Definir flujos, prototipos, componentes, arquitectura de solución e integración entre web, móvil y servicios.",
+                        60, "Alta", LocalDate.of(2026, 9, 8), LocalDate.of(2026, 9, 21)
+                ),
+                new TareaBase(
+                        "Modelo de datos y contratos de API",
+                        "Diseñar entidades, relaciones, validaciones, seguridad y contratos JSON necesarios para la solución.",
+                        55, "Alta", LocalDate.of(2026, 9, 15), LocalDate.of(2026, 9, 28)
+                ),
+                new TareaBase(
+                        "Desarrollo de backend y lógica de negocio",
+                        "Implementar servicios, API REST, validaciones, persistencia y reglas principales del proyecto.",
+                        90, "Alta", LocalDate.of(2026, 9, 22), LocalDate.of(2026, 10, 16)
+                ),
+                new TareaBase(
+                        "Desarrollo de interfaz web",
+                        "Construir las pantallas web responsivas, navegación, formularios, paneles y consumo de API.",
+                        85, "Alta", LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 26)
+                ),
+                new TareaBase(
+                        "Desarrollo e integración móvil",
+                        "Implementar o integrar la experiencia móvil y validar compatibilidad de funciones con los servicios del proyecto.",
+                        75, "Media", LocalDate.of(2026, 10, 12), LocalDate.of(2026, 11, 6)
+                ),
+                new TareaBase(
+                        "Integración de Chatbot, IA y automatizaciones",
+                        "Integrar las funciones inteligentes previstas por el proyecto, definir consultas, respuestas, filtros y controles.",
+                        60, "Media", LocalDate.of(2026, 10, 26), LocalDate.of(2026, 11, 16)
+                ),
+                new TareaBase(
+                        "Pruebas funcionales, seguridad e integración",
+                        "Ejecutar casos de prueba, corregir incidencias, validar permisos, datos, rendimiento e integración entre módulos.",
+                        55, "Alta", LocalDate.of(2026, 11, 9), LocalDate.of(2026, 11, 30)
+                ),
+                new TareaBase(
+                        "Despliegue, monitoreo y ajustes finales",
+                        "Preparar ambiente, contenedores, configuración, publicación, monitoreo y correcciones posteriores al despliegue.",
+                        35, "Media", LocalDate.of(2026, 11, 23), LocalDate.of(2026, 12, 7)
+                ),
+                new TareaBase(
+                        "Documentación, evidencias y cierre",
+                        "Integrar manuales, evidencias, matriz de pruebas, pendientes, versión entregada y recomendaciones de mantenimiento.",
+                        25, "Media", LocalDate.of(2026, 12, 1), LocalDate.of(2026, 12, 14)
+                )
+        );
+
+        for (TareaBase base : plan) {
+            Tarea tarea = new Tarea();
+            tarea.setIdProyecto(proyecto.getId());
+            tarea.setIdMiembroAsignado(idAlumno);
+            tarea.setTitulo(base.titulo());
+            tarea.setDescripcion(base.descripcion());
+            tarea.setEstado("Pendiente");
+            tarea.setPrioridad(base.prioridad());
+            tarea.setHorasEstimadas(BigDecimal.valueOf(base.horas()));
+            tarea.setHorasRegistradas(BigDecimal.ZERO);
+            tarea.setFechaInicio(base.inicio());
+            tarea.setFechaLimite(base.limite());
+            tareaRepository.save(tarea);
+        }
+
+        LOGGER.info(
+                "Equipo " + item.equipo()
+                        + ": se creó el plan base de 10 tareas (600 horas) para el proyecto."
+        );
     }
 
     private List<MiembroEquipo> buscarMiembros(String nombreFuente) {

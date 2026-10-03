@@ -1293,3 +1293,127 @@ body {
         flex-direction: column;
     }
 }
+
+
+/* =========================================================
+   PLAN DE TRABAJO VISIBLE EN "VER DETALLES"
+========================================================= */
+.task-overview-card {
+    background: #ffffff;
+    border: 1px solid #dbe4f0;
+    border-radius: 18px;
+    padding: 22px;
+    margin: 0 0 26px;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+}
+
+.task-overview-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 18px;
+}
+
+.task-overview-kicker {
+    display: inline-block;
+    font-size: 11px;
+    letter-spacing: .12em;
+    font-weight: 800;
+    color: #2563eb;
+    margin-bottom: 6px;
+}
+
+.task-overview-head h2 {
+    margin: 0 0 6px;
+    font-size: 22px;
+}
+
+.task-overview-head p {
+    color: #64748b;
+    font-size: 13px;
+    margin: 0;
+}
+
+.task-overview-summary {
+    flex-shrink: 0;
+    border-radius: 999px;
+    padding: 8px 12px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.task-overview-list {
+    display: grid;
+    gap: 10px;
+}
+
+.task-overview-item {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: center;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 14px;
+    background: #fbfdff;
+}
+
+.task-overview-number {
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
+    display: grid;
+    place-items: center;
+    background: #0f172a;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.task-overview-body strong {
+    display: block;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.task-overview-body p {
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.45;
+    margin: 0 0 7px;
+}
+
+.task-overview-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    color: #475569;
+    font-size: 11px;
+}
+
+.task-overview-empty {
+    padding: 24px;
+    text-align: center;
+    color: #64748b;
+    border: 1px dashed #cbd5e1;
+    border-radius: 14px;
+    background: #f8fafc;
+}
+
+@media (max-width: 760px) {
+    .task-overview-head {
+        flex-direction: column;
+    }
+
+    .task-overview-item {
+        grid-template-columns: 36px minmax(0, 1fr);
+    }
+
+    .task-overview-item > .badge {
+        grid-column: 2;
+        justify-self: start;
+    }
+}

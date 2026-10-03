@@ -313,3 +313,13 @@ button { font: inherit; }
     .meeting-stage, .jitsi-container, .jitsi-container iframe { min-height: 500px !important; }
     .meeting-provider { display: none; }
 }
+
+.meeting-btn.hangup {
+    background: #dc2626;
+    border-color: #dc2626;
+    color: #ffffff;
+}
+.meeting-btn.hangup:hover {
+    background: #b91c1c;
+    border-color: #b91c1c;
+}

@@ -70,6 +70,7 @@ async function inicializarDetalleProyecto(idProyecto) {
         configurarPermisosVisuales();
         renderizarProyecto();
         renderizarFasesProyecto();
+        renderizarPlanTareasProyecto();
         renderizarEquipoProyecto();
         renderizarReunionesProyecto();
         actualizarAvanceProyecto();
@@ -890,6 +891,8 @@ function actualizarAvanceProyecto() {
     if (progressFill) {
         progressFill.style.width = porcentaje + "%";
     }
+
+    renderizarPlanTareasProyecto();
 }
 
 /* =========================================================
@@ -1135,6 +1138,87 @@ function crearElementoTarea(tarea) {
     item.appendChild(badge);
 
     return item;
+}
+
+
+function renderizarPlanTareasProyecto() {
+    const contenedor = document.getElementById("taskPlanList");
+    const resumen = document.getElementById("taskPlanSummary");
+
+    if (!contenedor) return;
+
+    if (!Array.isArray(tareasProyecto) || tareasProyecto.length === 0) {
+        contenedor.innerHTML = `
+            <div class="task-overview-empty">
+                Este proyecto todavía no tiene tareas registradas.
+            </div>
+        `;
+        if (resumen) resumen.textContent = "0 tareas";
+        return;
+    }
+
+    const ordenadas = tareasProyecto.slice().sort(function (a, b) {
+        const fechaA = String(a.fechaLimite || a.fechaInicio || "9999-12-31");
+        const fechaB = String(b.fechaLimite || b.fechaInicio || "9999-12-31");
+        return fechaA.localeCompare(fechaB);
+    });
+
+    const completadas = ordenadas.filter(t =>
+        normalizarTexto(t.estado) === "completada"
+    ).length;
+
+    const horas = ordenadas.reduce((total, tarea) =>
+        total + Number(tarea.horasEstimadas || 0), 0
+    );
+
+    if (resumen) {
+        resumen.textContent =
+            `${completadas}/${ordenadas.length} completadas · ${horas} h estimadas`;
+    }
+
+    contenedor.innerHTML = "";
+
+    ordenadas.forEach(function (tarea, indice) {
+        const item = document.createElement("article");
+        item.className = "task-overview-item";
+
+        const numero = document.createElement("span");
+        numero.className = "task-overview-number";
+        numero.textContent = String(indice + 1).padStart(2, "0");
+
+        const cuerpo = document.createElement("div");
+        cuerpo.className = "task-overview-body";
+
+        const titulo = document.createElement("strong");
+        titulo.textContent = tarea.titulo || "Tarea sin título";
+
+        const descripcion = document.createElement("p");
+        descripcion.textContent = tarea.descripcion || "Sin descripción registrada.";
+
+        const meta = document.createElement("div");
+        meta.className = "task-overview-meta";
+
+        const responsable = document.createElement("span");
+        responsable.textContent = "Responsable: " + (tarea.miembroNombre || "Por asignar");
+
+        const horasTarea = document.createElement("span");
+        horasTarea.textContent = `${Number(tarea.horasEstimadas || 0)} h`;
+
+        const fecha = document.createElement("span");
+        fecha.textContent = tarea.fechaLimite
+            ? "Límite: " + formatearFecha(tarea.fechaLimite)
+            : "Sin fecha límite";
+
+        meta.append(responsable, horasTarea, fecha);
+        cuerpo.append(titulo, descripcion, meta);
+
+        const estado = document.createElement("span");
+        estado.className = "badge " + obtenerColorEstadoTarea(tarea.estado);
+        estado.textContent = tarea.estado || "Pendiente";
+
+        item.append(numero, cuerpo, estado);
+        contenedor.appendChild(item);
+    });
 }
 
 function calcularProgresoTareas(tareas) {
