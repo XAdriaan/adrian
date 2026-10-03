@@ -14,8 +14,11 @@ const btnEmpresa = document.getElementById("btnEncuestaEmpresa");
 const btnSatisfaccion = document.getElementById("btnEncuestaSatisfaccion");
 const estadoEmpresa = document.getElementById("estadoEncuestaEmpresa");
 const estadoSatisfaccion = document.getElementById("estadoEncuestaSatisfaccion");
+const btnFoEst03 = document.getElementById("btnFoEst03");
+const estadoFoEst03 = document.getElementById("estadoFoEst03");
 const bloqueoEmpresa = document.getElementById("bloqueoEmpresa");
 const bloqueoSatisfaccion = document.getElementById("bloqueoSatisfaccion");
+const bloqueoFoEst03 = document.getElementById("bloqueoFoEst03");
 let usuarios = [], asesores = [], seguimientos = {}, detalleActual = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -27,6 +30,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     btnGuardar.addEventListener("click", guardarConfiguracion);
     btnEmpresa.addEventListener("click", () => alternarFormulario("empresa"));
     btnSatisfaccion.addEventListener("click", () => alternarFormulario("satisfaccion"));
+    btnFoEst03?.addEventListener("click", () => alternarFormulario("foEst03"));
 });
 function leerUsuario(){try{return JSON.parse(localStorage.getItem("usuarioActivo"))||null}catch{return null}}
 function normalizar(v){return String(v||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
@@ -60,6 +64,7 @@ function renderActual(){
     selectAsesor.value=s.idAsesorEmpresarial??"";inputEmpresa.value=s.urlEmpresa||"";inputSatisfaccion.value=s.urlSatisfaccion||"";
     actualizarFormulario("empresa",s.empresa===true,s.fechaEmpresa,inputEmpresa.value,linkEmpresa,btnEmpresa,estadoEmpresa,bloqueoEmpresa,listos);
     actualizarFormulario("satisfaccion",s.satisfaccion===true,s.fechaSatisfaccion,inputSatisfaccion.value,linkSatisfaccion,btnSatisfaccion,estadoSatisfaccion,bloqueoSatisfaccion,listos);
+    actualizarFoEst03(s.foEst03===true,s.fechaFoEst03);
 }
 function actualizarFormulario(tipo,hecho,fecha,url,link,boton,estado,bloqueo,listos){
     const puedeAbrir=listos&&/^https?:\/\//i.test(url||"");link.href=puedeAbrir?url:"#";link.classList.toggle("disabled",!puedeAbrir);
@@ -67,6 +72,7 @@ function actualizarFormulario(tipo,hecho,fecha,url,link,boton,estado,bloqueo,lis
     estado.textContent=hecho?`Contestado por administración${fecha?" el "+new Date(fecha).toLocaleDateString("es-MX"):""}`:"Pendiente";
     if(!listos)bloqueo.textContent="Bloqueado hasta que las tres cartas requeridas estén liberadas.";else if(!url)bloqueo.textContent="Agrega y guarda el enlace individual para habilitar este formulario.";else bloqueo.textContent="";
 }
-function payloadActual(){const s=detalleActual?.seguimiento||{};return{urlEmpresa:inputEmpresa.value.trim()||null,urlSatisfaccion:inputSatisfaccion.value.trim()||null,idAsesorEmpresarial:selectAsesor.value?Number(selectAsesor.value):null,empresa:s.empresa===true,satisfaccion:s.satisfaccion===true,fechaEmpresa:s.fechaEmpresa||null,fechaSatisfaccion:s.fechaSatisfaccion||null}}
+function payloadActual(){const s=detalleActual?.seguimiento||{};return{urlEmpresa:inputEmpresa.value.trim()||null,urlSatisfaccion:inputSatisfaccion.value.trim()||null,idAsesorEmpresarial:selectAsesor.value?Number(selectAsesor.value):null,empresa:s.empresa===true,satisfaccion:s.satisfaccion===true,foEst03:s.foEst03===true,fechaEmpresa:s.fechaEmpresa||null,fechaSatisfaccion:s.fechaSatisfaccion||null,fechaFoEst03:s.fechaFoEst03||null}}
 async function guardarConfiguracion(){if(!puedeActualizar())return alert("Tu rol solo puede consultar el seguimiento.");const id=selectUsuario.value;if(!id)return alert("Selecciona un alumno.");try{const d=await jsonFetch(`${API_SEGUIMIENTO}/usuario/${id}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(payloadActual())});detalleActual={seguimiento:d.seguimiento||{},documentos:d.documentos||detalleActual.documentos};seguimientos[String(id)]=detalleActual.seguimiento;renderActual();alert("Enlaces y asesor guardados correctamente.")}catch(e){alert(e.message)}}
-async function alternarFormulario(tipo){if(!puedeActualizar())return alert("Tu rol solo puede consultar el seguimiento.");if(!detalleActual?.documentos?.completos)return alert("Primero deben estar liberadas la carta de presentación, la carta de aceptación y la carta de término.");const id=selectUsuario.value;if(!id)return;const p=payloadActual();const clave=tipo==="empresa"?"empresa":"satisfaccion",fecha=tipo==="empresa"?"fechaEmpresa":"fechaSatisfaccion";p[clave]=!Boolean(p[clave]);p[fecha]=p[clave]?new Date().toISOString():null;try{const d=await jsonFetch(`${API_SEGUIMIENTO}/usuario/${id}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)});detalleActual={seguimiento:d.seguimiento||{},documentos:d.documentos||detalleActual.documentos};renderActual()}catch(e){alert(e.message)}}
+function actualizarFoEst03(hecho,fecha){if(!btnFoEst03||!estadoFoEst03)return;btnFoEst03.classList.toggle("done",hecho);btnFoEst03.textContent=hecho?"✓ Evaluado — desmarcar":"Marcar como evaluado";btnFoEst03.disabled=!puedeActualizar();estadoFoEst03.textContent=hecho?`Evaluado por administración${fecha?" el "+new Date(fecha).toLocaleDateString("es-MX"):""}`:"Pendiente de evaluación";if(bloqueoFoEst03)bloqueoFoEst03.textContent="El archivo oficial puede descargarse en cualquier momento."}
+async function alternarFormulario(tipo){if(!puedeActualizar())return alert("Tu rol solo puede consultar el seguimiento.");const id=selectUsuario.value;if(!id)return;const p=payloadActual();let clave,fecha;if(tipo==="foEst03"){clave="foEst03";fecha="fechaFoEst03";}else{if(!detalleActual?.documentos?.completos)return alert("Primero deben estar liberadas la carta de presentación, la carta de aceptación y la carta de término.");clave=tipo==="empresa"?"empresa":"satisfaccion";fecha=tipo==="empresa"?"fechaEmpresa":"fechaSatisfaccion";}p[clave]=!Boolean(p[clave]);p[fecha]=p[clave]?new Date().toISOString():null;try{const d=await jsonFetch(`${API_SEGUIMIENTO}/usuario/${id}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)});detalleActual={seguimiento:d.seguimiento||{},documentos:d.documentos||detalleActual.documentos};renderActual()}catch(e){alert(e.message)}}

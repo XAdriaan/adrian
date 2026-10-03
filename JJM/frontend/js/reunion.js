@@ -711,7 +711,7 @@ async function finalizarReunion() {
         saliendo = true;
         await registrarSalida();
         try { jitsiApi?.executeCommand("hangup"); } catch (_) {}
-        setTimeout(volverAlProyectoSinConfirmar, 500);
+        setTimeout(volverAlListadoProyectos, 500);
     } catch (error) {
         alert(error.message || "No fue posible finalizar la reunión.");
     }
@@ -723,6 +723,15 @@ async function volverAlProyecto() {
     await registrarSalida();
     try { jitsiApi?.executeCommand("hangup"); } catch (_) {}
     setTimeout(volverAlProyectoSinConfirmar, 400);
+}
+
+function volverAlListadoProyectos() {
+    if (temporizador) clearInterval(temporizador);
+    liberarJitsi();
+    const params = new URLSearchParams();
+    params.set("reunionFinalizada", "1");
+    if (idProyecto) params.set("proyecto", idProyecto);
+    window.location.replace(`proyectos.html?${params.toString()}`);
 }
 
 function volverAlProyectoSinConfirmar() {

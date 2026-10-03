@@ -48,6 +48,7 @@ async function inicializarDetalleProyecto(idProyecto) {
         }
 
         renderizarProyecto();
+        renderizarAlcanceProyecto();
 
         const resultados = await Promise.allSettled([
             cargarFasesProyecto(),
@@ -69,6 +70,7 @@ async function inicializarDetalleProyecto(idProyecto) {
 
         configurarPermisosVisuales();
         renderizarProyecto();
+        renderizarAlcanceProyecto();
         renderizarFasesProyecto();
         renderizarPlanTareasProyecto();
         renderizarEquipoProyecto();
@@ -858,6 +860,37 @@ function renderizarProyecto() {
             "health-indicator " +
             obtenerSaludProyecto();
     }
+}
+
+function renderizarAlcanceProyecto() {
+    const contenedor = document.getElementById("projectScopeChips");
+    const descripcion = document.getElementById("projectScopeDescription");
+    if (!contenedor || !proyectoActual) return;
+
+    const fuente = proyectoActual.clavesFuente || proyectoActual.clienteArea || "";
+    const componentes = String(fuente)
+        .split(/\s*\/\s*|\s*·\s*|\s*,\s*/g)
+        .map(v => v.trim())
+        .filter(Boolean)
+        .filter((v, i, arr) => arr.findIndex(x => normalizarTexto(x) === normalizarTexto(v)) === i);
+
+    if (descripcion) {
+        descripcion.textContent = proyectoActual.descripcion ||
+            "El detalle muestra las soluciones, módulos o líneas de trabajo que forman parte del proyecto asignado.";
+    }
+
+    if (!componentes.length) {
+        contenedor.innerHTML = '<span class="project-scope-empty">No se registraron componentes separados para este proyecto.</span>';
+        return;
+    }
+
+    contenedor.innerHTML = "";
+    componentes.forEach(componente => {
+        const chip = document.createElement("span");
+        chip.className = "project-scope-chip";
+        chip.textContent = componente;
+        contenedor.appendChild(chip);
+    });
 }
 
 function actualizarAvanceProyecto() {

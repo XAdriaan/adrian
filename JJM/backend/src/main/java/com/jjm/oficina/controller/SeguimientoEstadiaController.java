@@ -42,6 +42,9 @@ public class SeguimientoEstadiaController {
                         satisfaccion_contestado TINYINT(1) NOT NULL DEFAULT 0,
                         satisfaccion_fecha DATETIME NULL,
                         satisfaccion_por INT NULL,
+                        fo_est_03_contestado TINYINT(1) NOT NULL DEFAULT 0,
+                        fo_est_03_fecha DATETIME NULL,
+                        fo_est_03_por INT NULL,
                         actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                         PRIMARY KEY (id_seguimiento),
                         UNIQUE KEY uk_seguimiento_usuario (id_usuario)
@@ -51,6 +54,9 @@ public class SeguimientoEstadiaController {
             agregarColumnaSiFalta("id_asesor_empresarial", "INT NULL");
             agregarColumnaSiFalta("url_empresa", "VARCHAR(1000) NULL");
             agregarColumnaSiFalta("url_satisfaccion", "VARCHAR(1000) NULL");
+            agregarColumnaSiFalta("fo_est_03_contestado", "TINYINT(1) NOT NULL DEFAULT 0");
+            agregarColumnaSiFalta("fo_est_03_fecha", "DATETIME NULL");
+            agregarColumnaSiFalta("fo_est_03_por", "INT NULL");
         } catch (Exception ex) {
             // El módulo puede seguir consultando documentos aunque la cuenta de BD
             // no tenga privilegios ALTER. Se registra en stderr para diagnóstico.
@@ -73,6 +79,7 @@ public class SeguimientoEstadiaController {
                        url_satisfaccion AS urlSatisfaccion,
                        empresa_contestado AS empresa, empresa_fecha AS fechaEmpresa,
                        satisfaccion_contestado AS satisfaccion, satisfaccion_fecha AS fechaSatisfaccion,
+                       fo_est_03_contestado AS foEst03, fo_est_03_fecha AS fechaFoEst03,
                        actualizado_en AS fechaActualizacion
                 FROM seguimiento_formularios_estadia
                 """);
@@ -125,10 +132,13 @@ public class SeguimientoEstadiaController {
 
         boolean empresa = booleano(datos.get("empresa"));
         boolean satisfaccion = booleano(datos.get("satisfaccion"));
+        boolean foEst03 = booleano(datos.get("foEst03"));
         Timestamp fechaEmpresa = empresa ? fecha(datos.get("fechaEmpresa")) : null;
         Timestamp fechaSatisfaccion = satisfaccion ? fecha(datos.get("fechaSatisfaccion")) : null;
+        Timestamp fechaFoEst03 = foEst03 ? fecha(datos.get("fechaFoEst03")) : null;
         if (empresa && fechaEmpresa == null) fechaEmpresa = Timestamp.valueOf(LocalDateTime.now());
         if (satisfaccion && fechaSatisfaccion == null) fechaSatisfaccion = Timestamp.valueOf(LocalDateTime.now());
+        if (foEst03 && fechaFoEst03 == null) fechaFoEst03 = Timestamp.valueOf(LocalDateTime.now());
 
         Integer idAsesor = entero(datos.get("idAsesorEmpresarial"));
         String urlEmpresa = texto(datos.get("urlEmpresa"));
@@ -138,8 +148,9 @@ public class SeguimientoEstadiaController {
                 INSERT INTO seguimiento_formularios_estadia
                     (id_usuario,id_asesor_empresarial,url_empresa,url_satisfaccion,
                      empresa_contestado,empresa_fecha,empresa_por,
-                     satisfaccion_contestado,satisfaccion_fecha,satisfaccion_por)
-                VALUES (?,?,?,?,?,?,?,?,?,?)
+                     satisfaccion_contestado,satisfaccion_fecha,satisfaccion_por,
+                     fo_est_03_contestado,fo_est_03_fecha,fo_est_03_por)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
                 ON DUPLICATE KEY UPDATE
                     id_asesor_empresarial=VALUES(id_asesor_empresarial),
                     url_empresa=VALUES(url_empresa),
@@ -149,11 +160,15 @@ public class SeguimientoEstadiaController {
                     empresa_por=VALUES(empresa_por),
                     satisfaccion_contestado=VALUES(satisfaccion_contestado),
                     satisfaccion_fecha=VALUES(satisfaccion_fecha),
-                    satisfaccion_por=VALUES(satisfaccion_por)
+                    satisfaccion_por=VALUES(satisfaccion_por),
+                    fo_est_03_contestado=VALUES(fo_est_03_contestado),
+                    fo_est_03_fecha=VALUES(fo_est_03_fecha),
+                    fo_est_03_por=VALUES(fo_est_03_por)
                 """,
                 idObjetivo, idAsesor, urlEmpresa, urlSatisfaccion,
                 empresa, fechaEmpresa, empresa ? activo.getId() : null,
-                satisfaccion, fechaSatisfaccion, satisfaccion ? activo.getId() : null
+                satisfaccion, fechaSatisfaccion, satisfaccion ? activo.getId() : null,
+                foEst03, fechaFoEst03, foEst03 ? activo.getId() : null
         );
 
         Map<String,Object> respuesta = construirDetalle(idObjetivo);
@@ -182,6 +197,8 @@ public class SeguimientoEstadiaController {
         resultado.put("fechaEmpresa", null);
         resultado.put("satisfaccion", false);
         resultado.put("fechaSatisfaccion", null);
+        resultado.put("foEst03", false);
+        resultado.put("fechaFoEst03", null);
 
         List<Map<String,Object>> filas = jdbc.queryForList("""
                 SELECT id_usuario AS idUsuario,
@@ -192,6 +209,8 @@ public class SeguimientoEstadiaController {
                        empresa_fecha AS fechaEmpresa,
                        satisfaccion_contestado AS satisfaccion,
                        satisfaccion_fecha AS fechaSatisfaccion,
+                       fo_est_03_contestado AS foEst03,
+                       fo_est_03_fecha AS fechaFoEst03,
                        actualizado_en AS fechaActualizacion
                 FROM seguimiento_formularios_estadia
                 WHERE id_usuario=?
@@ -305,6 +324,7 @@ public class SeguimientoEstadiaController {
         Map<String,Object> r = new LinkedHashMap<>(fila);
         r.put("empresa", booleano(r.get("empresa")));
         r.put("satisfaccion", booleano(r.get("satisfaccion")));
+        r.put("foEst03", booleano(r.get("foEst03")));
         return r;
     }
 
