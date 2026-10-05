@@ -1,0 +1,43 @@
+JJM ProjectSphere - Dashboard por rol - 5 octubre 2026
+
+Este paquete completo reemplaza el ZIP V3 y conserva sus correcciones.
+
+Causa del aviso amarillo al entrar como Colaborador:
+El Dashboard solicitaba GET /api/miembros (equipo completo). Ese endpoint solo
+admite administradores y respondía 403 para colaboradores. El frontend lo
+interpretaba como una conexión no disponible, aunque otras consultas funcionaban.
+
+Corrección:
+- Colaboradores y otros roles consultan /api/miembros/mi-sesion.
+- Los administradores conservan la consulta al equipo completo.
+- Tener acceso global a proyectos no se confunde con administrar el equipo.
+- Los roles de consulta no solicitan el control de horas que tienen restringido.
+- Si realmente falla alguna consulta, el aviso identifica la información afectada.
+
+No se cambiaron permisos del backend, variables, dominio ni datos de MySQL.
+
+SUBIR EL PAQUETE
+Guarda el ZIP en Descargas. Ejecuta en PowerShell:
+
+$descargasJJM = "$env:USERPROFILE\Downloads"
+$paqueteJJM = "$descargasJJM\JJM_CORREGIDO_DASHBOARD_20261005_V4"
+$repoJJM = "$descargasJJM\JJM_REPO_NUEVO"
+if (!(Test-Path "$repoJJM\.git")) { throw "No se encontró tu repositorio JJM_REPO_NUEVO." }
+Expand-Archive -LiteralPath "$descargasJJM\JJM_CORREGIDO_DASHBOARD_20261005_V4.zip" -DestinationPath $paqueteJJM -Force -ErrorAction Stop
+robocopy "$paqueteJJM\JJM" "$repoJJM\JJM" /E
+if ($LASTEXITCODE -ge 8) { throw "Falló la copia. No continúes." }
+Set-Location -LiteralPath $repoJJM -ErrorAction Stop
+git status
+git add JJM
+git commit -m "Corrige consultas del Dashboard segun el rol"
+git push origin main
+
+En Coolify abre adrian:main > Actions > Redeploy.
+Espera Success y confirma el nuevo commit. Abre Dashboard con Ctrl+F5.
+Mantén la configuración actual y el dominio asignado al frontend en puerto 80.
+
+Pruebas del frontend, desde JJM:
+node --test frontend/tests/*.test.cjs
+
+El archivo LEEME_SESION_API_V3.txt conserva el detalle de las correcciones previas.
+Sus instrucciones de carga del ZIP V3 quedan reemplazadas por las de este archivo.

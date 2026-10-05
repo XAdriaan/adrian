@@ -1,14 +1,14 @@
 const API_PROYECTOS =
-    (window.apiUrl ? "/api/proyectos" : "/api/proyectos");
+    window.apiUrl("/api/proyectos");
 
 const API_TAREAS =
-    (window.apiUrl ? "/api/tareas" : "/api/tareas");
+    window.apiUrl("/api/tareas");
 
 const API_MIEMBROS =
-    (window.apiUrl ? "/api/miembros" : "/api/miembros");
+    window.apiUrl("/api/miembros");
 
 const API_REGISTROS_HORAS =
-    (window.apiUrl ? "/api/registros-horas" : "/api/registros-horas");
+    window.apiUrl("/api/registros-horas");
 
 /* =========================================================
    DATOS PRINCIPALES
@@ -394,15 +394,8 @@ async function cargarDashboard() {
                 ["tareas", "data"]
             ),
 
-            obtenerDatosDesdeAPI(
-                API_MIEMBROS,
-                ["miembros", "data"]
-            ),
-
-            obtenerDatosDesdeAPI(
-                API_REGISTROS_HORAS,
-                ["registros", "data"]
-            )
+            obtenerMiembrosParaDashboard(),
+            obtenerHorasParaDashboard()
         ]);
 
         proyectosDashboard =
@@ -433,11 +426,12 @@ async function cargarDashboard() {
                 )
                 : obtenerHorasLocales();
 
-        const fallos = resultados.filter(
-            function (resultado) {
-                return resultado.status === "rejected";
-            }
-        ).length;
+        const secciones = ["proyectos", "tareas", "tu registro de equipo", "horas"];
+        const fallos = resultados.flatMap(function (resultado, indice) {
+            if (resultado.status !== "rejected") return [];
+            console.warn(`Dashboard: no se pudo consultar ${secciones[indice]}.`, resultado.reason);
+            return [secciones[indice]];
+        });
 
         actualizarEstadisticas();
         renderizarEstadoJornada();
@@ -445,9 +439,9 @@ async function cargarDashboard() {
         renderizarTareasRecientes();
         renderizarActividadReciente();
 
-        if (fallos > 0) {
+        if (fallos.length > 0) {
             mostrarMensajeDashboard(
-                "Algunos datos se cargaron desde información local porque una o más conexiones con el servidor no estuvieron disponibles.",
+                `No se pudieron actualizar ${fallos.join(", ")}. Pulsa Actualizar para reintentar.`,
                 "warning"
             );
         } else {
@@ -461,7 +455,7 @@ async function cargarDashboard() {
         );
 
         mostrarMensajeDashboard(
-            "No fue posible cargar toda la información del Dashboard. Verifica que Apache, MySQL y el backend Java estén activos.",
+            "No fue posible cargar toda la información del Dashboard. Pulsa Actualizar para reintentar.",
             "error"
         );
 
@@ -477,6 +471,33 @@ async function cargarDashboard() {
 /* =========================================================
    PETICIONES API
 ========================================================= */
+
+async function obtenerMiembrosParaDashboard() {
+    // Este endpoint del backend admite solo los roles administrativos base.
+    // Tener acceso global a proyectos no autoriza consultar el equipo completo.
+    const rol = normalizarTextoCompatibilidadPermisos(obtenerNombreRolUsuario());
+    const puedeConsultarEquipo = ["administrador", "admin pmo", "admin_pmo", "administrador pmo"].includes(rol);
+    if (puedeConsultarEquipo) {
+        return obtenerDatosDesdeAPI(API_MIEMBROS, ["miembros", "data"]);
+    }
+    const respuesta = await fetch(`${API_MIEMBROS}/mi-sesion`, { headers: obtenerHeadersSesion() });
+    const datos = await obtenerRespuestaJSON(respuesta);
+    // El usuario puede existir sin un perfil de miembro: no es una caída del servidor.
+    if (respuesta.status === 404 && datos.estado === "error" &&
+        datos.mensaje === "El usuario activo no tiene un registro de miembro vinculado.") return [];
+    if (!respuesta.ok) {
+        throw new Error(datos.mensaje || `No fue posible consultar tu registro de equipo (${respuesta.status}).`);
+    }
+    return datos.miembro ? [datos.miembro] : [];
+}
+
+function obtenerHorasParaDashboard() {
+    const rol = normalizarTextoCompatibilidadPermisos(obtenerNombreRolUsuario());
+    const consulta = ["cliente", "consulta", "usuario de consulta", "enlace universidad",
+        "enlace de universidad", "enlace empresa", "enlace de empresa"].includes(rol);
+    if (consulta) return Promise.resolve([]);
+    return obtenerDatosDesdeAPI(API_REGISTROS_HORAS, ["registros", "data"]);
+}
 
 async function obtenerDatosDesdeAPI(
     url,
@@ -496,7 +517,7 @@ async function obtenerDatosDesdeAPI(
     if (!respuesta.ok) {
         throw new Error(
             datos.mensaje ||
-            "No fue posible obtener información."
+            `No fue posible obtener información (${respuesta.status}).`
         );
     }
 
