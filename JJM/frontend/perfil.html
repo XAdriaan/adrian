@@ -159,14 +159,27 @@
 
                             <div class="form-group">
                                 <label for="nombrePerfil">
-                                    Nombre completo
+                                    Nombre(s)
                                 </label>
 
                                 <input
                                     type="text"
                                     id="nombrePerfil"
+                                    name="profile-given-name"
+                                    autocomplete="given-name"
+                                    maxlength="100"
+                                    required
                                     placeholder="Nombre del usuario"
                                 >
+                            </div>
+
+                            <div class="form-group">
+                                <label for="apellidoPaternoPerfil">Apellido paterno</label>
+                                <input type="text" id="apellidoPaternoPerfil" name="profile-paternal-name" maxlength="100" autocomplete="family-name">
+                            </div>
+                            <div class="form-group">
+                                <label for="apellidoMaternoPerfil">Apellido materno</label>
+                                <input type="text" id="apellidoMaternoPerfil" name="profile-maternal-name" maxlength="100" autocomplete="off">
                             </div>
 
                             <div class="form-group">
@@ -1039,9 +1052,9 @@
     </div>
 </div>
 
-<script src="js/api-config.js?v=20261003-fixlogin"></script>
-<script src="js/permisos-globales.js?v=20261005-perfil"></script>
-<script src="js/perfil.js?v=20260712-1"></script>
+<script src="js/api-config.js?v=20261005-sesion-v3"></script>
+<script src="js/permisos-globales.js?v=20261005-sesion-v3"></script>
+<script src="js/perfil.js?v=20261005-sesion-v3"></script>
 
 </body>
 </html>

@@ -1,6 +1,7 @@
 package com.jjm.oficina.controller;
 
 import com.jjm.oficina.dto.LoginRequest;
+import com.jjm.oficina.dto.NombrePerfilRequest;
 import com.jjm.oficina.dto.RegistroRequest;
 import com.jjm.oficina.modelo.MiembroEquipo;
 import com.jjm.oficina.modelo.Rol;
@@ -205,6 +206,39 @@ public class AuthController {
         respuesta.put("estado", "correcto");
         respuesta.put("usuario", convertirUsuario(usuario, miembroEncontrado.orElse(null)));
         return ResponseEntity.ok(respuesta);
+    }
+
+    @PutMapping("/perfil/nombre")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> actualizarNombrePerfil(
+            @RequestHeader(value = "X-Usuario-Id", required = false) Integer idUsuarioActivo,
+            @Valid @RequestBody NombrePerfilRequest datos) {
+        Usuario usuario = obtenerUsuarioActivo(idUsuarioActivo);
+        if (usuario == null || !"Activo".equalsIgnoreCase(usuario.getEstado())) {
+            return respuestaError(HttpStatus.UNAUTHORIZED, "La sesión no existe o venció. Inicia sesión nuevamente.");
+        }
+        String nombre = datos.nombre().trim().replaceAll("\\s+", " ");
+        String paterno = limpiarTexto(datos.apellidoPaterno());
+        String materno = limpiarTexto(datos.apellidoMaterno());
+        StringBuilder completo = new StringBuilder();
+        agregarParteNombre(completo, nombre);
+        agregarParteNombre(completo, paterno);
+        agregarParteNombre(completo, materno);
+        if (completo.length() > 180) {
+            return respuestaError(HttpStatus.BAD_REQUEST, "El nombre completo no puede superar 180 caracteres.");
+        }
+        usuario.setNombre(nombre);
+        usuario.setApellidoPaterno(paterno);
+        usuario.setApellidoMaterno(materno);
+        Usuario guardado = usuarioRepository.save(usuario);
+        Optional<MiembroEquipo> miembro = miembroEquipoRepository.findByUsuarioId(guardado.getId());
+        miembro.ifPresent(valor -> {
+            valor.setNombreCompleto(construirNombreCompleto(guardado));
+            miembroEquipoRepository.save(valor);
+        });
+        return ResponseEntity.ok(Map.of(
+                "estado", "correcto", "mensaje", "Información de perfil guardada correctamente.",
+                "usuario", convertirUsuario(guardado, miembro.orElse(null))));
     }
 
     @PostMapping("/logout")

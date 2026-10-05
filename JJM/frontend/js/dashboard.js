@@ -111,7 +111,13 @@ const tarjetaJornada =
 document.addEventListener(
     "DOMContentLoaded",
     async function () {
+        if (window.restaurarSesionPMO) await window.restaurarSesionPMO();
         usuarioActivo = obtenerUsuarioActivo();
+
+        if (!usuarioActivo) {
+            window.location.replace("login.html");
+            return;
+        }
 
         configurarEventos();
         configurarEncabezadoDashboard();

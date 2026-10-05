@@ -1,0 +1,57 @@
+JJM ProjectSphere - correcciones de sesión y Perfil - 5 octubre 2026
+
+Este paquete contiene la carpeta JJM completa basada en main 75500ce, con:
+- Frontend Nginx en 80 y backend Spring Boot en 8080.
+- Proxy /api conservando la ruta y las páginas HTML servidas por Nginx.
+- GET /api/roles/mi-permisos y autenticación Bearer.
+- Validación de sesión guardada al entrar a Dashboard y Perfil.
+- Una respuesta tardía de una sesión antigua ya no borra un acceso nuevo.
+- El acceso ya no queda esperando indefinidamente el expediente académico.
+- PUT /api/auth/perfil/nombre conectado al formulario de nombres y apellidos.
+- Corrección previa del autocompletado del buscador lateral y versión de scripts.
+
+No contiene migraciones, volcados de MySQL ni credenciales de producción.
+Conserva docker-compose y los nombres de las variables actuales de Coolify.
+
+COPIAR Y SUBIR A GITHUB
+1. Extrae el ZIP. Dentro encontrarás JJM.
+2. En PowerShell ajusta $paquete a la carpeta extraída y ejecuta:
+
+$paquete = "$env:USERPROFILE\Downloads\JJM_CORREGIDO_SESION_API_20261005_V3"
+$repoJJM = "$env:USERPROFILE\Downloads\JJM_REPO_NUEVO"
+if (!(Test-Path -LiteralPath "$paquete\JJM")) { throw "No se encontró la carpeta JJM del ZIP." }
+if (!(Test-Path -LiteralPath "$repoJJM\.git")) { throw "La carpeta destino no es tu clon de Git. Usa la carpeta donde git status funciona." }
+robocopy "$paquete\JJM" "$repoJJM\JJM" /E
+if ($LASTEXITCODE -ge 8) { throw "Falló la copia. No continúes." }
+Set-Location -LiteralPath $repoJJM
+git status
+git diff --stat
+git add JJM
+git commit -m "Corrige sesión API y guardado de perfil"
+git push origin main
+
+COOLIFY
+3. Abre la aplicación adrian:main, no la aplicación antigua oficina-proyectos.
+4. Debe usar XAdriaan/adrian, rama main, base /JJM y /docker-compose.yml.
+5. Conserva las variables actuales. El dominio https://oficina.jjmti.com.mx debe
+   estar asignado únicamente al servicio frontend, puerto 80, en esta aplicación.
+   El backend usa 8080 internamente. No asignes el dominio al backend ni a la app antigua.
+6. Pulsa Actions > Redeploy. Espera Success y confirma que muestra tu nuevo commit.
+7. Abre login.html con Ctrl+F5. Comprueba Dashboard, Proyectos y Perfil.
+
+ALCANCE DEL DIAGNÓSTICO
+Durante el intento de acceso revisado, el servidor respondió:
+"Correo o contraseña incorrectos."
+La ruta del login sí respondió; no hubo 404 en ese intento. Estas correcciones no
+cambian contraseñas ni permiten entrar con credenciales rechazadas. Si el mensaje
+continúa, revisa que sea la cuenta de la base configurada actualmente o utiliza
+la recuperación por correo, si SMTP está configurado.
+
+El ZIP corrige sesión, rutas y guardado de Perfil. No incorpora funcionalidades
+nuevas para administración de roles, carpetas/importaciones de proyectos ni
+adjuntos de tareas cuyos endpoints aún faltan en el repositorio original.
+
+PRUEBAS
+Backend: mvn test (Java 21).
+Frontend: node --test frontend/tests/sesion.test.cjs, desde JJM.
+Las pruebas usan cuentas ficticias y repositorios simulados; no modifican MySQL.

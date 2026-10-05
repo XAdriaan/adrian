@@ -13,6 +13,8 @@ const formPerfil =
     document.getElementById("formPerfil");
 const nombrePerfil =
     document.getElementById("nombrePerfil");
+const apellidoPaternoPerfil = document.getElementById("apellidoPaternoPerfil");
+const apellidoMaternoPerfil = document.getElementById("apellidoMaternoPerfil");
 const usuarioPerfil =
     document.getElementById("usuarioPerfil");
 const descripcionPerfil =
@@ -102,7 +104,8 @@ let metodoAuthSeleccionado = "";
 let codigoRecuperacionGenerado = "";
 let intervaloRelojPerfil = null;
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
+    if (window.restaurarSesionPMO) await window.restaurarSesionPMO();
     usuarioActivoPerfil = obtenerUsuarioActivoPerfil();
 
     if (!usuarioActivoPerfil) {
@@ -273,10 +276,11 @@ function cargarPerfil() {
 
     if (nombrePerfil) {
         nombrePerfil.value =
-            obtenerNombreSesionPerfil() ||
-            perfil.nombre ||
+            usuarioActivoPerfil?.nombre ||
             "";
     }
+    if (apellidoPaternoPerfil) apellidoPaternoPerfil.value = usuarioActivoPerfil?.apellidoPaterno || "";
+    if (apellidoMaternoPerfil) apellidoMaternoPerfil.value = usuarioActivoPerfil?.apellidoMaterno || "";
 
     if (usuarioPerfil) {
         usuarioPerfil.value =
@@ -372,19 +376,26 @@ function configurarPerfil() {
 async function guardarInformacionPerfilBackend(event) {
     event.preventDefault();
 
-    const nombreCompleto = nombrePerfil
+    const nombre = nombrePerfil
         ? nombrePerfil.value.trim().replace(/\s+/g, " ")
         : "";
+    const apellidoPaterno = apellidoPaternoPerfil?.value.trim() || "";
+    const apellidoMaterno = apellidoMaternoPerfil?.value.trim() || "";
+    const nombreCompleto = [nombre, apellidoPaterno, apellidoMaterno].filter(Boolean).join(" ");
 
-    if (!nombreCompleto) {
+    if (!nombre) {
         alert("Ingresa tu nombre completo.");
         if (nombrePerfil) nombrePerfil.focus();
         return;
     }
 
+    if ([nombre, apellidoPaterno, apellidoMaterno].some(parte => parte.length > 100)) {
+        alert("Cada parte del nombre puede tener hasta 100 caracteres.");
+        if (nombrePerfil) nombrePerfil.focus();
+        return;
+    }
     if (nombreCompleto.length > 180) {
         alert("El nombre completo no puede superar 180 caracteres.");
-        if (nombrePerfil) nombrePerfil.focus();
         return;
     }
 
@@ -402,7 +413,7 @@ async function guardarInformacionPerfilBackend(event) {
         const respuesta = await fetch(`${API_AUTH_PERFIL}/perfil/nombre`, {
             method: "PUT",
             headers: obtenerHeadersPerfilJSON(),
-            body: JSON.stringify({ nombreCompleto: nombreCompleto })
+            body: JSON.stringify({ nombre, apellidoPaterno, apellidoMaterno })
         });
 
         const datos = await obtenerRespuestaJSONPerfil(respuesta);
@@ -428,7 +439,7 @@ async function guardarInformacionPerfilBackend(event) {
         guardarPerfilStorage(perfil);
 
         if (nombrePerfil) {
-            nombrePerfil.value = perfil.nombre;
+            nombrePerfil.value = datos.usuario?.nombre || nombre;
         }
 
         alert(datos.mensaje || "Información de perfil guardada correctamente.");

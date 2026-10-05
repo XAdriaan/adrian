@@ -70,10 +70,7 @@
     </dependencies>
 
     <build>
-        <!--
-          Empaqueta también ../frontend dentro del JAR en /static.
-          De esta forma Spring Boot sirve la web y la API desde el mismo host/puerto.
-        -->
+        <!-- Respaldo de HTML en el JAR; en Compose la web la sirve Nginx. -->
         <resources>
             <resource>
                 <directory>src/main/resources</directory>
@@ -82,6 +79,11 @@
                 <directory>../frontend</directory>
                 <targetPath>static</targetPath>
                 <filtering>false</filtering>
+                <excludes>
+                    <exclude>tests/**</exclude>
+                    <exclude>Dockerfile</exclude>
+                    <exclude>nginx.conf</exclude>
+                </excludes>
             </resource>
         </resources>
         <plugins>

@@ -29,6 +29,9 @@ loginForm.addEventListener("submit", async function (event) {
     };
 
     bloquearBotonLogin(true);
+    let abriendoEspacio = false;
+    const controlador = new AbortController();
+    const temporizador = setTimeout(() => controlador.abort(), 20000);
 
     try {
         const respuesta = await fetch(`${API_URL}/login`, {
@@ -36,7 +39,8 @@ loginForm.addEventListener("submit", async function (event) {
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify(datosLogin)
+            body: JSON.stringify(datosLogin),
+            signal: controlador.signal
         });
 
         const datos = await obtenerRespuestaJSON(respuesta);
@@ -44,7 +48,8 @@ loginForm.addEventListener("submit", async function (event) {
         if (!respuesta.ok) {
             mostrarError(
                 datos.mensaje ||
-                "Correo o contraseña incorrectos."
+                (respuesta.status === 401 ? "Correo o contraseña incorrectos." :
+                    "El servidor de acceso no está disponible. Inténtalo nuevamente.")
             );
             return;
         }
@@ -63,7 +68,12 @@ loginForm.addEventListener("submit", async function (event) {
         localStorage.setItem("sesionTokenPMO", datos.token);
 
         const expedienteCompleto = await datosAcademicosCompletos(datos.usuario);
+        if (localStorage.getItem("sesionTokenPMO") !== datos.token) {
+            mostrarError("El servidor no confirmó tu sesión. Inicia sesión nuevamente.");
+            return;
+        }
         mostrarExito("Inicio de sesión correcto. Abriendo tu espacio...");
+        abriendoEspacio = true;
 
         // Siempre deja entrar a la plataforma. Si faltan datos académicos,
         // el Dashboard/menú mostrará el acceso para completarlos sin romper
@@ -76,10 +86,12 @@ loginForm.addEventListener("submit", async function (event) {
         console.error("Error al iniciar sesión:", error);
 
         mostrarError(
-            "No fue posible iniciar sesión. Revisa tu conexión y vuelve a intentarlo."
+            error.name === "AbortError" ? "El servidor tardó demasiado en responder. Inténtalo nuevamente." :
+                "No fue posible iniciar sesión. Revisa tu conexión y vuelve a intentarlo."
         );
     } finally {
-        bloquearBotonLogin(false);
+        clearTimeout(temporizador);
+        if (!abriendoEspacio) bloquearBotonLogin(false);
     }
 });
 
@@ -134,6 +146,9 @@ const parametrosLogin = new URLSearchParams(window.location.search);
 if (parametrosLogin.get("success") === "1") {
     mostrarExito("Cuenta creada correctamente. Ahora inicia sesión.");
 }
+if (parametrosLogin.get("sesion") === "expirada") {
+    mostrarError("Tu sesión venció. Inicia sesión nuevamente.");
+}
 
 /* =========================================================
    REDIRECCIÓN A DATOS ACADÉMICOS
@@ -147,8 +162,12 @@ async function datosAcademicosCompletos(usuario) {
     const idUsuario = obtenerIdUsuarioLogin(usuario);
     if (!idUsuario) return false;
 
+    const controlador = new AbortController();
+    const temporizador = setTimeout(() => controlador.abort(), 4000);
     try {
-        const respuesta = await fetch(window.apiUrl("/api/datos-registro/mi-sesion"));
+        const respuesta = await fetch(window.apiUrl("/api/datos-registro/mi-sesion"), {
+            signal: controlador.signal
+        });
         if (!respuesta.ok) return false;
         const datos = await respuesta.json();
         if (datos?.datos) {
@@ -158,6 +177,8 @@ async function datosAcademicosCompletos(usuario) {
     } catch (error) {
         console.warn("No fue posible consultar el expediente académico.", error);
         return false;
+    } finally {
+        clearTimeout(temporizador);
     }
 }
 

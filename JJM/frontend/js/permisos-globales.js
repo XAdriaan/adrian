@@ -43,9 +43,8 @@ let aplicandoIdiomaPMO = false;
 document.addEventListener("DOMContentLoaded", async function () {
     cargarEstiloSidebarUnificadoPMO();
 
-    // Si localStorage perdió solo el objeto del usuario pero conserva un token
-    // válido, restaura primero la identidad desde MySQL antes de redirigir.
-    if (!obtenerUsuarioActivoGlobal() && localStorage.getItem("sesionTokenPMO") && typeof window.restaurarSesionPMO === "function") {
+    // Confirma también las sesiones guardadas: el objeto local puede ser antiguo.
+    if (localStorage.getItem("sesionTokenPMO") && typeof window.restaurarSesionPMO === "function") {
         await window.restaurarSesionPMO();
     }
 
