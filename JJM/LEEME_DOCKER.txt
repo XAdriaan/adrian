@@ -3,7 +3,9 @@ JJM PROJECTSPHERE - PRODUCCION EN COOLIFY
 Usar Docker Compose, con base directory /JJM y compose file /docker-compose.yml.
 Asignar https://oficina.jjmti.com.mx solamente al servicio frontend (puerto 80).
 El backend permanece interno en 8080; Nginx sirve HTML y proxifica /api/ a
-http://backend:8080 conservando la ruta. No asignar el dominio a ambos servicios.
+http://projectsphere-api:8080 conservando la ruta. El alias vive exclusivamente
+en la red privada pmo_api del Compose, para evitar conexiones a otras apps.
+No asignar el dominio a ambos servicios.
 
 Conservar DB_URL, DB_USER, DB_PASSWORD, MAIL_USERNAME, MAIL_PASSWORD y JAVA_OPTS.
 Este Compose no administra MySQL. No borrar bases, volumenes ni importar SQL.

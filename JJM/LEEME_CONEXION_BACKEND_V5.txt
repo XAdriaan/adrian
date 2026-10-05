@@ -1,0 +1,45 @@
+JJM ProjectSphere - conexión interna del backend - 5 octubre 2026
+
+Este ZIP completo reemplaza V4 y conserva sus correcciones.
+
+CAUSA CONFIRMADA EN EL SERVIDOR
+La consulta DNS realizada dentro del frontend actual para el nombre backend
+devolvió dos contenedores: el backend de adrian y el backend de oficina-proyectos.
+Ambos publican el alias backend en la red compartida coolify.
+Nginx podía repartir las llamadas entre ellos; una sesión creada en uno podía
+ser rechazada al consultar el expediente o validar la sesión en el otro.
+Los registros mostraron dos intentos con POST /api/auth/login en 200, seguidos
+inmediatamente por GET /api/datos-registro/mi-sesion en 401.
+
+CORRECCIÓN
+El frontend y el backend ahora comparten una red privada de este Compose,
+pmo_api. Solo allí existe el alias projectsphere-api. Nginx usa ese alias para
+/api y actualiza su resolución DNS cuando se recrea el backend.
+Se conserva la red default para la conexión actual a MySQL y al proxy público.
+Frontend: puerto 80. Backend: puerto 8080. Dominio y variables sin cambios.
+No se detuvo ninguna aplicación ni se modificó MySQL durante el diagnóstico.
+El nuevo Compose fue validado con Docker Compose y la configuración nueva con
+nginx -t en el servidor, sin sustituir la configuración activa ni redesplegar.
+
+SUBIR Y DESPLEGAR
+Guarda el ZIP en Descargas y ejecuta en PowerShell:
+
+$descargasJJM = "$env:USERPROFILE\Downloads"
+$paqueteJJM = "$descargasJJM\JJM_CORREGIDO_CONEXION_BACKEND_20261005_V5"
+$repoJJM = "$descargasJJM\JJM_REPO_NUEVO"
+if (!(Test-Path "$repoJJM\.git")) { throw "No se encontró tu repositorio JJM_REPO_NUEVO." }
+Expand-Archive -LiteralPath "$descargasJJM\JJM_CORREGIDO_CONEXION_BACKEND_20261005_V5.zip" -DestinationPath $paqueteJJM -Force -ErrorAction Stop
+robocopy "$paqueteJJM\JJM" "$repoJJM\JJM" /E
+if ($LASTEXITCODE -ge 8) { throw "Falló la copia. No continúes." }
+Set-Location -LiteralPath $repoJJM -ErrorAction Stop
+git status
+git add JJM
+git commit -m "Aisla la conexion del frontend al backend JJM"
+git push origin main
+
+En Coolify: adrian:main > Reload Compose (si muestra el Compose anterior)
+> Actions > Redeploy. Espera Success y confirma el nuevo commit.
+Conserva el dominio asignado al frontend en el puerto 80 y las variables actuales.
+Después abre login.html con Ctrl+F5, inicia sesión y entra al Dashboard y Perfil.
+
+Las instrucciones de carga V3 y V4 quedan reemplazadas por las de este archivo.

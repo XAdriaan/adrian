@@ -15,6 +15,11 @@ services:
       JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=75.0 -Dfile.encoding=UTF-8}
     expose:
       - "8080"
+    networks:
+      default:
+      pmo_api:
+        aliases:
+          - projectsphere-api
 
   frontend:
     build:
@@ -25,3 +30,11 @@ services:
       - backend
     expose:
       - "80"
+    networks:
+      default:
+      pmo_api:
+
+networks:
+  default:
+  pmo_api:
+    internal: true
