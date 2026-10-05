@@ -2435,6 +2435,12 @@ document.addEventListener("DOMContentLoaded", function () {
         });
         const busqueda = document.createElement("input");
         busqueda.type = "search";
+        busqueda.name = "pmo-navigation-query";
+        busqueda.autocomplete = "off";
+        busqueda.setAttribute("data-lpignore", "true");
+        busqueda.setAttribute("data-1p-ignore", "true");
+        busqueda.setAttribute("autocapitalize", "off");
+        busqueda.spellcheck = false;
         busqueda.placeholder = "Buscar apartado…";
         busqueda.setAttribute("aria-label", "Buscar en el menú");
         busqueda.className = "pmo-menu-busqueda";
@@ -2463,6 +2469,11 @@ document.addEventListener("DOMContentLoaded", function () {
             filtrar();
         }
         function filtrar() {
+            // Some password managers fill the first input on a profile page.
+            // An account email is never a menu query; leave the navigation usable.
+            const usuario = obtenerUsuarioActivoGlobal();
+            const correo = String(usuario?.correo || usuario?.email || "").trim().toLowerCase();
+            if (correo && busqueda.value.trim().toLowerCase() === correo) busqueda.value = "";
             const texto = normalizar(busqueda.value.trim());
             let visibles = 0;
             menu.querySelectorAll("a[href]").forEach(enlace => {
@@ -2486,6 +2497,10 @@ document.addEventListener("DOMContentLoaded", function () {
         busqueda.addEventListener("keydown", e => {
             if (e.key === "Escape") { busqueda.value = ""; busqueda.dispatchEvent(new Event("input")); }
         });
+        busqueda.addEventListener("change", filtrar);
+        window.addEventListener("pageshow", filtrar);
+        setTimeout(filtrar, 500);
+        setTimeout(filtrar, 1500);
         organizar();
         let pendiente = false;
         new MutationObserver(registros => {
