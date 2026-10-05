@@ -1,31 +1,18 @@
-JJM PROJECTSPHERE AI - DESPLIEGUE CON DOCKER
-=============================================
+JJM PROJECTSPHERE - PRODUCCION EN COOLIFY
+======================================
+Usar Docker Compose, con base directory /JJM y compose file /docker-compose.yml.
+Asignar https://oficina.jjmti.com.mx solamente al servicio frontend (puerto 80).
+El backend permanece interno en 8080; Nginx sirve HTML y proxifica /api/ a
+http://backend:8080 conservando la ruta. No asignar el dominio a ambos servicios.
 
-Archivos principales añadidos:
-- Dockerfile
-- docker-compose.yml
+Conservar DB_URL, DB_USER, DB_PASSWORD, MAIL_USERNAME, MAIL_PASSWORD y JAVA_OPTS.
+Este Compose no administra MySQL. No borrar bases, volumenes ni importar SQL.
 
-Archivos auxiliares:
-- .dockerignore
-- .env.example
+Verificar tras desplegar main:
+- / y /proyectos.html: 200 con HTML servido por Nginx.
+- /api/salud: 200 con JSON de Spring Boot.
+- /api/roles/mi-permisos con Bearer valido: 200 con rol, idRol, permisos y
+  superadministrador. Sin sesion: 401.
 
-IMPORTANTE
-----------
-1. En el servidor, copia .env.example como .env.
-2. Cambia DB_PASSWORD y MYSQL_ROOT_PASSWORD antes de levantar los contenedores.
-3. Ejecuta desde la carpeta JJM:
-
-   docker compose up -d --build
-
-4. La aplicación se publica por defecto en el puerto 8080.
-5. El backend Spring Boot sirve también el frontend, por lo que no se necesita un contenedor web separado.
-6. La base de datos usa un volumen persistente llamado jjm_mysql_data.
-7. oficina_proyectos_.sql solo se importa automáticamente cuando el volumen de MySQL está vacío por primera vez.
-8. No borres el volumen jjm_mysql_data en producción si contiene información que debas conservar.
-
-COMPROBACIÓN
-------------
-Aplicación: http://SERVIDOR:8080/
-Salud:      http://SERVIDOR:8080/api/salud
-
-Si tu proveedor cloud ya entrega una base de datos externa, conserva Dockerfile y ajusta DB_URL, DB_USER y DB_PASSWORD en el entorno del contenedor según los datos reales del proveedor, en lugar de migrar datos sin respaldo.
+El JAR conserva archivos estaticos de respaldo, pero la entrada publica debe
+ser frontend Nginx en puerto 80.
