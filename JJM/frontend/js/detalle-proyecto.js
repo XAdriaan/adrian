@@ -293,7 +293,7 @@ function puedeCrearReunionProyecto() {
         return tienePermisoDetalleProyecto("reuniones.crear");
     }
 
-    return esResponsableProyecto();
+    return esResponsableProyecto() || esMiembroDelProyecto();
 }
 
 function puedeExportarImprimirProyecto() {
@@ -2258,7 +2258,7 @@ function renderizarReunionesProyecto() {
                         ▶ ${escaparHTML(grabacion.nombre || "Grabación de reunión")}
                     </a>`;
               }).join("")
-            : '<span class="meeting-no-recording">Sin grabaciones guardadas</span>';
+            : '<span class="meeting-no-recording">Las grabaciones se descargan desde la sala.</span>';
 
         return `
             <article class="meeting-history-item">

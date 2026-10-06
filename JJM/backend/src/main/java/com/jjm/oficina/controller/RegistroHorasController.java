@@ -175,6 +175,36 @@ public class RegistroHorasController {
         return ResponseEntity.ok(respuesta);
     }
 
+    /** La asistencia personal nunca incluye registros del equipo del responsable. */
+    @GetMapping("/mi-asistencia")
+    public ResponseEntity<Map<String, Object>> miAsistencia(
+            @RequestHeader(value = "X-Usuario-Id", required = false) Integer idUsuario,
+            @RequestParam(required = false) Integer mes,
+            @RequestParam(required = false) Integer anio
+    ) {
+        Map<String, Object> respuesta = new LinkedHashMap<>();
+        Usuario usuario = obtenerUsuario(idUsuario);
+        if (usuario == null || !"Activo".equalsIgnoreCase(usuario.getEstado())) {
+            return respuestaError(respuesta, HttpStatus.UNAUTHORIZED, "No se encontró una sesión válida.");
+        }
+        if ((mes == null) != (anio == null) || (mes != null && (mes < 1 || mes > 12 || anio < 1900 || anio > 9999))) {
+            return respuestaError(respuesta, HttpStatus.BAD_REQUEST, "Indica un mes y año válidos.");
+        }
+        MiembroEquipo miembro = obtenerMiembroDesdeUsuario(usuario);
+        List<RegistroHoras> registros = miembro == null ? List.of()
+                : registroHorasRepository.findByIdMiembroOrderByFechaDescFechaCreacionDesc(miembro.getId());
+        if (mes != null) {
+            YearMonth periodo = YearMonth.of(anio, mes);
+            registros = registros.stream().filter(r -> r.getFecha() != null
+                    && YearMonth.from(r.getFecha()).equals(periodo)).toList();
+        }
+        respuesta.put("estado", "correcto");
+        respuesta.put("tipoAcceso", "asistencia_propia");
+        respuesta.put("idMiembro", miembro == null ? null : miembro.getId());
+        respuesta.put("registros", registros.stream().map(this::convertirRegistro).toList());
+        return ResponseEntity.ok(respuesta);
+    }
+
     @GetMapping("/miembro/{idMiembro}")
     public ResponseEntity<Map<String, Object>> listarPorMiembro(
             @PathVariable Integer idMiembro,

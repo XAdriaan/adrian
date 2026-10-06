@@ -46,17 +46,18 @@ let grabacionAudioContext = null;
 let grabacionStreamFinal = null;
 let grabacionDeteniendose = false;
 
-const usuarioActivo = obtenerUsuarioActivo();
-const tokenSesion = localStorage.getItem("sesionTokenPMO");
+let usuarioActivo = null;
+let tokenSesion = null;
+let grabacionFinalizada = Promise.resolve();
+const grabacionesLocales = [];
 const idProyecto = obtenerParametroURL("id");
 let idReunion = obtenerParametroURL("reunion");
 
-if (!usuarioActivo || !tokenSesion) {
-    alert("Debes iniciar sesión para entrar a una reunión.");
-    window.location.replace("login.html");
-}
-
 document.addEventListener("DOMContentLoaded", async function () {
+    if (window.restaurarSesionPMO) await window.restaurarSesionPMO();
+    usuarioActivo = obtenerUsuarioActivo();
+    tokenSesion = localStorage.getItem("sesionTokenPMO");
+    if (!usuarioActivo || !tokenSesion) { window.location.replace("login.html"); return; }
     configurarEventos();
     btnGrabar.disabled = true;
 
@@ -72,7 +73,10 @@ document.addEventListener("DOMContentLoaded", async function () {
         actualizarReunionEnURL(idReunion);
         btnFinalizarReunion.hidden = !reunionActual.puedeFinalizar;
         iniciarTemporizador();
-        await cargarGrabaciones();
+        renderizarGrabacionesLocales();
+        const enlaceJitsi = document.getElementById("abrirSalaJitsi");
+        enlaceJitsi.href = "https://meet.jit.si/" + encodeURIComponent(reunionActual.sala);
+        enlaceJitsi.hidden = false;
         iniciarVideollamada();
     } catch (error) {
         console.error("No fue posible preparar la reunión:", error);
@@ -91,14 +95,6 @@ function configurarEventos() {
     btnGrabar?.addEventListener("click", iniciarGrabacionLocal);
     btnDetenerGrabacion?.addEventListener("click", detenerGrabacionLocal);
     btnFinalizarReunion?.addEventListener("click", finalizarReunion);
-    btnSeleccionarGrabacion?.addEventListener("click", function () {
-        archivoGrabacion?.click();
-    });
-    archivoGrabacion?.addEventListener("change", function () {
-        const archivo = archivoGrabacion.files?.[0];
-        if (archivo) subirGrabacion(archivo);
-    });
-
     window.addEventListener("pagehide", function () {
         if (!saliendo) registrarSalida({ keepalive: true });
         liberarJitsi();
@@ -139,6 +135,9 @@ async function cargarReunion() {
     if (!reunionActual) {
         throw new Error("No hay una reunión activa en este proyecto.");
     }
+    if (Number(reunionActual.idProyecto) !== Number(idProyecto)) {
+        throw new Error("La reunión no pertenece al proyecto indicado. Abre la sala desde Videollamadas.");
+    }
 }
 
 function iniciarVideollamada() {
@@ -173,9 +172,9 @@ function iniciarVideollamada() {
                 email: correoUsuario || undefined
             },
             configOverwrite: {
-                prejoinPageEnabled: false,
-                startWithAudioMuted: false,
-                startWithVideoMuted: false,
+                prejoinPageEnabled: true,
+                startWithAudioMuted: true,
+                startWithVideoMuted: true,
                 disableDeepLinking: true,
                 subject: nombreProyecto,
                 localRecording: {
@@ -458,33 +457,29 @@ async function iniciarGrabacionLocal() {
             estadoReunion.textContent = "Ocurrió un error durante la grabación.";
         });
 
-        grabacionRecorder.addEventListener("stop", async () => {
-            try {
-                const blob = new Blob(grabacionChunks, { type: mimeType });
-                grabacionChunks = [];
-
-                const sala = String(reunionActual?.sala || `reunion-${idReunion}`)
-                    .replace(/[^a-zA-Z0-9_-]/g, "-")
-                    .slice(0, 80);
-                const fecha = new Date().toISOString().replace(/[:.]/g, "-");
-                const archivo = new File(
-                    [blob],
-                    `${sala}_${fecha}.webm`,
-                    { type: mimeType || "video/webm" }
-                );
-
-                estadoReunion.textContent = "Grabación terminada. Subiendo automáticamente al proyecto...";
-                await Promise.resolve(subirGrabacion(archivo));
-            } catch (error) {
-                console.error("No se pudo preparar la grabación:", error);
-                estadoReunion.textContent = "La grabación terminó, pero no se pudo preparar para guardar.";
-            } finally {
-                limpiarRecursosGrabacion();
-                grabando = false;
-                grabacionDeteniendose = false;
-                actualizarBotonesGrabacion();
-            }
-        }, { once: true });
+        grabacionFinalizada = new Promise(resolve => {
+            grabacionRecorder.addEventListener("stop", () => {
+                try {
+                    const blob = new Blob(grabacionChunks, { type: mimeType });
+                    grabacionChunks = [];
+                    if (!blob.size) throw new Error("La grabación no contiene video.");
+                    const fecha = new Date().toISOString().replace(/[:.]/g, "-");
+                    const archivo = { blob, nombre: `JJM_reunion_${idReunion}_${fecha}.webm`, fecha: new Date() };
+                    grabacionesLocales.push(archivo);
+                    descargarGrabacionLocal(archivo);
+                    renderizarGrabacionesLocales();
+                    estadoReunion.textContent = "Grabación lista. Guarda el archivo en tu equipo.";
+                } catch (error) {
+                    estadoReunion.textContent = "No se pudo preparar la grabación: " + error.message;
+                } finally {
+                    limpiarRecursosGrabacion();
+                    grabando = false;
+                    grabacionDeteniendose = false;
+                    actualizarBotonesGrabacion();
+                    resolve();
+                }
+            }, { once: true });
+        });
 
         videoTrack.addEventListener("ended", () => {
             if (grabando && !grabacionDeteniendose) detenerGrabacionLocal();
@@ -510,7 +505,7 @@ async function iniciarGrabacionLocal() {
 }
 
 function detenerGrabacionLocal() {
-    if (!grabacionRecorder || !grabando || grabacionDeteniendose) return;
+    if (!grabacionRecorder || !grabando || grabacionDeteniendose) return grabacionFinalizada;
     try {
         grabacionDeteniendose = true;
         estadoReunion.textContent = "Deteniendo grabación y preparando el archivo...";
@@ -521,7 +516,9 @@ function detenerGrabacionLocal() {
         console.error("No fue posible detener la grabación:", error);
         grabacionDeteniendose = false;
         estadoReunion.textContent = "No fue posible detener la grabación correctamente.";
+        throw error;
     }
+    return grabacionFinalizada;
 }
 
 function limpiarRecursosGrabacion() {
@@ -550,112 +547,22 @@ function actualizarBotonesGrabacion() {
     btnGrabar.disabled = !conectadoJitsi || !grabacionNavegadorSoportada();
 }
 
-async function cargarGrabaciones() {
-    if (!idReunion || !listaGrabaciones) return;
-    try {
-        const respuesta = await fetch(`${API_REUNIONES}/${idReunion}/grabaciones`);
-        const datos = await respuesta.json().catch(() => ({}));
-        if (!respuesta.ok) throw new Error(datos.mensaje || "No fue posible cargar las grabaciones.");
-        renderizarGrabaciones(Array.isArray(datos.grabaciones) ? datos.grabaciones : []);
-    } catch (error) {
-        console.warn(error);
-        listaGrabaciones.innerHTML = '<p class="recordings-empty">No fue posible consultar las grabaciones.</p>';
-    }
-}
-
-function renderizarGrabaciones(grabaciones) {
+function renderizarGrabacionesLocales() {
     if (!listaGrabaciones) return;
-    if (!grabaciones.length) {
-        listaGrabaciones.innerHTML = '<p class="recordings-empty">Todavía no hay grabaciones guardadas.</p>';
-        return;
-    }
-
-    listaGrabaciones.innerHTML = grabaciones.map(grabacion => `
-        <article class="recording-item">
-            <strong>${escaparHTML(grabacion.nombre || "Grabación de reunión")}</strong>
-            <small>${formatearBytes(grabacion.tamanoBytes)} · ${formatearFechaHora(grabacion.fechaSubida)}</small>
-            <button type="button" data-grabacion-url="${escaparHTML(grabacion.url)}">Reproducir / descargar</button>
-        </article>
-    `).join("");
-
-    listaGrabaciones.querySelectorAll("[data-grabacion-url]").forEach(boton => {
-        boton.addEventListener("click", () => abrirGrabacion(boton.dataset.grabacionUrl));
-    });
+    listaGrabaciones.innerHTML = grabacionesLocales.length ? grabacionesLocales.map((g,i) => `
+        <article class="recording-item"><strong>${escaparHTML(g.nombre)}</strong>
+        <small>${formatearBytes(g.blob.size)} · ${formatearFechaHora(g.fecha)}</small>
+        <button type="button" data-grabacion-local="${i}">Descargar de nuevo</button></article>`).join("")
+        : '<p class="recordings-empty">Aquí aparecerán los videos que grabes durante esta sesión.</p>';
+    listaGrabaciones.querySelectorAll('[data-grabacion-local]').forEach(b => b.addEventListener('click', () =>
+        descargarGrabacionLocal(grabacionesLocales[Number(b.dataset.grabacionLocal)])));
 }
-
-function subirGrabacion(archivo) {
-    if (!archivo || !idReunion) return;
-    if (archivo.size > 512 * 1024 * 1024) {
-        alert("La grabación supera el límite de 512 MB.");
-        archivoGrabacion.value = "";
-        return;
-    }
-
-    const formData = new FormData();
-    formData.append("archivo", archivo);
-
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", `${API_REUNIONES}/${idReunion}/grabaciones`, true);
-    xhr.setRequestHeader("Authorization", `Bearer ${tokenSesion}`);
-
-    btnSeleccionarGrabacion.disabled = true;
-    uploadProgress.hidden = false;
-    uploadProgressFill.style.width = "0%";
-    uploadProgressText.textContent = "Subiendo grabación...";
-
-    xhr.upload.addEventListener("progress", evento => {
-        if (!evento.lengthComputable) return;
-        const porcentaje = Math.round((evento.loaded / evento.total) * 100);
-        uploadProgressFill.style.width = porcentaje + "%";
-        uploadProgressText.textContent = `Subiendo grabación... ${porcentaje}%`;
-    });
-
-    xhr.addEventListener("load", async function () {
-        btnSeleccionarGrabacion.disabled = false;
-        archivoGrabacion.value = "";
-        let datos = {};
-        try { datos = JSON.parse(xhr.responseText || "{}"); } catch (_) {}
-
-        if (xhr.status >= 200 && xhr.status < 300) {
-            uploadProgressFill.style.width = "100%";
-            uploadProgressText.textContent = "Grabación guardada correctamente.";
-            estadoReunion.textContent = "Grabación guardada dentro del proyecto.";
-            await cargarGrabaciones();
-            setTimeout(() => { uploadProgress.hidden = true; }, 1800);
-        } else {
-            uploadProgress.hidden = true;
-            alert(datos.mensaje || `No fue posible subir la grabación (HTTP ${xhr.status}).`);
-        }
-    });
-
-    xhr.addEventListener("error", function () {
-        btnSeleccionarGrabacion.disabled = false;
-        uploadProgress.hidden = true;
-        archivoGrabacion.value = "";
-        alert("Se perdió la conexión mientras se subía la grabación.");
-    });
-
-    xhr.send(formData);
-}
-
-async function abrirGrabacion(ruta) {
-    if (!ruta) return;
-    try {
-        const respuesta = await fetch(window.apiUrl(ruta));
-        if (!respuesta.ok) throw new Error("No fue posible abrir la grabación.");
-        const blob = await respuesta.blob();
-        const url = URL.createObjectURL(blob);
-        const ventana = window.open(url, "_blank", "noopener");
-        if (!ventana) {
-            const enlace = document.createElement("a");
-            enlace.href = url;
-            enlace.download = "grabacion-reunion.webm";
-            enlace.click();
-        }
-        setTimeout(() => URL.revokeObjectURL(url), 10 * 60 * 1000);
-    } catch (error) {
-        alert(error.message || "No fue posible abrir la grabación.");
-    }
+function descargarGrabacionLocal(archivo) {
+    const url = URL.createObjectURL(archivo.blob);
+    const enlace = document.createElement("a");
+    enlace.href = url; enlace.download = archivo.nombre;
+    document.body.appendChild(enlace); enlace.click(); enlace.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 async function copiarInvitacion() {
@@ -719,6 +626,7 @@ async function finalizarReunion() {
 
 async function volverAlProyecto() {
     if (!confirm("¿Deseas salir de la reunión y volver al proyecto?")) return;
+    if (grabando) await detenerGrabacionLocal();
     saliendo = true;
     await registrarSalida();
     try { jitsiApi?.executeCommand("hangup"); } catch (_) {}

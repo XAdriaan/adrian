@@ -248,8 +248,8 @@ function configurarEncabezadoDashboard() {
     if (esAdministrador()) {
         if (tituloDashboard) {
             tituloDashboard.textContent = esAdministradorRealDashboard()
-                ? "Dashboard administrativo"
-                : "Dashboard global";
+                ? "Resumen del equipo"
+                : "Tu espacio de trabajo";
         }
 
         if (descripcionDashboard) {
@@ -311,7 +311,7 @@ function configurarEncabezadoDashboard() {
 
     if (tituloDashboard) {
         tituloDashboard.textContent =
-            "Mi Dashboard";
+            "Tu espacio de trabajo";
     }
 
     if (descripcionDashboard) {

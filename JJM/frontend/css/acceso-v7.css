@@ -1,0 +1,7 @@
+:root{--navy:#102c36;--navy-2:#173d48;--blue:#147c65;--blue-2:#0d5b4a;--text:#16323c;--page:#f3f6f5;--line:#dce7e1}
+.login-brand{background:linear-gradient(145deg,#102c36,#183f48 65%,#24544b)}
+.brand-glow-one{background:#35876d;opacity:.3}.brand-glow-two{background:#578674;opacity:.16}
+.brand-eyebrow{color:#b7e8ce}.brand-note{border-color:#ffffff22;background:#ffffff08}.brand-note span{color:#b8cfc8}.brand-chips span{background:#ffffff09;border-color:#ffffff28}
+.brand-content h1{font-weight:650;letter-spacing:-2px}.brand-copy{color:#bed6d1}
+.login-card{border-color:#dfe9e3;border-radius:23px;box-shadow:0 25px 60px #143a3820}.login-form button[type=submit]{background:#147c65;box-shadow:0 10px 24px #147c6525}.login-form button[type=submit]:hover{background:#0d5b4a}
+input:focus{border-color:#318b71!important;box-shadow:0 0 0 3px #147c6517!important}

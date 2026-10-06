@@ -79,7 +79,7 @@ function cargarEstiloSidebarUnificadoPMO() {
     const enlace = document.createElement("link");
     enlace.id = "sidebar-unificado-pmo-css";
     enlace.rel = "stylesheet";
-    enlace.href = "css/sidebar-global.css?v=20260922-menu";
+    enlace.href = "css/sidebar-global.css?v=20261005-diseno-v7";
     document.head.appendChild(enlace);
 
     document.body.classList.add("sidebar-unificado-pmo");
@@ -565,74 +565,32 @@ function ocultarOpcionesMenu(esAdmin, esConsulta) {
 
 
 function agregarEnlaceSeguimientoEstadiaGlobal() {
-    const sidebar = document.querySelector(".sidebar-menu");
-    if (!sidebar) return;
-
-    const usuario = obtenerUsuarioActivoGlobal();
-    const esAdmin = esAdministradorGlobal(usuario);
-    const puedeVer = esAdmin || tienePermisoGlobal(usuario, "seguimiento.ver") || !!usuario;
-    const existente = sidebar.querySelector('a[data-pmo-seguimiento-estadia="true"]');
-
-    if (!puedeVer) {
-        if (existente) existente.remove();
-    } else {
-        const destino = esAdmin ? "seguimiento-estadia.html" : "mi-estadia.html";
-        const texto = esAdmin ? "Seguimiento de estadía" : "Mi seguimiento de estadía";
-        if (existente) {
-            existente.href = destino;
-            existente.textContent = texto;
-            existente.title = esAdmin ? "Formularios y cierre de estadía" : "Mis formularios de estadía";
-        } else {
-        const enlace = document.createElement("a");
-        enlace.href = destino;
-        enlace.dataset.pmoSeguimientoEstadia = "true";
-        enlace.textContent = texto;
-        enlace.title = esAdmin ? "Formularios y cierre de estadía" : "Mis formularios de estadía";
-
-        const enlaceDocumentos = Array.from(sidebar.querySelectorAll("a"))
-            .find(a => normalizarHrefMenuGlobal(a.getAttribute("href")) === "documentos.html");
-
-        if (enlaceDocumentos && enlaceDocumentos.nextSibling) {
-            enlaceDocumentos.parentNode.insertBefore(enlace, enlaceDocumentos.nextSibling);
-        } else {
-            sidebar.appendChild(enlace);
-        }
-        }
+    const menu = document.querySelector(".sidebar-menu");
+    if (!menu) return;
+    let enlace = menu.querySelector('a[data-pmo-seguimiento-estadia="true"]')
+        || menu.querySelector('a[href="mi-estadia.html"]');
+    if (!enlace) {
+        enlace = document.createElement("a");
+        enlace.href = "mi-estadia.html";
+        enlace.textContent = "Mi seguimiento de estadía";
+        menu.appendChild(enlace);
     }
-
+    enlace.dataset.pmoSeguimientoEstadia = "true";
+    if (enlace.getAttribute("href") !== "mi-estadia.html") enlace.href = "mi-estadia.html";
+    if (enlace.textContent !== "Mi seguimiento de estadía") enlace.textContent = "Mi seguimiento de estadía";
+    if (!menu.querySelector('a[href="seguimiento-estadia.html"]')) {
+        const administracion = document.createElement("a");
+        administracion.href = "seguimiento-estadia.html";
+        administracion.textContent = "Seguimiento del equipo";
+        menu.appendChild(administracion);
+    }
     agregarEnlacesEstadiaRapidosGlobal();
     agregarEnlaceRolesPermisosGlobal();
 }
 
 function agregarEnlacesEstadiaRapidosGlobal() {
-    const sidebar = document.querySelector(".sidebar-menu");
-    if (!sidebar) return;
-    const usuario = obtenerUsuarioActivoGlobal();
-    if (!usuario) return;
-    const esAdmin = esAdministradorGlobal(usuario);
-
-    const items = esAdmin
-        ? [
-            { key: "pases", href: "control-horas.html", texto: "Pases de lista" },
-            { key: "foest03", href: "seguimiento-estadia.html#foEst03Admin", texto: "FO-EST-03" }
-          ]
-        : [
-            { key: "pases", href: "mi-estadia.html#pasesLista", texto: "Pases de lista" },
-            { key: "foest03", href: "mi-estadia.html#foEst03", texto: "FO-EST-03" }
-          ];
-
-    items.forEach(function (item) {
-        let enlace = sidebar.querySelector(`a[data-pmo-estadia-rapido="${item.key}"]`);
-        if (!enlace) {
-            enlace = document.createElement("a");
-            enlace.dataset.pmoEstadiaRapido = item.key;
-            enlace.className = "pmo-estadia-quick-link";
-            sidebar.appendChild(enlace);
-        }
-        enlace.href = item.href;
-        enlace.textContent = item.texto;
-        enlace.title = item.texto;
-    });
+    // FO-EST-03 y los pases se encuentran dentro del seguimiento personal.
+    document.querySelectorAll('a[data-pmo-estadia-rapido]').forEach(a => a.remove());
 }
 
 function agregarEnlaceRolesPermisosGlobal() {
@@ -2284,19 +2242,12 @@ function insertarAccesoDocumentosGlobal() {
             }
         }
 
-        if (!menu.querySelector('a[href="pmbok-v8.html"]')) {
-            const enlacePmbok = document.createElement("a");
-            enlacePmbok.href = "pmbok-v8.html";
-            enlacePmbok.textContent = "PMBOK 8";
-            if (obtenerPaginaActualGlobal && obtenerPaginaActualGlobal() === "pmbok-v8.html") {
-                enlacePmbok.classList.add("active");
-            }
-            const enlaceProyectos = menu.querySelector('a[href="proyectos.html"]');
-            if (enlaceProyectos && enlaceProyectos.nextSibling) {
-                enlaceProyectos.parentNode.insertBefore(enlacePmbok, enlaceProyectos.nextSibling);
-            } else {
-                menu.appendChild(enlacePmbok);
-            }
+        menu.querySelectorAll('a[href*="pmbok-v8.html"]').forEach(a => a.remove());
+        if (!menu.querySelector('a[href="videollamadas.html"]')) {
+            const enlace = document.createElement("a");
+            enlace.href = "videollamadas.html";
+            enlace.textContent = "Videollamadas";
+            menu.appendChild(enlace);
         }
 
         if (menu.querySelector('a[href="documentos.html"]')) {
@@ -2408,106 +2359,125 @@ try {
 } catch (error) {}
 
 
-// Navegación compacta: mantiene los enlaces y los permisos existentes.
+// Navegación V7: los accesos principales permanecen visibles.
 document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll(".sidebar-menu").forEach(function (menu) {
-        const grupos = [
-            ["Mi información", ["perfil.html", "datos-academicos.html", "mi-estadia.html"]],
-            ["Proyectos y PMBOK 8", ["proyectos.html", "pmbok-v8.html", "proyecto-avanzado.html", "tablero-tareas.html", "tareas.html"]],
-            ["Estadía y documentos", ["control-horas.html", "documentos.html", "seguimiento-estadia.html", "acceso-historial-horas.html"]],
-            ["Administración", ["equipo.html", "organizaciones.html", "bitacora.html", "reportes.html", "roles-permisos.html"]],
-            ["Recursos", ["cursos.html", "alertas.html", "encuestas.html", "chatbot.html"]]
+        if (menu.dataset.pmoNavegacionV7) return;
+        menu.dataset.pmoNavegacionV7 = "true";
+        const principales = [
+            ["dashboard.html", "Inicio", "inicio"],
+            ["proyectos.html", "Proyectos", "proyectos"],
+            ["tablero-tareas.html", "Mis tareas", "tareas"],
+            ["mi-estadia.html", "Mi seguimiento de estadía", "estadia"],
+            ["videollamadas.html", "Videollamadas", "video"],
+            ["control-horas.html", "Control de horas", "horas"]
         ];
-        const secciones = grupos.map(([nombre, rutas]) => {
+        const encabezado = document.createElement("p");
+        encabezado.className = "pmo-menu-label";
+        encabezado.textContent = "ESPACIO DE TRABAJO";
+        const zonaPrincipal = document.createElement("div");
+        zonaPrincipal.className = "pmo-menu-principal";
+        menu.append(encabezado, zonaPrincipal);
+        const grupos = [
+            ["Mi cuenta y documentos", ["perfil.html", "datos-academicos.html", "documentos.html"]],
+            ["Herramientas", ["tareas.html", "cursos.html", "alertas.html", "encuestas.html", "chatbot.html"]],
+            ["Administración", ["seguimiento-estadia.html", "equipo.html", "organizaciones.html", "bitacora.html", "reportes.html", "roles-permisos.html", "proyecto-avanzado.html"]]
+        ].map(([nombre, rutas]) => {
             const details = document.createElement("details");
             details.className = "pmo-menu-grupo";
             const summary = document.createElement("summary");
             summary.textContent = nombre;
             details.appendChild(summary);
             menu.appendChild(details);
-            details.addEventListener("toggle", () => {
-                if (details.open && !busqueda.value.trim()) {
-                    secciones.forEach(g => { if (g.details !== details) g.details.open = false; });
-                }
-            });
-            return {details, rutas};
+            return { details, rutas };
         });
         const busqueda = document.createElement("input");
-        busqueda.type = "search";
-        busqueda.name = "pmo-navigation-query";
-        busqueda.autocomplete = "off";
+        Object.assign(busqueda, { type: "search", name: "pmo-navigation-query", autocomplete: "off",
+            spellcheck: false, placeholder: "Buscar un apartado", className: "pmo-menu-busqueda" });
+        busqueda.setAttribute("aria-label", "Buscar en el menú");
         busqueda.setAttribute("data-lpignore", "true");
         busqueda.setAttribute("data-1p-ignore", "true");
-        busqueda.setAttribute("autocapitalize", "off");
-        busqueda.spellcheck = false;
-        busqueda.placeholder = "Buscar apartado…";
-        busqueda.setAttribute("aria-label", "Buscar en el menú");
-        busqueda.className = "pmo-menu-busqueda";
         menu.prepend(busqueda);
         const aviso = document.createElement("p");
         aviso.className = "pmo-menu-sin-resultados";
-        aviso.textContent = "No hay apartados disponibles con ese nombre.";
+        aviso.textContent = "No hay apartados con ese nombre.";
         aviso.hidden = true;
         menu.appendChild(aviso);
-        const normalizar = valor => valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
         const pagina = location.pathname.split("/").pop();
-        let grupoActivo = null;
+        const normalizar = v => String(v).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+        let organizando = false;
         function organizar() {
+            if (organizando) return;
+            organizando = true;
+            menu.querySelectorAll('a[href*="pmbok-v8.html"]').forEach(a => a.remove());
+            principales.forEach(([ruta, texto, icono]) => {
+                const enlaces = Array.from(menu.querySelectorAll("a[href]")).filter(a => a.getAttribute("href") === ruta);
+                let enlace = enlaces.shift();
+                enlaces.forEach(a => a.remove());
+                if (!enlace) {
+                    enlace = document.createElement("a"); enlace.href = ruta; enlace.textContent = texto;
+                }
+                if (ruta !== "mi-estadia.html" && enlace.textContent !== texto) enlace.textContent = texto;
+                enlace.dataset.icono = icono;
+                if (enlace.parentNode !== zonaPrincipal) zonaPrincipal.appendChild(enlace);
+            });
             menu.querySelectorAll("a[href]").forEach(enlace => {
                 const ruta = enlace.getAttribute("href").split(/[?#]/)[0].split("/").pop();
-                const grupo = secciones.find(g => g.rutas.includes(ruta));
+                const grupo = grupos.find(g => g.rutas.includes(ruta));
                 if (grupo && enlace.parentNode !== grupo.details) grupo.details.appendChild(enlace);
+                enlace.classList.toggle("active", ruta === pagina);
                 if (ruta === pagina) {
-                    enlace.setAttribute("aria-current", "page");
-                    if (grupo && grupoActivo !== grupo) {
-                        grupoActivo = grupo;
-                        secciones.forEach(g => g.details.open = g === grupo);
-                    }
-                }
+                    if (enlace.getAttribute("aria-current") !== "page") enlace.setAttribute("aria-current", "page");
+                    if (grupo) grupo.details.open = true;
+                } else enlace.removeAttribute("aria-current");
             });
             filtrar();
+            organizando = false;
         }
         function filtrar() {
-            // Some password managers fill the first input on a profile page.
-            // An account email is never a menu query; leave the navigation usable.
             const usuario = obtenerUsuarioActivoGlobal();
             const correo = String(usuario?.correo || usuario?.email || "").trim().toLowerCase();
             if (correo && busqueda.value.trim().toLowerCase() === correo) busqueda.value = "";
             const texto = normalizar(busqueda.value.trim());
             let visibles = 0;
-            menu.querySelectorAll("a[href]").forEach(enlace => {
-                const coincide = !texto || normalizar(enlace.textContent).includes(texto);
-                // El filtro nunca quita los estilos ni atributos de permisos.
-                if (!coincide) enlace.setAttribute("data-pmo-busqueda-oculto", "true");
-                else enlace.removeAttribute("data-pmo-busqueda-oculto");
-                if (coincide && !enlace.hidden && getComputedStyle(enlace).display !== "none") visibles++;
+            menu.querySelectorAll("a[href]").forEach(a => {
+                const coincide = !texto || normalizar(a.textContent).includes(texto);
+                if (!coincide && !a.hasAttribute("data-pmo-busqueda-oculto")) a.setAttribute("data-pmo-busqueda-oculto", "true");
+                if (coincide) a.removeAttribute("data-pmo-busqueda-oculto");
+                if (coincide && !a.hidden && getComputedStyle(a).display !== "none") visibles++;
             });
-            secciones.forEach(grupo => {
-                grupo.details.hidden = !Array.from(grupo.details.querySelectorAll("a")).some(a =>
-                    !a.hidden && getComputedStyle(a).display !== "none");
-                if (texto) grupo.details.open = !grupo.details.hidden;
+            grupos.forEach(g => {
+                const oculto = !Array.from(g.details.querySelectorAll("a")).some(a =>
+                    !a.hidden && !a.hasAttribute("data-pmo-busqueda-oculto") && getComputedStyle(a).display !== "none");
+                if (g.details.hidden !== oculto) g.details.hidden = oculto;
+                if (texto && !g.details.hidden) g.details.open = true;
             });
-            aviso.hidden = visibles > 0;
+            if (aviso.hidden !== (visibles > 0)) aviso.hidden = visibles > 0;
         }
-        busqueda.addEventListener("input", () => {
-            if (!busqueda.value.trim()) secciones.forEach(g => g.details.open = g === grupoActivo);
-            filtrar();
-        });
-        busqueda.addEventListener("keydown", e => {
-            if (e.key === "Escape") { busqueda.value = ""; busqueda.dispatchEvent(new Event("input")); }
-        });
+        busqueda.addEventListener("input", filtrar);
         busqueda.addEventListener("change", filtrar);
+        busqueda.addEventListener("keydown", e => { if (e.key === "Escape") { busqueda.value = ""; filtrar(); } });
         window.addEventListener("pageshow", filtrar);
-        setTimeout(filtrar, 500);
-        setTimeout(filtrar, 1500);
         organizar();
+        setTimeout(organizar, 500);
+        setTimeout(filtrar, 1500);
         let pendiente = false;
         new MutationObserver(registros => {
-            if (!registros.some(r => r.type === "childList" || r.target.tagName === "A")) return;
-            if (!pendiente) {
-                pendiente = true;
-                requestAnimationFrame(() => { pendiente = false; organizar(); });
-            }
-        }).observe(menu, {childList:true, subtree:true, attributes:true, attributeFilter:["style", "hidden"]});
+            if (!registros.some(r => r.type === "attributes" || Array.from(r.addedNodes).some(n =>
+                n.nodeType === 1 && (n.matches("a") || n.querySelector?.("a"))))) return;
+            if (!pendiente) { pendiente = true; requestAnimationFrame(() => { pendiente = false; organizar(); }); }
+        }).observe(menu, { childList: true, subtree: true, attributes: true, attributeFilter: ["style", "hidden"] });
     });
+    const sidebar = document.querySelector(".sidebar");
+    if (sidebar && !document.getElementById("pmo-menu-movil")) {
+        const movil = document.createElement("div"); movil.className = "pmo-mobile-bar";
+        movil.innerHTML = '<span>JJM <b>ProjectSphere</b></span><button id="pmo-menu-movil" type="button" aria-expanded="false" aria-label="Abrir menú de navegación">☰ Menú</button>';
+        document.body.prepend(movil);
+        const boton = movil.querySelector("button");
+        boton.addEventListener("click", () => {
+            const abierto = document.body.classList.toggle("pmo-menu-abierto");
+            boton.setAttribute("aria-expanded", String(abierto));
+            boton.setAttribute("aria-label", abierto ? "Cerrar menú de navegación" : "Abrir menú de navegación");
+        });
+    }
 });

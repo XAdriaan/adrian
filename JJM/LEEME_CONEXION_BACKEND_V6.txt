@@ -1,0 +1,55 @@
+JJM ProjectSphere - corrección del 502 - 5 octubre 2026
+
+Este ZIP completo reemplaza V5 y conserva las correcciones anteriores.
+
+CAUSA Y REPARACIÓN
+El despliegue V5 conectó el backend a la red privada pmo_api, pero Coolify
+omitió la conexión del frontend porque su configuración era null.
+El frontend no podía resolver projectsphere-api y Nginx devolvía 502.
+Se añadió aliases: [projectsphere-web] a la conexión del frontend a pmo_api.
+Así ambos servicios declaran explícitamente su conexión a la red privada.
+El backend sigue usando projectsphere-api y Nginx sigue proxyando /api a 8080.
+El dominio continúa en el frontend, puerto 80.
+
+Se reparó también la conexión del contenedor actual en el servidor, sin
+reiniciar MySQL ni modificar datos, dominio, credenciales o variables.
+Las comprobaciones públicas tras la reparación dieron:
+- /api/salud: 200, baseDatos conectada.
+- /proyectos.html: 200.
+- /api/auth/login con una cuenta ficticia: 401, credenciales incorrectas.
+- /api/roles/mi-permisos sin sesión: 401, sesión requerida.
+Estas pruebas confirman la comunicación; la cuenta real la prueba su usuario.
+
+IMPORTANTE: subir esta corrección a GitHub antes del siguiente Redeploy.
+La reparación del contenedor actual por sí sola no actualiza el repositorio.
+
+SUBIR Y DESPLEGAR
+Guarda JJM_CORREGIDO_CONEXION_BACKEND_20261005_V6.zip en Descargas.
+El archivo SUBIR_V6.ps1 de la raíz del ZIP automatiza la copia y la subida.
+También puedes pegar este bloque completo en PowerShell:
+
+& {
+    $descargasJJM = "$env:USERPROFILE\Downloads"
+    $paqueteJJM = "$descargasJJM\JJM_CORREGIDO_CONEXION_BACKEND_20261005_V6"
+    $repoJJM = "$descargasJJM\JJM_REPO_NUEVO"
+    if (!(Test-Path -LiteralPath "$repoJJM\.git")) { throw "No se encontró JJM_REPO_NUEVO con su carpeta .git." }
+    Expand-Archive -LiteralPath "$descargasJJM\JJM_CORREGIDO_CONEXION_BACKEND_20261005_V6.zip" -DestinationPath $paqueteJJM -Force -ErrorAction Stop
+    robocopy "$paqueteJJM\JJM" "$repoJJM\JJM" /E
+    if ($LASTEXITCODE -ge 8) { throw "Falló la copia. No continúes." }
+    Set-Location -LiteralPath $repoJJM -ErrorAction Stop
+    git add JJM
+    if ($LASTEXITCODE -ne 0) { throw "Falló git add." }
+    git diff --cached --quiet -- JJM
+    if ($LASTEXITCODE -eq 1) {
+        git commit -m "Conecta explicitamente el frontend a la red privada JJM"
+        if ($LASTEXITCODE -ne 0) { throw "Falló el commit." }
+    } elseif ($LASTEXITCODE -ne 0) { throw "Falló la revisión de cambios." }
+    git push origin main
+    if ($LASTEXITCODE -ne 0) { throw "Falló la subida a GitHub." }
+}
+
+En Coolify selecciona adrian:main-rhg3r12zlxt0qxxc0upwdw74.
+Pulsa Reload Compose y después Actions > Redeploy. Espera Success.
+Abre login.html, pulsa Ctrl+F5 e inicia sesión.
+No cambiar MySQL, el dominio ni las variables de entorno.
+Las instrucciones de subida V3, V4 y V5 quedan reemplazadas por estas.

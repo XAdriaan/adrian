@@ -1,0 +1,50 @@
+JJM PROJECTSPHERE - REDISEÑO Y SEGUIMIENTO V7 - 05/10/2026
+
+Este paquete contiene el proyecto completo y acumula las correcciones anteriores.
+Conserva la separación frontend Nginx (80) / backend Spring Boot (8080),
+el dominio y los nombres de variables de entorno existentes.
+No agrega migraciones SQL ni modifica las credenciales de MySQL.
+
+CAMBIOS
+- Dashboard, acceso, navegación y pantallas de seguimiento y videollamadas rediseñados.
+- Menú con Mi seguimiento de estadía y Videollamadas visibles, también en móvil.
+- FO-EST-03 y Pases de lista dentro de Mi seguimiento de estadía.
+- FO-EST-03: formato oficial Excel incluido, entrega Excel/PDF (4 MB), historial y descarga.
+  La entrega se guarda en el expediente de la sesión; la evaluación sigue siendo administrativa.
+- Pases de lista: asistencia personal por mes, horas, incidencias y PDF listo para imprimir.
+  Conserva varias jornadas de un mismo día y registros de recuperación del fin de semana.
+  Las fechas sin registro quedan sin horas ni firmas; no se inventan asistencias.
+- Videollamadas: salas e historial de los proyectos del usuario, iniciar y unirse,
+  copiar invitación, reconectar, colgar y finalizar según permisos existentes.
+  Jitsi puede pedir al anfitrión iniciar sesión para abrir la sala.
+  Las grabaciones se descargan en el equipo: guarda el archivo antes de salir de la sala.
+- Pantalla independiente PMBOK 8 retirada del menú. Su URL antigua redirige a Inicio.
+- Corrección permanente de la red privada frontend/backend: ambos servicios tienen
+  alias explícito en pmo_api, evitando perder la conexión al redesplegar en Coolify.
+
+VERIFICACIÓN
+- Backend Java 21: 17 pruebas aprobadas, incluida identidad del token,
+  acceso a asistencia propia y salas de proyectos autorizados.
+- Frontend: 27 pruebas aprobadas de sesión, Dashboard, asistencia, entrega y apertura de salas.
+- Revisión visual local en escritorio y móvil; sin desbordamiento horizontal del seguimiento.
+- Descarga y revisión visual del pase PDF; entrega del Excel FO-EST-03 con historial en prueba local.
+- Sala integrada abre la pantalla de entrada de Jitsi. Audio/video entre dos participantes
+  debe comprobarse después del despliegue, con permisos de cámara/micrófono del navegador.
+- Datos de la vista local de verificación son de prueba y no se incluyen en el sitio desplegado.
+
+SUBIR
+1. Copia la carpeta JJM de este paquete dentro de tu repositorio JJM_REPO_NUEVO.
+   No borres la carpeta .git ni uses robocopy /MIR.
+2. En ese repositorio: git add JJM, git commit y git push origin main.
+   El archivo SUBIR_V7.ps1 en la raíz automatiza copia y subida a GitHub.
+3. En Coolify abre adrian:main-rhg3r12zlxt0qxxc0upwdw74.
+   General > Reload Compose para recoger la configuración de red del repositorio.
+   Después Actions > Redeploy. Espera Success y comprueba el commit nuevo.
+4. Abre https://oficina.jjmti.com.mx/login.html y pulsa Ctrl + F5.
+
+Mantén el dominio asignado al frontend en el puerto 80.
+No cambies DB_URL, DB_USER, DB_PASSWORD, el recurso MySQL ni su almacenamiento.
+No importes ni ejecutes los SQL de instalación sobre la base de producción.
+No es necesario desplegar la aplicación antigua oficina-proyectos:main-abay1sag7hlctsqgfyd6851f.
+
+Este ZIP se entrega para que lo subas tú. El rediseño V7 no se desplegó automáticamente.

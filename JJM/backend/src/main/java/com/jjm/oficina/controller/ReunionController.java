@@ -81,6 +81,51 @@ public class ReunionController {
                 """);
     }
 
+    /** Directorio de salas limitado a proyectos a los que pertenece la sesión. */
+    @GetMapping("/reuniones")
+    public ResponseEntity<Map<String, Object>> misSalas(
+            @RequestHeader(value = "X-Usuario-Id", required = false) Integer idUsuario
+    ) {
+        Usuario usuario = obtenerUsuario(idUsuario);
+        if (usuario == null || !"Activo".equalsIgnoreCase(usuario.getEstado())) {
+            return error(HttpStatus.UNAUTHORIZED, "La sesión no existe o venció. Inicia sesión nuevamente.");
+        }
+        MiembroEquipo miembro = miembroEquipoRepository.findByUsuarioId(usuario.getId()).orElse(null);
+        Set<Integer> asignados = new HashSet<>();
+        if (miembro != null) {
+            miembroProyectoRepository.findByIdMiembroOrderByFechaAsignacionDesc(miembro.getId())
+                    .forEach(m -> asignados.add(m.getIdProyecto()));
+        }
+        boolean administrador = esAdministrador(usuario);
+        List<Proyecto> proyectos = proyectoRepository.findAll().stream()
+                .filter(p -> administrador || (miembro != null && (
+                        Objects.equals(p.getIdResponsable(), miembro.getId()) || asignados.contains(p.getId()))))
+                .sorted(Comparator.comparing(p -> textoSeguro(p.getNombre(), "Proyecto")))
+                .toList();
+        List<Map<String, Object>> reuniones = proyectos.isEmpty() ? List.of() : jdbc.queryForList(
+                "SELECT id_reunion AS id, id_proyecto AS idProyecto, sala, titulo, estado, "
+                        + "id_creador AS idCreador, fecha_inicio AS fechaInicio, fecha_fin AS fechaFin "
+                        + "FROM reuniones_proyecto WHERE id_proyecto IN ("
+                        + String.join(",", Collections.nCopies(proyectos.size(), "?"))
+                        + ") ORDER BY fecha_inicio DESC LIMIT 100",
+                proyectos.stream().map(Proyecto::getId).toArray());
+        List<Map<String, Object>> salas = new ArrayList<>();
+        for (Proyecto proyecto : proyectos) {
+            List<Map<String, Object>> historial = reuniones.stream()
+                    .filter(r -> Objects.equals(numero(r.get("idProyecto")), proyecto.getId()))
+                    .map(r -> convertirReunion(r, usuario, proyecto)).toList();
+            Map<String, Object> sala = new LinkedHashMap<>();
+            sala.put("id", proyecto.getId());
+            sala.put("nombre", proyecto.getNombre());
+            sala.put("puedeCrear", true); // mismo acceso de crear(): administración, responsable o miembro.
+            sala.put("reunionActiva", historial.stream().filter(r -> "Activa".equalsIgnoreCase(String.valueOf(r.get("estado"))))
+                    .findFirst().orElse(null));
+            sala.put("reuniones", historial);
+            salas.add(sala);
+        }
+        return ResponseEntity.ok(Map.of("estado", "correcto", "proyectos", salas));
+    }
+
     @GetMapping("/proyectos/{idProyecto}/reuniones")
     public ResponseEntity<Map<String,Object>> listar(
             @PathVariable Integer idProyecto,

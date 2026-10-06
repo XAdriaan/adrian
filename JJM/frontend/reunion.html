@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reunión | Oficina de Proyectos</title>
-    <link rel="stylesheet" href="css/reunion.css?v=20261003-colgar">
+    <link rel="stylesheet" href="css/reunion.css?v=20261005-diseno-v7">
+<link rel="stylesheet" href="css/sidebar-global.css?v=20261005-diseno-v7">
+<link rel="stylesheet" href="css/projectsphere.css?v=20261005-diseno-v7">
+<link rel="stylesheet" href="css/sala-v7.css?v=20261005-diseno-v7">
 </head>
 <body>
 <div class="meeting-app">
@@ -53,7 +56,7 @@
             <div class="recordings-head">
                 <div>
                     <h2>Grabaciones</h2>
-                    <p>Guárdalas dentro del proyecto.</p>
+                    <p>Descárgalas en tu equipo al terminar.</p>
                 </div>
             </div>
 
@@ -61,21 +64,18 @@
                 <strong>¿Cómo funciona?</strong>
                 <p>
                     Pulsa <b>Grabar</b> y, cuando el navegador lo solicite, selecciona <b>Esta pestaña</b> y activa <b>Compartir audio</b>.
-                    Al detener, Oficina de Proyectos subirá automáticamente el video al proyecto. El botón inferior queda como respaldo para subir un archivo manualmente.
+                    Al detener se descarga el video en tu equipo. Guarda el archivo antes de salir de esta pantalla; también podrás descargarlo de nuevo durante esta sesión.
                 </p>
             </div>
 
-            <input type="file" id="archivoGrabacion" accept="video/webm,video/mp4,video/*" hidden>
-            <button type="button" class="upload-recording-btn" id="btnSeleccionarGrabacion">
-                Guardar grabación en el proyecto
-            </button>
-            <div class="upload-progress" id="uploadProgress" hidden>
-                <div class="upload-progress-bar"><span id="uploadProgressFill"></span></div>
-                <small id="uploadProgressText">Subiendo grabación...</small>
+            <div class="recording-help">
+                <strong>Entrar a la sala</strong>
+                <p>Puedes activar cámara y micrófono dentro de la llamada. Jitsi puede solicitar al anfitrión iniciar sesión para abrir la sala.</p>
+                <a id="abrirSalaJitsi" class="meeting-btn" target="_blank" rel="noopener noreferrer" hidden>Abrir sala en otra pestaña ↗</a>
             </div>
 
             <div id="listaGrabaciones" class="recordings-list">
-                <p class="recordings-empty">Todavía no hay grabaciones guardadas.</p>
+                <p class="recordings-empty">Aquí aparecerán tus grabaciones de esta sesión.</p>
             </div>
         </aside>
     </main>
@@ -86,8 +86,8 @@
     </footer>
 </div>
 
-<script src="js/api-config.js?v=20261005-sesion-v3"></script>
+<script src="js/api-config.js?v=20261005-diseno-v7"></script>
 <script src="https://meet.jit.si/external_api.js"></script>
-<script src="js/reunion.js?v=20261003-colgar"></script>
+<script src="js/reunion.js?v=20261005-diseno-v7"></script>
 </body>
 </html>

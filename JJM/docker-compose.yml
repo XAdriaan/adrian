@@ -33,6 +33,8 @@ services:
     networks:
       default:
       pmo_api:
+        aliases:
+          - projectsphere-web
 
 networks:
   default:
