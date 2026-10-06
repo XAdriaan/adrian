@@ -287,13 +287,8 @@ function puedeCrearTareasEnProyecto() {
 }
 
 function puedeCrearReunionProyecto() {
-    if (esUsuarioConsulta()) return false;
-
-    if (esAdministrador()) {
-        return tienePermisoDetalleProyecto("reuniones.crear");
-    }
-
-    return esResponsableProyecto() || esMiembroDelProyecto();
+    if (window.PMOPermisos?.esAdministradorReal?.()) return true;
+    return esMiembroDelProyecto();
 }
 
 function puedeExportarImprimirProyecto() {

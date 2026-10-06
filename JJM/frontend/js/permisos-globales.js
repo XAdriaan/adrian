@@ -2385,6 +2385,7 @@ document.addEventListener("DOMContentLoaded", function () {
         ].map(([nombre, rutas]) => {
             const details = document.createElement("details");
             details.className = "pmo-menu-grupo";
+            details.setAttribute("name", "pmo-menu-extras");
             const summary = document.createElement("summary");
             summary.textContent = nombre;
             details.appendChild(summary);
@@ -2447,16 +2448,26 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (coincide && !a.hidden && getComputedStyle(a).display !== "none") visibles++;
             });
             grupos.forEach(g => {
+                if (texto) g.details.removeAttribute("name");
+                else g.details.setAttribute("name", "pmo-menu-extras");
                 const oculto = !Array.from(g.details.querySelectorAll("a")).some(a =>
                     !a.hidden && !a.hasAttribute("data-pmo-busqueda-oculto") && getComputedStyle(a).display !== "none");
                 if (g.details.hidden !== oculto) g.details.hidden = oculto;
                 if (texto && !g.details.hidden) g.details.open = true;
+                if (!texto) g.details.open = !!g.details.querySelector('a[aria-current="page"]');
             });
             if (aviso.hidden !== (visibles > 0)) aviso.hidden = visibles > 0;
         }
         busqueda.addEventListener("input", filtrar);
         busqueda.addEventListener("change", filtrar);
-        busqueda.addEventListener("keydown", e => { if (e.key === "Escape") { busqueda.value = ""; filtrar(); } });
+        busqueda.addEventListener("keydown", e => {
+            if (e.key === "Escape") { busqueda.value = ""; filtrar(); }
+            if (e.key === "Enter") {
+                const enlace = Array.from(menu.querySelectorAll("a[href]")).find(a =>
+                    !a.hidden && !a.hasAttribute("data-pmo-busqueda-oculto") && getComputedStyle(a).display !== "none");
+                if (enlace) enlace.click();
+            }
+        });
         window.addEventListener("pageshow", filtrar);
         organizar();
         setTimeout(organizar, 500);

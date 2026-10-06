@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reunión | Oficina de Proyectos</title>
-    <link rel="stylesheet" href="css/reunion.css?v=20261005-diseno-v7">
-<link rel="stylesheet" href="css/sidebar-global.css?v=20261005-diseno-v7">
-<link rel="stylesheet" href="css/projectsphere.css?v=20261005-diseno-v7">
-<link rel="stylesheet" href="css/sala-v7.css?v=20261005-diseno-v7">
+    <link rel="stylesheet" href="css/reunion.css?v=20261005-diseno-v8">
+<link rel="stylesheet" href="css/sidebar-global.css?v=20261005-diseno-v8">
+<link rel="stylesheet" href="css/projectsphere.css?v=20261005-diseno-v8">
+<link rel="stylesheet" href="css/sala-v7.css?v=20261005-diseno-v8">
 </head>
 <body>
 <div class="meeting-app">
@@ -15,13 +15,13 @@
         <div class="meeting-title">
             <span class="meeting-live-dot" aria-hidden="true"></span>
             <div>
-                <h1>Reunión del proyecto</h1>
+                <h1 id="tituloSala">Videollamada</h1>
                 <p id="nombreProyectoReunion">Cargando proyecto...</p>
             </div>
         </div>
 
         <div class="meeting-actions">
-            <span class="meeting-pill" id="meetingTimer">00:00:00</span>
+            <button id="btnMicrofono" class="meeting-btn" type="button" disabled>Activar micrófono</button><button id="btnCamara" class="meeting-btn" type="button" disabled>Activar cámara</button><button id="btnPantalla" class="meeting-btn" type="button" disabled>Compartir pantalla</button><span class="meeting-pill" id="meetingTimer">00:00:00</span>
             <span class="meeting-pill" id="contadorParticipantes">0 participantes</span>
             <button type="button" class="meeting-btn record" id="btnGrabar">● Grabar</button>
             <button type="button" class="meeting-btn warning" id="btnDetenerGrabacion" hidden>■ Detener</button>
@@ -34,22 +34,16 @@
 
     <main class="meeting-main">
         <section class="meeting-stage" aria-label="Videollamada de proyecto">
-            <div id="jitsiContainer" class="jitsi-container"></div>
+            <div id="jitsiContainer" class="jitsi-container rtc-grid"></div>
 
             <div class="meeting-loading" id="meetingLoading">
                 <div class="meeting-spinner" aria-hidden="true"></div>
-                <h2>Preparando videollamada...</h2>
+                <h2>Tu sala está lista</h2>
                 <p id="meetingLoadingMessage">Comprobando la reunión activa y conectando audio y video.</p>
-                <small>
-                    Si la conexión se interrumpe, Oficina de Proyectos intentará volver a la misma sala.
-                </small>
+                <button id="btnEntrarSala" class="meeting-btn" type="button" hidden>Entrar a la sala</button>
             </div>
 
-            <div class="meeting-reconnect" id="meetingReconnect" hidden>
-                <strong>Se perdió la conexión con la sala.</strong>
-                <span>La reunión sigue activa y puedes volver a la misma sala.</span>
-                <button type="button" class="meeting-btn" id="btnReconectar">Reconectar</button>
-            </div>
+            
         </section>
 
         <aside class="recordings-panel">
@@ -69,10 +63,7 @@
             </div>
 
             <div class="recording-help">
-                <strong>Entrar a la sala</strong>
-                <p>Puedes activar cámara y micrófono dentro de la llamada. Jitsi puede solicitar al anfitrión iniciar sesión para abrir la sala.</p>
-                <a id="abrirSalaJitsi" class="meeting-btn" target="_blank" rel="noopener noreferrer" hidden>Abrir sala en otra pestaña ↗</a>
-            </div>
+                <strong>Tu conexión</strong><p>La sala usa tu cuenta de JJM. Activa cámara y micrófono desde los botones de arriba.</p><button id="btnEscuchar" type="button" class="meeting-btn">Activar audio</button><button id="btnReconectar" type="button" class="meeting-btn secondary">Reconectar</button></div>
 
             <div id="listaGrabaciones" class="recordings-list">
                 <p class="recordings-empty">Aquí aparecerán tus grabaciones de esta sesión.</p>
@@ -82,12 +73,13 @@
 
     <footer class="meeting-footer">
         <span id="estadoReunion">Comprobando reunión...</span>
-        <span class="meeting-provider">Videollamada integrada con Jitsi Meet</span>
+        <span class="meeting-provider">Sala protegida · JJM ProjectSphere</span>
     </footer>
 </div>
 
-<script src="js/api-config.js?v=20261005-diseno-v7"></script>
-<script src="https://meet.jit.si/external_api.js"></script>
-<script src="js/reunion.js?v=20261005-diseno-v7"></script>
+<script src="js/api-config.js?v=20261005-diseno-v8"></script>
+<script src="js/sala-webrtc.js?v=20261005-diseno-v8"></script>
+<script src="js/reunion.js?v=20261005-diseno-v8"></script>
+<script src="js/ardia-global.js?v=20261005-diseno-v8"></script>
 </body>
 </html>

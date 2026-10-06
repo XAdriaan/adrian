@@ -1,13 +1,11 @@
 const API_PROYECTOS_REUNION = window.apiUrl("/api/proyectos");
 const API_REUNIONES = window.apiUrl("/api/reuniones");
-
 const nombreProyectoReunion = document.getElementById("nombreProyectoReunion");
 const meetingTimer = document.getElementById("meetingTimer");
 const contadorParticipantes = document.getElementById("contadorParticipantes");
 const jitsiContainer = document.getElementById("jitsiContainer");
 const meetingLoading = document.getElementById("meetingLoading");
 const meetingLoadingMessage = document.getElementById("meetingLoadingMessage");
-const meetingReconnect = document.getElementById("meetingReconnect");
 const estadoReunion = document.getElementById("estadoReunion");
 const btnCopiarEnlace = document.getElementById("btnCopiarEnlace");
 const btnColgarReunion = document.getElementById("btnColgarReunion");
@@ -16,336 +14,119 @@ const btnReconectar = document.getElementById("btnReconectar");
 const btnGrabar = document.getElementById("btnGrabar");
 const btnDetenerGrabacion = document.getElementById("btnDetenerGrabacion");
 const btnFinalizarReunion = document.getElementById("btnFinalizarReunion");
-const btnSeleccionarGrabacion = document.getElementById("btnSeleccionarGrabacion");
-const archivoGrabacion = document.getElementById("archivoGrabacion");
 const listaGrabaciones = document.getElementById("listaGrabaciones");
-const uploadProgress = document.getElementById("uploadProgress");
-const uploadProgressFill = document.getElementById("uploadProgressFill");
-const uploadProgressText = document.getElementById("uploadProgressText");
-
-let proyectoActual = null;
-let reunionActual = null;
-let jitsiApi = null;
-let temporizador = null;
-let saliendo = false;
-let conectadoJitsi = false;
-let grabando = false;
-let reconectando = false;
-let intentosReconexion = 0;
-let participanteRegistrado = false;
-
-// Grabación propia de Oficina de Proyectos.
-// Se usa MediaRecorder desde la página padre para evitar la limitación de
-// grabación local de Jitsi cuando meet.jit.si está embebido en un iframe
-// de otro dominio.
-let grabacionRecorder = null;
-let grabacionChunks = [];
-let grabacionPantallaStream = null;
-let grabacionMicrofonoStream = null;
-let grabacionAudioContext = null;
-let grabacionStreamFinal = null;
-let grabacionDeteniendose = false;
-
-let usuarioActivo = null;
-let tokenSesion = null;
-let grabacionFinalizada = Promise.resolve();
+const btnEntrarSala = document.getElementById("btnEntrarSala");
+const btnMicrofono = document.getElementById("btnMicrofono");
+const btnCamara = document.getElementById("btnCamara");
+const btnPantalla = document.getElementById("btnPantalla");
+let proyectoActual = null, reunionActual = null, rtc = null, temporizador = null;
+let saliendo = false, conectadoSala = false, grabando = false;
+let usuarioActivo = null, tokenSesion = null, pantallaCompartida = null, camaraPropia = null;
+let grabacionRecorder = null, grabacionChunks = [], grabacionPantallaStream = null;
+let grabacionMicrofonoStream = null, grabacionAudioContext = null, grabacionStreamFinal = null;
+let grabacionDeteniendose = false, grabacionFinalizada = Promise.resolve();
 const grabacionesLocales = [];
-const idProyecto = obtenerParametroURL("id");
+const esSalaGeneral = obtenerParametroURL("general") === "1";
+const idProyecto = esSalaGeneral ? null : obtenerParametroURL("id");
 let idReunion = obtenerParametroURL("reunion");
 
-document.addEventListener("DOMContentLoaded", async function () {
+document.addEventListener("DOMContentLoaded", async () => {
     if (window.restaurarSesionPMO) await window.restaurarSesionPMO();
-    usuarioActivo = obtenerUsuarioActivo();
-    tokenSesion = localStorage.getItem("sesionTokenPMO");
-    if (!usuarioActivo || !tokenSesion) { window.location.replace("login.html"); return; }
-    configurarEventos();
+    usuarioActivo = obtenerUsuarioActivo(); tokenSesion = localStorage.getItem("sesionTokenPMO");
+    if (!usuarioActivo || !tokenSesion) { location.replace("login.html"); return; }
     btnGrabar.disabled = true;
-
     try {
-        await cargarProyecto();
-        await cargarReunion();
-
-        if (!reunionActual || normalizarTexto(reunionActual.estado) !== "activa") {
-            throw new Error("Esta reunión ya no se encuentra activa.");
-        }
-
+        await cargarReunion(); await cargarProyecto();
+        if (normalizarTexto(reunionActual.estado) !== "activa") throw new Error("Esta reunión ya terminó.");
         idReunion = reunionActual.id;
-        actualizarReunionEnURL(idReunion);
+        if (!esSalaGeneral) actualizarReunionEnURL(idReunion);
+        document.getElementById("tituloSala").textContent = esSalaGeneral ? "Sala general" : "Reunión de proyecto";
+        btnVolverProyecto.textContent = esSalaGeneral ? "Volver a videollamadas" : "Volver al proyecto";
         btnFinalizarReunion.hidden = !reunionActual.puedeFinalizar;
-        iniciarTemporizador();
-        renderizarGrabacionesLocales();
-        const enlaceJitsi = document.getElementById("abrirSalaJitsi");
-        enlaceJitsi.href = "https://meet.jit.si/" + encodeURIComponent(reunionActual.sala);
-        enlaceJitsi.hidden = false;
-        iniciarVideollamada();
-    } catch (error) {
-        console.error("No fue posible preparar la reunión:", error);
-        mostrarErrorConexion(error.message || "No fue posible abrir la reunión.");
-    }
+        rtc = new window.PMOSalaWebRTC({sala:esSalaGeneral?'general':String(idReunion),contenedor:jitsiContainer,
+            estado:estadoReunion,participantes:contadorParticipantes,alCerrar:restablecerControles});
+        meetingLoadingMessage.textContent = esSalaGeneral ? "Todos los usuarios con sesión pueden entrar." : "Acceso exclusivo para administración y miembros asignados al proyecto.";
+        btnEntrarSala.hidden = false; estadoReunion.textContent = "Sala lista. Pulsa Entrar a la sala.";
+        configurarEventos(); iniciarTemporizador(); renderizarGrabacionesLocales();
+    } catch(e) { mostrarErrorConexion(e.message || "No fue posible abrir la sala."); }
 });
-
-function configurarEventos() {
-    btnCopiarEnlace?.addEventListener("click", copiarInvitacion);
-    btnColgarReunion?.addEventListener("click", colgarVideollamada);
-    btnVolverProyecto?.addEventListener("click", volverAlProyecto);
-    btnReconectar?.addEventListener("click", function () {
-        intentosReconexion = 0;
-        reconectarVideollamada(true);
-    });
-    btnGrabar?.addEventListener("click", iniciarGrabacionLocal);
-    btnDetenerGrabacion?.addEventListener("click", detenerGrabacionLocal);
-    btnFinalizarReunion?.addEventListener("click", finalizarReunion);
-    window.addEventListener("pagehide", function () {
-        if (!saliendo) registrarSalida({ keepalive: true });
-        liberarJitsi();
-    });
-}
-
-async function cargarProyecto() {
-    if (!idProyecto) throw new Error("No se recibió el proyecto de la reunión.");
-
-    const respuesta = await fetch(`${API_PROYECTOS_REUNION}/${encodeURIComponent(idProyecto)}`);
-    const cuerpo = await respuesta.json().catch(() => ({}));
-
-    if (!respuesta.ok || cuerpo.estado !== "correcto" || !cuerpo.proyecto) {
-        throw new Error(cuerpo.mensaje || "No se pudo cargar el proyecto.");
-    }
-
-    proyectoActual = cuerpo.proyecto;
-    nombreProyectoReunion.textContent = obtenerValor(
-        proyectoActual,
-        ["nombre", "name", "titulo"],
-        "Proyecto sin nombre"
-    );
-}
-
 async function cargarReunion() {
-    let url;
-    if (idReunion) {
-        url = `${API_REUNIONES}/${encodeURIComponent(idReunion)}`;
-    } else {
-        url = `${API_PROYECTOS_REUNION}/${encodeURIComponent(idProyecto)}/reuniones/activa`;
-    }
-
-    const respuesta = await fetch(url);
-    const datos = await respuesta.json().catch(() => ({}));
-    if (!respuesta.ok) throw new Error(datos.mensaje || "No fue posible consultar la reunión.");
-
-    reunionActual = datos.reunion || datos.reunionActiva || null;
-    if (!reunionActual) {
-        throw new Error("No hay una reunión activa en este proyecto.");
-    }
-    if (Number(reunionActual.idProyecto) !== Number(idProyecto)) {
-        throw new Error("La reunión no pertenece al proyecto indicado. Abre la sala desde Videollamadas.");
-    }
+    if (esSalaGeneral) { reunionActual = {id:'general',estado:'Activa',puedeFinalizar:false,fechaInicio:new Date().toISOString()}; return; }
+    if (!idProyecto) throw new Error("Abre una sala desde Videollamadas.");
+    const url = idReunion ? `${API_REUNIONES}/${encodeURIComponent(idReunion)}` : `${API_PROYECTOS_REUNION}/${encodeURIComponent(idProyecto)}/reuniones/activa`;
+    const r = await fetch(url); const d = await r.json().catch(()=>({}));
+    if (!r.ok) throw new Error(d.mensaje || "No tienes acceso a esta sala.");
+    reunionActual = d.reunion || d.reunionActiva;
+    if (!reunionActual || Number(reunionActual.idProyecto) !== Number(idProyecto)) throw new Error("La sala no pertenece al proyecto indicado.");
 }
-
-function iniciarVideollamada() {
-    if (!jitsiContainer || !reunionActual) return;
-
-    if (typeof window.JitsiMeetExternalAPI !== "function") {
-        mostrarErrorConexion("No se pudo cargar Jitsi Meet. Revisa la conexión a Internet y vuelve a intentar.");
-        return;
-    }
-
-    const nombreUsuario = obtenerNombreUsuario(usuarioActivo);
-    const correoUsuario = obtenerCorreoUsuario(usuarioActivo);
-    const nombreProyecto = obtenerValor(proyectoActual, ["nombre", "name", "titulo"], "Reunión de proyecto");
-
-    conectadoJitsi = false;
-    btnGrabar.disabled = true;
-    meetingReconnect.hidden = true;
-    meetingLoading.classList.remove("hidden", "error");
-    meetingLoadingMessage.textContent = "Conectando a la misma sala activa del proyecto.";
-    estadoReunion.textContent = "Conectando con la sala...";
-
+async function cargarProyecto() {
+    if (esSalaGeneral) { nombreProyectoReunion.textContent = "Un espacio para todo JJM"; return; }
+    const r = await fetch(`${API_PROYECTOS_REUNION}/${encodeURIComponent(idProyecto)}`); const d = await r.json().catch(()=>({}));
+    if (!r.ok || !d.proyecto) throw new Error(d.mensaje || "No se pudo consultar el proyecto.");
+    proyectoActual = d.proyecto; nombreProyectoReunion.textContent = proyectoActual.nombre || "Proyecto";
+}
+function restablecerControles() {
+    camaraPropia?.stop(); camaraPropia=null;
+    pantallaCompartida?.getTracks().forEach(t=>t.stop()); pantallaCompartida=null;
+    conectadoSala = false; btnEntrarSala.hidden = false; btnEntrarSala.disabled = false;
+    if (grabando) detenerGrabacionLocal().catch(()=>{});
+    btnGrabar.disabled = true; [btnMicrofono,btnCamara,btnPantalla].forEach(b=>b.disabled=true);
+    btnMicrofono.textContent='Activar micrófono'; btnCamara.textContent='Activar cámara'; btnPantalla.textContent='Compartir pantalla';
+}
+function configurarEventos() {
+    btnEntrarSala.addEventListener('click', async () => {
+        btnEntrarSala.disabled = true;
+        try { await rtc.entrar(); if (!rtc.activa) return; conectadoSala=true; ocultarCarga(); btnEntrarSala.hidden=true;
+            [btnMicrofono,btnCamara,btnPantalla].forEach(b=>b.disabled=false); actualizarBotonesGrabacion();
+            if (!esSalaGeneral) await fetch(`${API_REUNIONES}/${idReunion}/unirse`,{method:'POST'});
+        } catch(e) { await rtc.salir(); restablecerControles(); estadoReunion.textContent=e.message; }
+        finally { btnEntrarSala.disabled=false; }
+    });
+    btnMicrofono.addEventListener('click',()=>activarMedio('audio',btnMicrofono));
+    btnCamara.addEventListener('click',()=>activarMedio('video',btnCamara));
+    btnPantalla.addEventListener('click',compartirPantalla);
+    document.getElementById('btnEscuchar').addEventListener('click',()=>jitsiContainer.querySelectorAll('video').forEach(v=>v.play().catch(()=>{})));
+    btnReconectar.addEventListener('click',async()=>{await rtc.salir(); restablecerControles(); btnEntrarSala.click();});
+    btnCopiarEnlace.addEventListener('click',copiarInvitacion); btnColgarReunion.addEventListener('click',colgarVideollamada);
+    btnVolverProyecto.addEventListener('click',volverAlProyecto); btnFinalizarReunion.addEventListener('click',finalizarReunion);
+    btnGrabar.addEventListener('click',iniciarGrabacionLocal); btnDetenerGrabacion.addEventListener('click',detenerGrabacionLocal);
+    window.addEventListener('pagehide',()=>{registrarSalida({keepalive:true});liberarJitsi();});
+}
+async function activarMedio(tipo, boton) {
+    if (!rtc?.activa) return; boton.disabled=true;
     try {
-        jitsiContainer.innerHTML = "";
-        jitsiApi = new JitsiMeetExternalAPI("meet.jit.si", {
-            roomName: reunionActual.sala,
-            width: "100%",
-            height: "100%",
-            parentNode: jitsiContainer,
-            lang: "es",
-            userInfo: {
-                displayName: nombreUsuario,
-                email: correoUsuario || undefined
-            },
-            configOverwrite: {
-                prejoinPageEnabled: true,
-                startWithAudioMuted: true,
-                startWithVideoMuted: true,
-                disableDeepLinking: true,
-                subject: nombreProyecto,
-                localRecording: {
-                    disable: false,
-                    notifyAllParticipants: true
-                }
-            },
-            interfaceConfigOverwrite: {
-                MOBILE_APP_PROMO: false,
-                TILE_VIEW_MAX_COLUMNS: 4,
-                VIDEO_LAYOUT_FIT: "both"
-            }
-        });
-
-        registrarEventosJitsi(nombreUsuario, nombreProyecto);
-
-        let interfazMostrada = false;
-        const mostrarInterfaz = function () {
-            if (interfazMostrada) return;
-            interfazMostrada = true;
-            ocultarCarga();
-            estadoReunion.textContent = "Sala lista. Si Jitsi solicita autenticación al creador, complétala para continuar.";
-        };
-
-        try {
-            const iframe = jitsiApi.getIFrame?.();
-            iframe?.addEventListener("load", () => setTimeout(mostrarInterfaz, 600), { once: true });
-        } catch (error) {
-            console.warn("No se pudo observar la carga de Jitsi.", error);
+        if (tipo==='video' && pantallaCompartida) { pantallaCompartida.getTracks().forEach(t=>t.stop()); pantallaCompartida=null; btnPantalla.textContent='Compartir pantalla'; }
+        const actual=rtc.medios[tipo];
+        if (actual && actual.readyState==='live') { actual.enabled=!actual.enabled; boton.textContent=actual.enabled ? (tipo==='audio'?'Silenciar micrófono':'Apagar cámara') : (tipo==='audio'?'Activar micrófono':'Activar cámara'); }
+        else {
+            if (!navigator.mediaDevices?.getUserMedia) throw new Error('El navegador necesita HTTPS y permiso para usar cámara y micrófono.');
+            const flujo=await navigator.mediaDevices.getUserMedia(tipo==='audio'?{audio:{echoCancellation:true,noiseSuppression:true},video:false}:{video:{width:{ideal:640},height:{ideal:360}},audio:false});
+            if (!rtc.activa) { flujo.getTracks().forEach(t=>t.stop()); return; }
+            const pista=flujo.getTracks()[0]; if(tipo==='video') camaraPropia=pista;
+            await rtc.cambiar(tipo,pista); boton.textContent=tipo==='audio'?'Silenciar micrófono':'Apagar cámara';
         }
-
-        setTimeout(mostrarInterfaz, 3500);
-    } catch (error) {
-        console.error("No se pudo inicializar Jitsi:", error);
-        mostrarErrorConexion("No fue posible iniciar la videollamada. Usa Reconectar para volver a intentarlo.");
-    }
+    } catch(e) { estadoReunion.textContent=e.name==='NotAllowedError'?'Permite el acceso a cámara o micrófono desde el candado del navegador.':e.message; }
+    finally { boton.disabled=!rtc?.activa; }
 }
-
-function registrarEventosJitsi(nombreUsuario, nombreProyecto) {
-    if (!jitsiApi) return;
-
-    jitsiApi.addEventListener("videoConferenceJoined", async function () {
-        conectadoJitsi = true;
-        reconectando = false;
-        intentosReconexion = 0;
-        ocultarCarga();
-        meetingReconnect.hidden = true;
-        estadoReunion.textContent = "Conectado a la reunión.";
-        btnGrabar.disabled = false;
-
-        try {
-            jitsiApi.executeCommand("displayName", nombreUsuario);
-            jitsiApi.executeCommand("localSubject", nombreProyecto);
-        } catch (error) {
-            console.warn("No se pudo personalizar la reunión.", error);
-        }
-
-        actualizarContadorParticipantes();
-        await registrarEntrada();
-    });
-
-    jitsiApi.addEventListener("participantJoined", actualizarContadorParticipantes);
-    jitsiApi.addEventListener("participantLeft", actualizarContadorParticipantes);
-
-    jitsiApi.addEventListener("audioMuteStatusChanged", evento => {
-        estadoReunion.textContent = evento?.muted ? "Micrófono silenciado." : "Micrófono activo.";
-    });
-    jitsiApi.addEventListener("videoMuteStatusChanged", evento => {
-        estadoReunion.textContent = evento?.muted ? "Cámara desactivada." : "Cámara activa.";
-    });
-    jitsiApi.addEventListener("screenSharingStatusChanged", evento => {
-        estadoReunion.textContent = evento?.on ? "Compartiendo pantalla." : "La pantalla dejó de compartirse.";
-    });
-    jitsiApi.addEventListener("cameraError", () => {
-        estadoReunion.textContent = "Jitsi no pudo acceder a la cámara. Revisa los permisos del navegador.";
-    });
-    jitsiApi.addEventListener("micError", () => {
-        estadoReunion.textContent = "Jitsi no pudo acceder al micrófono. Revisa los permisos del navegador.";
-    });
-
-    const manejarDesconexion = async function () {
-        conectadoJitsi = false;
-        btnGrabar.disabled = true;
-        await registrarSalida();
-        if (!saliendo && normalizarTexto(reunionActual?.estado) === "activa") {
-            programarReconexion();
-        }
-    };
-
-    jitsiApi.addEventListener("videoConferenceLeft", manejarDesconexion);
-    jitsiApi.addEventListener("readyToClose", manejarDesconexion);
-}
-
-async function registrarEntrada() {
-    if (!idReunion || participanteRegistrado) return;
+async function compartirPantalla() {
+    if (!rtc?.activa) return;
+    if (pantallaCompartida) { pantallaCompartida.getTracks().forEach(t=>t.stop()); return; }
     try {
-        const respuesta = await fetch(`${API_REUNIONES}/${idReunion}/unirse`, { method: "POST" });
-        const datos = await respuesta.json().catch(() => ({}));
-        if (!respuesta.ok) throw new Error(datos.mensaje || "No se pudo registrar la entrada.");
-        participanteRegistrado = true;
-    } catch (error) {
-        console.warn("No fue posible registrar la entrada a la reunión:", error);
-    }
+        const flujo=await navigator.mediaDevices.getDisplayMedia({video:true,audio:false});
+        if(!rtc.activa){flujo.getTracks().forEach(t=>t.stop());return;}
+        pantallaCompartida=flujo; const pista=flujo.getVideoTracks()[0];
+        await rtc.cambiar('video',pista); btnPantalla.textContent='Dejar de compartir'; btnCamara.disabled=true;
+        pista.addEventListener('ended',async()=>{pantallaCompartida=null;btnPantalla.textContent='Compartir pantalla';btnCamara.disabled=!rtc.activa;if(rtc.activa)await rtc.cambiar('video',camaraPropia?.readyState==='live'?camaraPropia:null);},{once:true});
+    } catch(e) { estadoReunion.textContent=e.name==='NotAllowedError'?'Compartir pantalla se canceló.':e.message; }
 }
-
-async function registrarSalida(opciones = {}) {
-    if (!idReunion || !participanteRegistrado) return;
-    participanteRegistrado = false;
-    try {
-        await fetch(`${API_REUNIONES}/${idReunion}/salir`, {
-            method: "POST",
-            keepalive: Boolean(opciones.keepalive)
-        });
-    } catch (error) {
-        console.warn("No fue posible registrar la salida de la reunión.", error);
-    }
+async function registrarSalida(opciones={}) {
+    if (!esSalaGeneral && idReunion) await fetch(`${API_REUNIONES}/${idReunion}/salir`,{method:'POST',keepalive:!!opciones.keepalive}).catch(()=>{});
 }
-
-function programarReconexion() {
-    if (reconectando || saliendo) return;
-    reconectando = true;
-    intentosReconexion += 1;
-    meetingReconnect.hidden = false;
-    estadoReunion.textContent = "Conexión interrumpida. La sala sigue activa.";
-
-    if (intentosReconexion <= 3) {
-        const espera = Math.min(3000 * intentosReconexion, 9000);
-        setTimeout(() => {
-            if (!saliendo && reconectando) reconectarVideollamada(false);
-        }, espera);
-    }
-}
-
-function reconectarVideollamada(manual) {
-    if (saliendo) return;
-    reconectando = true;
-    liberarJitsi();
-    meetingReconnect.hidden = true;
-    meetingLoading.classList.remove("hidden", "error");
-    meetingLoadingMessage.textContent = manual
-        ? "Reconectando a la reunión..."
-        : `Reconectando automáticamente (intento ${intentosReconexion})...`;
-    setTimeout(iniciarVideollamada, 500);
-}
-
-function actualizarContadorParticipantes() {
-    if (!jitsiApi || !contadorParticipantes) return;
-    try {
-        const total = Number(jitsiApi.getNumberOfParticipants?.() || 0);
-        contadorParticipantes.textContent = `${total} ${total === 1 ? "participante" : "participantes"}`;
-    } catch (error) {
-        console.warn("No se pudo actualizar el contador.", error);
-    }
-}
-
 function iniciarTemporizador() {
-    if (temporizador) clearInterval(temporizador);
-    const inicio = reunionActual?.fechaInicio ? new Date(reunionActual.fechaInicio).getTime() : Date.now();
-
-    const pintar = function () {
-        const segundos = Math.max(0, Math.floor((Date.now() - inicio) / 1000));
-        const horas = String(Math.floor(segundos / 3600)).padStart(2, "0");
-        const minutos = String(Math.floor((segundos % 3600) / 60)).padStart(2, "0");
-        const seg = String(segundos % 60).padStart(2, "0");
-        meetingTimer.textContent = `${horas}:${minutos}:${seg}`;
-    };
-
-    pintar();
-    temporizador = setInterval(pintar, 1000);
+    const inicio=new Date(reunionActual.fechaInicio || Date.now()).getTime();
+    const pintar=()=>{const s=Math.max(0,Math.floor((Date.now()-inicio)/1000));meetingTimer.textContent=[Math.floor(s/3600),Math.floor(s%3600/60),s%60].map(v=>String(v).padStart(2,'0')).join(':');};
+    pintar();temporizador=setInterval(pintar,1000);
 }
-
 function grabacionNavegadorSoportada() {
     return Boolean(
         navigator.mediaDevices?.getDisplayMedia
@@ -363,7 +144,7 @@ function obtenerMimeGrabacion() {
 }
 
 async function iniciarGrabacionLocal() {
-    if (!jitsiApi || !conectadoJitsi || grabando) return;
+    if (!rtc?.activa || !conectadoSala || grabando) return;
 
     if (!grabacionNavegadorSoportada()) {
         alert("Este navegador no permite la grabación integrada. Usa una versión reciente de Chrome o Edge.");
@@ -544,7 +325,7 @@ function limpiarRecursosGrabacion() {
 function actualizarBotonesGrabacion() {
     btnGrabar.hidden = grabando;
     btnDetenerGrabacion.hidden = !grabando;
-    btnGrabar.disabled = !conectadoJitsi || !grabacionNavegadorSoportada();
+    btnGrabar.disabled = !conectadoSala || !grabacionNavegadorSoportada();
 }
 
 function renderizarGrabacionesLocales() {
@@ -570,7 +351,7 @@ async function copiarInvitacion() {
     try {
         await navigator.clipboard.writeText(url);
         btnCopiarEnlace.textContent = "Enlace copiado";
-        estadoReunion.textContent = "Invitación copiada. Los miembros del proyecto también pueden entrar desde el detalle del proyecto.";
+        estadoReunion.textContent = esSalaGeneral ? "Invitación copiada. Los usuarios con sesión pueden entrar a la sala general." : "Invitación copiada. Solo administración y miembros asignados pueden entrar.";
         setTimeout(() => { btnCopiarEnlace.textContent = "Copiar invitación"; }, 2200);
     } catch (error) {
         window.prompt("Copia este enlace de reunión:", url);
@@ -594,7 +375,7 @@ async function colgarVideollamada() {
     } catch (_) {}
 
     try {
-        jitsiApi?.executeCommand("hangup");
+        await rtc?.salir();
     } catch (_) {}
 
     setTimeout(volverAlProyectoSinConfirmar, 250);
@@ -617,7 +398,7 @@ async function finalizarReunion() {
         reunionActual = datos.reunion || reunionActual;
         saliendo = true;
         await registrarSalida();
-        try { jitsiApi?.executeCommand("hangup"); } catch (_) {}
+        try { await rtc?.salir(); } catch (_) {}
         setTimeout(volverAlListadoProyectos, 500);
     } catch (error) {
         alert(error.message || "No fue posible finalizar la reunión.");
@@ -629,7 +410,7 @@ async function volverAlProyecto() {
     if (grabando) await detenerGrabacionLocal();
     saliendo = true;
     await registrarSalida();
-    try { jitsiApi?.executeCommand("hangup"); } catch (_) {}
+    try { await rtc?.salir(); } catch (_) {}
     setTimeout(volverAlProyectoSinConfirmar, 400);
 }
 
@@ -639,7 +420,7 @@ function volverAlListadoProyectos() {
     const params = new URLSearchParams();
     params.set("reunionFinalizada", "1");
     if (idProyecto) params.set("proyecto", idProyecto);
-    window.location.replace(`proyectos.html?${params.toString()}`);
+    window.location.replace("videollamadas.html");
 }
 
 function volverAlProyectoSinConfirmar() {
@@ -647,17 +428,14 @@ function volverAlProyectoSinConfirmar() {
     liberarJitsi();
     window.location.href = idProyecto
         ? `detalle-proyecto.html?id=${encodeURIComponent(idProyecto)}`
-        : "proyectos.html";
+        : "videollamadas.html";
 }
 
 function liberarJitsi() {
-    if (grabando && grabacionRecorder?.state !== "inactive") {
-        try { grabacionRecorder.stop(); } catch (_) {}
-    }
-    limpiarRecursosGrabacion();
-    if (!jitsiApi) return;
-    try { jitsiApi.dispose(); } catch (error) { console.warn("No se pudo liberar Jitsi.", error); }
-    jitsiApi = null;
+    rtc?.salir(true); pantallaCompartida?.getTracks().forEach(t => t.stop());
+    camaraPropia?.stop(); camaraPropia=null;
+    if (grabando && grabacionRecorder?.state !== "inactive") { try { grabacionRecorder.stop(); } catch (_) {} }
+    if (!grabando) limpiarRecursosGrabacion();
 }
 
 function ocultarCarga() {

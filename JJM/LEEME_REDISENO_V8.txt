@@ -1,0 +1,89 @@
+JJM PROJECTSPHERE V8 - DISEÑO AZUL Y VIDEOLLAMADAS
+
+Descomprime todo el ZIP. Contiene la carpeta JJM completa, SUBIR_V8.ps1 y estas instrucciones.
+
+CAMBIOS
+- Diseño azul y azul marino que combina con el logo, incluido el acceso y seguimiento.
+- Sala general para todos los usuarios con sesión activa en JJM.
+- Salas de proyecto: solo administración y miembros asignados. El servidor comprueba
+  el acceso al consultar la sala, entrar e intercambiar señales de audio/video.
+- Cámara, micrófono, pantalla, invitación, reconexión y grabación local descargable.
+- Ard.IA disponible como botón fijo: accesos directos, consultas de asistencia,
+  FO-EST-03 y salas; lectura de respuestas y dictado si el navegador lo admite.
+  Ctrl + K abre el asistente. Es un asistente de la plataforma; no requiere una clave de IA externa.
+- Menú compacto, búsqueda, una sección adicional abierta a la vez y acceso móvil.
+- FO-EST-03 y Pases de lista siguen dentro de Mi seguimiento de estadía.
+- Conserva las correcciones anteriores de sesión, permisos, rutas y red privada.
+
+SUBIR A GITHUB
+En PowerShell, abre la carpeta extraída del ZIP y ejecuta:
+
+    .\SUBIR_V8.ps1
+
+El script usa C:\Users\24050\Downloads\JJM_REPO_NUEVO, comprueba el repositorio
+XAdriaan/adrian y la rama main, actualiza, copia JJM, crea un commit y hace push.
+Si tu repositorio está en otra carpeta:
+
+    .\SUBIR_V8.ps1 -Repositorio "C:\ruta\de\tu\repositorio"
+
+Si PowerShell no permite ejecutar el archivo, puedes pegar estos comandos manuales.
+Primero guarda con un commit los cambios locales pendientes, si los hay.
+Ajusta $paqueteJJM si extrajiste el ZIP en otra carpeta:
+
+    $paqueteJJM = "$env:USERPROFILE\Downloads\JJM_REDISENO_AZUL_VIDEOLLAMADAS_20261005_V8"
+    $repoJJM = "$env:USERPROFILE\Downloads\JJM_REPO_NUEVO"
+    if (!(Test-Path -LiteralPath "$paqueteJJM\JJM")) { throw "No se encontró JJM dentro del paquete." }
+    if (!(Test-Path -LiteralPath "$repoJJM\.git")) { throw "El destino no es tu repositorio Git." }
+    cd $repoJJM
+    git status
+    git pull --ff-only origin main
+    if ($LASTEXITCODE -ne 0) { throw "No se pudo actualizar el repositorio." }
+    robocopy "$paqueteJJM\JJM" "$repoJJM\JJM" /E /R:2 /W:1
+    if ($LASTEXITCODE -ge 8) { throw "Falló la copia." }
+    git add JJM
+    git commit -m "Rediseña JJM en azul e integra salas generales y privadas"
+    git push origin main
+
+DESPLEGAR EN COOLIFY
+1. Abre adrian:main-rhg3r12zlxt0qxxc0upwdw74, del repositorio XAdriaan/adrian.
+2. General > Reload Compose. Revisa que aparezcan backend y frontend y los alias
+   projectsphere-api y projectsphere-web de la red pmo_api.
+3. Actions > Redeploy. Espera Success y comprueba el commit que acabas de subir.
+4. Abre https://oficina.jjmti.com.mx/login.html y pulsa Ctrl + F5.
+5. Prueba la sala general con dos cuentas distintas. Luego una sala de proyecto:
+   una cuenta asignada debe entrar; una ajena debe ser rechazada.
+
+El dominio conserva el frontend en el puerto 80. /api se envía a Spring Boot en 8080.
+No cambies DB_URL, DB_USER, DB_PASSWORD, el recurso MySQL ni su almacenamiento.
+No borres .git y no ejecutes los SQL de instalación sobre la base de producción.
+
+CONEXIÓN DE VIDEOLLAMADAS ENTRE REDES DISTINTAS
+La nueva llamada usa WebRTC con señalización protegida por la sesión de JJM.
+No pide otra cuenta de Jitsi ni comparte un enlace público externo para entrar.
+Algunas redes móviles, empresariales o NAT restrictivas necesitan un servidor TURN.
+Si la sala abre pero no conecta el video entre dos redes, configura estas tres
+variables opcionales en el BACKEND de Coolify con los datos de tu servicio TURN:
+
+    PMO_TURN_URLS        Una o varias URLs TURN/TURNS separadas por comas
+    PMO_TURN_USERNAME    Usuario del servicio TURN
+    PMO_TURN_CREDENTIAL  Credencial del servicio TURN
+
+El compose ya pasa estas variables sin cambiar las variables existentes de MySQL.
+No se incluyen credenciales inventadas ni un servidor TURN de terceros compartido.
+La configuración de TURN se entrega solo a sesiones autenticadas.
+Debe probarse la conectividad real después del despliegue; la prueba local no
+demuestra que tu red móvil o corporativa permita conexiones directas.
+
+VERIFICACIÓN LOCAL
+- Backend Java 21: 29 pruebas aprobadas.
+- Frontend: 32 pruebas aprobadas.
+- Video sintético en ambos sentidos entre dos participantes, sin usar cámara privada.
+- Diseño azul, consulta de asistencia desde Ard.IA, acceso directo a Pases de lista,
+  FO-EST-03, menú móvil y seguimiento sin desbordamiento horizontal.
+- Formato oficial FO-EST-03 incluido sin modificaciones.
+
+Las salas mantienen sus conexiones en memoria de un backend. Un reinicio requiere
+volver a entrar; para grupos grandes se necesita una infraestructura de video SFU.
+Las grabaciones se guardan en tu equipo y deben descargarse antes de salir.
+No se ejecutó ningún cambio en MySQL ni se desplegó esta versión automáticamente.
+Este ZIP es el paquete completo que tú subirás.

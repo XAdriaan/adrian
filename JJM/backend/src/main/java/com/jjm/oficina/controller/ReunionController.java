@@ -19,10 +19,8 @@ import java.util.*;
 /**
  * Reuniones de proyecto persistentes.
  *
- * El frontend ya tenía integración con Jitsi, pero el backend no exponía los
- * endpoints /api/reuniones ni /api/proyectos/{id}/reuniones. Este controlador
- * completa ese contrato y permite abrir, colgar y finalizar reuniones sin
- * depender de información temporal del navegador.
+ * El acceso requiere administración o asignación al proyecto. El canal WebRTC
+ * usa estas mismas reglas antes de intercambiar señales entre participantes.
  */
 @RestController
 @RequestMapping("/api")
@@ -98,8 +96,7 @@ public class ReunionController {
         }
         boolean administrador = esAdministrador(usuario);
         List<Proyecto> proyectos = proyectoRepository.findAll().stream()
-                .filter(p -> administrador || (miembro != null && (
-                        Objects.equals(p.getIdResponsable(), miembro.getId()) || asignados.contains(p.getId()))))
+                .filter(p -> administrador || asignados.contains(p.getId()))
                 .sorted(Comparator.comparing(p -> textoSeguro(p.getNombre(), "Proyecto")))
                 .toList();
         List<Map<String, Object>> reuniones = proyectos.isEmpty() ? List.of() : jdbc.queryForList(
@@ -117,7 +114,7 @@ public class ReunionController {
             Map<String, Object> sala = new LinkedHashMap<>();
             sala.put("id", proyecto.getId());
             sala.put("nombre", proyecto.getNombre());
-            sala.put("puedeCrear", true); // mismo acceso de crear(): administración, responsable o miembro.
+            sala.put("puedeCrear", true);
             sala.put("reunionActiva", historial.stream().filter(r -> "Activa".equalsIgnoreCase(String.valueOf(r.get("estado"))))
                     .findFirst().orElse(null));
             sala.put("reuniones", historial);
@@ -157,7 +154,7 @@ public class ReunionController {
     }
 
     @PostMapping("/proyectos/{idProyecto}/reuniones")
-    public ResponseEntity<Map<String,Object>> crear(
+    public synchronized ResponseEntity<Map<String,Object>> crear(
             @PathVariable Integer idProyecto,
             @RequestHeader(value="X-Usuario-Id", required=false) Integer idUsuario
     ) {
@@ -165,7 +162,7 @@ public class ReunionController {
         if (usuario == null) return error(HttpStatus.UNAUTHORIZED, "La sesión no existe o venció. Inicia sesión nuevamente.");
         Proyecto proyecto = proyectoRepository.findById(idProyecto).orElse(null);
         if (proyecto == null) return error(HttpStatus.NOT_FOUND, "No se encontró el proyecto.");
-        if (!puedeCrear(usuario, proyecto)) return error(HttpStatus.FORBIDDEN, "Solo el responsable o la administración puede iniciar una reunión.");
+        if (!puedeCrear(usuario, proyecto)) return error(HttpStatus.FORBIDDEN, "Solo la administración y los miembros asignados pueden iniciar una reunión.");
 
         Map<String,Object> activa = obtenerActiva(idProyecto);
         if (activa == null) {
@@ -236,6 +233,9 @@ public class ReunionController {
         Proyecto proyecto = proyectoRepository.findById(idProyecto).orElse(null);
         if (proyecto == null || !tieneAcceso(usuario, proyecto)) return error(HttpStatus.FORBIDDEN, "No tienes acceso a esta reunión.");
 
+        if (!"Activa".equalsIgnoreCase(String.valueOf(reunion.get("estado")))) {
+            return error(HttpStatus.CONFLICT, "La reunión ya terminó.");
+        }
         jdbc.update("""
                 INSERT INTO participantes_reunion (id_reunion, id_usuario, fecha_entrada)
                 VALUES (?, ?, ?)
@@ -280,7 +280,7 @@ public class ReunionController {
         if (reunion == null) return error(HttpStatus.NOT_FOUND, "La reunión no existe.");
         Integer idProyecto = numero(reunion.get("idProyecto"));
         Proyecto proyecto = proyectoRepository.findById(idProyecto).orElse(null);
-        if (proyecto == null || !puedeFinalizar(usuario, proyecto, reunion)) {
+        if (proyecto == null || !tieneAcceso(usuario, proyecto) || !puedeFinalizar(usuario, proyecto, reunion)) {
             return error(HttpStatus.FORBIDDEN, "No tienes permiso para finalizar la reunión para todos.");
         }
 
@@ -305,8 +305,10 @@ public class ReunionController {
     ) {
         Usuario usuario = obtenerUsuario(idUsuario);
         if (usuario == null) return error(HttpStatus.UNAUTHORIZED, "La sesión no existe o venció. Inicia sesión nuevamente.");
-        // La videollamada ya funciona. La persistencia de videos se mantiene separada
-        // para no guardar archivos de cientos de MB dentro de MySQL.
+        Map<String,Object> reunion = obtenerReunion(idReunion);
+        if (reunion == null) return error(HttpStatus.NOT_FOUND, "La reunión no existe.");
+        Proyecto proyecto = proyectoRepository.findById(numero(reunion.get("idProyecto"))).orElse(null);
+        if (!tieneAcceso(usuario, proyecto)) return error(HttpStatus.FORBIDDEN, "No tienes acceso a esta reunión.");
         return ResponseEntity.ok(Map.of("estado", "correcto", "grabaciones", List.of()));
     }
 
@@ -345,17 +347,11 @@ public class ReunionController {
         if (esAdministrador(usuario)) return true;
         MiembroEquipo miembro = miembroEquipoRepository.findByUsuarioId(usuario.getId()).orElse(null);
         if (miembro == null) return false;
-        if (Objects.equals(proyecto.getIdResponsable(), miembro.getId())) return true;
         return miembroProyectoRepository.existsByIdProyectoAndIdMiembro(proyecto.getId(), miembro.getId());
     }
 
     private boolean puedeCrear(Usuario usuario, Proyecto proyecto) {
-        if (esAdministrador(usuario)) return true;
-        MiembroEquipo miembro = miembroEquipoRepository.findByUsuarioId(usuario.getId()).orElse(null);
-        return miembro != null && (
-                Objects.equals(proyecto.getIdResponsable(), miembro.getId())
-                        || miembroProyectoRepository.existsByIdProyectoAndIdMiembro(proyecto.getId(), miembro.getId())
-        );
+        return tieneAcceso(usuario, proyecto);
     }
 
     private boolean puedeFinalizar(Usuario usuario, Proyecto proyecto, Map<String,Object> reunion) {
@@ -373,7 +369,17 @@ public class ReunionController {
     }
 
     private Usuario obtenerUsuario(Integer id) {
-        return id == null ? null : usuarioRepository.findById(id).orElse(null);
+        Usuario u = id == null ? null : usuarioRepository.findById(id).orElse(null);
+        return u != null && "Activo".equalsIgnoreCase(u.getEstado()) ? u : null;
+    }
+
+    /** El canal de audio/video revalida la asignación en cada solicitud. */
+    public boolean puedeAccederVideollamada(Integer idUsuario, long idReunion) {
+        Usuario u = obtenerUsuario(idUsuario);
+        if (u == null) return false;
+        Map<String,Object> r = obtenerReunion(idReunion);
+        if (r == null || !"Activa".equalsIgnoreCase(String.valueOf(r.get("estado")))) return false;
+        return tieneAcceso(u, proyectoRepository.findById(numero(r.get("idProyecto"))).orElse(null));
     }
 
     private Integer numero(Object value) {

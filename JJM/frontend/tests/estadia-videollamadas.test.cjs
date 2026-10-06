@@ -92,9 +92,11 @@ test('la sala restaura la sesión antes de consultar proyecto o reunión',async(
  const e=entorno('reunion.js',async url=>{assert.equal(restaurada,true);llamadas.push(url);
   return json(url.includes('/proyectos/')?{estado:'correcto',proyecto:{id:2,nombre:'Proyecto'}}:{estado:'correcto',reunion:{id:9,idProyecto:2,estado:'Activa',sala:'sala-test'}});});
  e.window.restaurarSesionPMO=async()=>{await Promise.resolve();restaurada=true;};
+ e.window.PMOSalaWebRTC=class{constructor(opciones){this.opciones=opciones;}};
  await e.eventos.DOMContentLoaded();
- assert.equal(llamadas.join(','),'/api/proyectos/2,/api/reuniones/9');
- assert.equal(e.el('abrirSalaJitsi').href,'https://meet.jit.si/sala-test');
+ assert.equal(llamadas.join(','),'/api/reuniones/9,/api/proyectos/2');
+ assert.equal(e.run('rtc.opciones.sala'),'9');
+ assert.equal(e.el('btnEntrarSala').hidden,false);
 });
 test('enlace con reunión de otro proyecto no abre una sala equivocada',async()=>{
  const e=entorno('reunion.js',async()=>json({reunion:{id:9,idProyecto:77,estado:'Activa'}}));

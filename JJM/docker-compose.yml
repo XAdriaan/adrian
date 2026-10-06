@@ -11,6 +11,9 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      PMO_TURN_URLS: ${PMO_TURN_URLS:-}
+      PMO_TURN_USERNAME: ${PMO_TURN_USERNAME:-}
+      PMO_TURN_CREDENTIAL: ${PMO_TURN_CREDENTIAL:-}
       TZ: America/Mexico_City
       JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=75.0 -Dfile.encoding=UTF-8}
     expose:
