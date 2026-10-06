@@ -21,6 +21,7 @@ WORKDIR /app
 
 # Usuario sin privilegios para ejecutar la aplicación.
 RUN addgroup -S jjm && adduser -S jjm -G jjm
+RUN mkdir -p /app/grabaciones && chown jjm:jjm /app/grabaciones
 
 COPY --from=build /app/backend/target/oficina-proyectos-backend-1.0.0.jar /app/app.jar
 

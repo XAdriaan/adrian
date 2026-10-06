@@ -79,7 +79,7 @@ function cargarEstiloSidebarUnificadoPMO() {
     const enlace = document.createElement("link");
     enlace.id = "sidebar-unificado-pmo-css";
     enlace.rel = "stylesheet";
-    enlace.href = "css/sidebar-global.css?v=20261005-diseno-v7";
+    enlace.href = "css/sidebar-global.css?v=20261005-v9";
     document.head.appendChild(enlace);
 
     document.body.classList.add("sidebar-unificado-pmo");
@@ -2407,6 +2407,9 @@ document.addEventListener("DOMContentLoaded", function () {
         const pagina = location.pathname.split("/").pop();
         const normalizar = v => String(v).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
         let organizando = false;
+        const expedientesAdmin=document.createElement('a');expedientesAdmin.href='documentos.html#expedientesPorPeriodo';
+        expedientesAdmin.textContent='Documentos por periodo';expedientesAdmin.dataset.pmoAdministracion='true';expedientesAdmin.hidden=true;
+        grupos[2].details.appendChild(expedientesAdmin);
         function organizar() {
             if (organizando) return;
             organizando = true;
@@ -2424,7 +2427,7 @@ document.addEventListener("DOMContentLoaded", function () {
             });
             menu.querySelectorAll("a[href]").forEach(enlace => {
                 const ruta = enlace.getAttribute("href").split(/[?#]/)[0].split("/").pop();
-                const grupo = grupos.find(g => g.rutas.includes(ruta));
+                const grupo = enlace.dataset.pmoAdministracion==='true'?grupos[2]:grupos.find(g => g.rutas.includes(ruta));
                 if (grupo && enlace.parentNode !== grupo.details) grupo.details.appendChild(enlace);
                 enlace.classList.toggle("active", ruta === pagina);
                 if (ruta === pagina) {
@@ -2436,6 +2439,7 @@ document.addEventListener("DOMContentLoaded", function () {
             organizando = false;
         }
         function filtrar() {
+            expedientesAdmin.hidden=!window.PMOPermisos.esAdministradorReal();
             const usuario = obtenerUsuarioActivoGlobal();
             const correo = String(usuario?.correo || usuario?.email || "").trim().toLowerCase();
             if (correo && busqueda.value.trim().toLowerCase() === correo) busqueda.value = "";

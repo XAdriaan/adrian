@@ -49,7 +49,7 @@ loginForm.addEventListener("submit", async function (event) {
             mostrarError(
                 datos.mensaje ||
                 (respuesta.status === 401 ? "Correo o contraseña incorrectos." :
-                    "El servidor de acceso no está disponible. Inténtalo nuevamente.")
+                    `El servidor de acceso no respondió correctamente (HTTP ${respuesta.status}). Espera unos segundos y vuelve a intentar.`)
             );
             return;
         }
@@ -66,6 +66,7 @@ loginForm.addEventListener("submit", async function (event) {
 
         localStorage.setItem("usuarioActivo", JSON.stringify(datos.usuario));
         localStorage.setItem("sesionTokenPMO", datos.token);
+        try { sessionStorage.setItem("ardia-bienvenida", String(datos.usuario.id)); } catch (_) {}
 
         const expedienteCompleto = await datosAcademicosCompletos(datos.usuario);
         if (localStorage.getItem("sesionTokenPMO") !== datos.token) {

@@ -382,6 +382,14 @@ public class ReunionController {
         return tieneAcceso(u, proyectoRepository.findById(numero(r.get("idProyecto"))).orElse(null));
     }
 
+    /** El archivo sigue protegido por la asignación actual, aunque termine la llamada. */
+    public boolean puedeAccederGrabacion(Integer idUsuario, long idReunion) {
+        Usuario u = obtenerUsuario(idUsuario);
+        if (u == null) return false;
+        Map<String,Object> r = obtenerReunion(idReunion);
+        return r != null && tieneAcceso(u, proyectoRepository.findById(numero(r.get("idProyecto"))).orElse(null));
+    }
+
     private Integer numero(Object value) {
         if (value instanceof Number n) return n.intValue();
         try { return value == null ? null : Integer.valueOf(String.valueOf(value)); }

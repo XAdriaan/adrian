@@ -1,6 +1,7 @@
 (() => {
     'use strict';
-    if (window.PMOArdia) return;
+    const pagina = window.location.pathname.split('/').pop();
+    if (window.PMOArdia || ['', 'index.html', 'login.html', 'register.html'].includes(pagina)) return;
     const normalizar = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
     const rutas = [
         {nombre:'Inicio',url:'dashboard.html',claves:'dashboard inicio resumen'},
@@ -17,14 +18,40 @@
         {nombre:'Mis documentos',url:'documentos.html',claves:'documentos cartas archivos'},
         {nombre:'Cursos',url:'cursos.html',claves:'cursos recursos aprender'}
     ];
-    let panel, mensajes, input, accesos, boton, enviar, reconocer, leyendo = false, ocupado = false;
+    let panel, mensajes, input, accesos, boton, enviar, reconocer, widget, estado, usuario, token;
+    let leyendo = false, ocupado = false, ultimaRespuesta = '', gesto = false, escuchando = false, destruido = false;
+    const consultas = new Set();
+    function vigente() {
+        if(destruido)return false;
+        if(localStorage.getItem('sesionTokenPMO')!==token){destruir();return false;}
+        return true;
+    }
+    function destruir() {
+        if(destruido)return;destruido=true;consultas.forEach(c=>c.abort());consultas.clear();
+        window.speechSynthesis?.cancel();reconocer?.abort();widget?.remove();
+        document.removeEventListener('keydown',teclado);window.removeEventListener('storage',cambioSesion);
+        window.removeEventListener('pmo:sesion-cerrada',destruir);delete window.PMOArdia;
+    }
+    function cambioSesion(e){if(e.key===null||e.key==='sesionTokenPMO')vigente();}
+    function hablar(texto) {
+        if(!vigente()||!leyendo||!gesto||panel.hidden||!window.speechSynthesis)return;
+        window.speechSynthesis.cancel();const voz=new window.SpeechSynthesisUtterance(texto.slice(0,2000));voz.lang='es-MX';
+        const voces=window.speechSynthesis.getVoices();voz.voice=voces.find(v=>/^es-MX$/i.test(v.lang))||voces.find(v=>/^es/i.test(v.lang))||null;
+        voz.onstart=()=>{if(vigente()){estado.textContent='Ard.IA está hablando';widget.classList.add('hablando');}};
+        voz.onend=()=>{if(vigente()){estado.textContent='Lista para ayudarte';widget.classList.remove('hablando');}};
+        voz.onerror=e=>{if(vigente()){widget.classList.remove('hablando');if(!['interrupted','canceled'].includes(e.error))estado.textContent='Pulsa Escuchar respuesta para activar el audio.';}};
+        window.speechSynthesis.speak(voz);
+    }
     function cuenta() { try { return JSON.parse(localStorage.getItem('usuarioActivo') || 'null'); } catch (_) { return null; } }
     function mensaje(texto, propia = false) {
+        if(!vigente())return;
         const div = document.createElement('div'); div.className = 'ardia-mensaje' + (propia?' propio':'');
         div.textContent = texto; mensajes.append(div); mensajes.scrollTop = mensajes.scrollHeight;
-        if (!propia && leyendo && window.speechSynthesis) { speechSynthesis.cancel(); const voz = new SpeechSynthesisUtterance(texto); voz.lang='es-MX'; speechSynthesis.speak(voz); }
+        while(mensajes.children.length>30)mensajes.firstElementChild.remove();
+        if (!propia) { ultimaRespuesta=texto;hablar(texto); }
     }
     function enlaces(lista) {
+        if(!vigente())return;
         accesos.replaceChildren();
         for (const r of lista) { const a = document.createElement('a'); a.href=r.url; a.textContent=r.nombre+' ↗'; accesos.append(a); }
     }
@@ -34,13 +61,26 @@
             || n.split(/\s+/).filter(w=>w.length>2).some(w=>normalizar(r.claves).includes(w)));
     }
     async function obtener(ruta) {
-        const controlador = new AbortController(); const timer=setTimeout(()=>controlador.abort(),10000);
+        if(!vigente())throw new Error('Sesión cerrada.');
+        const controlador = new AbortController();consultas.add(controlador); const timer=setTimeout(()=>controlador.abort(),10000);
         try { const r=await fetch(window.apiUrl(ruta),{signal:controlador.signal}); const d=await r.json().catch(()=>({}));
+            if(!vigente())throw new Error('Sesión cerrada.');
+            if(r.status===401){destruir();throw new Error('Inicia sesión nuevamente.');}
             if(!r.ok)throw new Error(d.mensaje || 'No se pudo consultar el servidor.'); return d;
-        } finally {clearTimeout(timer);}
+        } finally {clearTimeout(timer);consultas.delete(controlador);}
     }
     async function responder(texto) {
         const n=normalizar(texto), coincidencias=buscar(texto); enlaces(coincidencias.slice(0,5));
+        if (/\b(hoy|resumen|hacer)\b/.test(n)) {
+            const hoy=new Date(),fecha=[hoy.getFullYear(),String(hoy.getMonth()+1).padStart(2,'0'),String(hoy.getDate()).padStart(2,'0')].join('-');
+            const ds=await Promise.allSettled([obtener(`/api/registros-horas/mi-asistencia?anio=${hoy.getFullYear()}&mes=${hoy.getMonth()+1}`),obtener('/api/seguimiento-estadia/mi-seguimiento')]);
+            const partes=['Tu resumen de hoy:'];
+            if(ds[0].status==='fulfilled'){const rs=(ds[0].value.registros||[]).filter(r=>String(r.fecha).slice(0,10)===fecha);partes.push(`• ${rs.reduce((s,r)=>s+(Number(r.horasTrabajadas)||0),0).toFixed(2)} horas registradas hoy. ${rs.some(r=>!r.horaSalida)?'Tienes una jornada abierta.':'Puedes iniciar una jornada desde Control de horas.'}`);}else partes.push('• No pude consultar tus horas. Puedes reintentar.');
+            partes.push(ds[1].status==='fulfilled'?(ds[1].value.seguimiento?.foEst03?'• Tu FO-EST-03 está registrado.':'• Tu FO-EST-03 está pendiente de registrar.'):'• No pude consultar tu expediente.');
+            enlaces([rutas[8],rutas[5],rutas[2]]);return partes.join('\n');
+        }
+        if (/graba/.test(n)) {enlaces([{nombre:'Grabaciones',url:'videollamadas.html#grabaciones'},rutas[7]]);return 'Las grabaciones están en Videollamadas → Grabaciones, ordenadas por fecha. Dentro de una sala pulsa Grabar y selecciona esta pestaña con audio. Al detener se guarda el video para verlo después.';}
+        if (/periodo|alumnos/.test(n)) {enlaces([rutas[11],rutas[10]]);return 'Administración organiza los expedientes en Enero–Abril, Mayo–Agosto y Septiembre–Diciembre. Se usa el periodo académico registrado; si falta, la fecha de inicio de estadía. Los alumnos sin datos aparecen en Sin periodo.';}
         if (/^(hola|buenos dias|buenas|ayuda|que puedes)/.test(n)) return 'Soy Ard.IA, tu asistente de JJM. Puedo abrir apartados, consultar tu asistencia y ayudarte con tu expediente y las salas. Escribe «llévame a pases de lista» o «cuántas horas tengo este mes».';
         if (/\b(abrir|abre|ir|lleva|acceder|entrar|donde|buscar)\b/.test(n) && coincidencias.length)
             return 'Tienes los accesos debajo. Pulsa el apartado que necesitas para abrirlo directamente.';
@@ -62,28 +102,39 @@
         enlaces([rutas[4],rutas[5],rutas[6],rutas[7]]);return 'Puedo ayudarte a moverte por JJM y consultar tu información. Prueba «mis horas de este mes», «mi FO-EST-03» o «mis salas». Para un problema de acceso, dime qué apartado falla y qué mensaje aparece.';
     }
     async function preguntar(texto) {
-        if (ocupado || !texto.trim()) return; ocupado=true; enviar.disabled=true; input.value=''; mensaje(texto,true);
+        if (!vigente() || ocupado || !texto.trim()) return; gesto=true;ocupado=true; enviar.disabled=true; input.value=''; mensaje(texto,true);estado.textContent='Consultando tu información…';panel.setAttribute('aria-busy','true');
         try { mensaje(await responder(texto)); }
         catch(e) { mensaje(e.name==='AbortError'?'El servidor tardó demasiado. Intenta de nuevo en unos segundos.':e.message+' Puedes usar los accesos rápidos mientras reintentas.'); }
-        finally {ocupado=false;enviar.disabled=false;input.focus();}
+        finally {if(vigente()){ocupado=false;enviar.disabled=false;panel.setAttribute('aria-busy','false');if(!leyendo)estado.textContent='Lista para ayudarte';if(!panel.hidden)input.focus({preventScroll:true});}}
     }
-    function abrir() {panel.hidden=false;boton.setAttribute('aria-expanded','true');input.focus();}
-    function cerrar() {panel.hidden=true;boton.setAttribute('aria-expanded','false');window.speechSynthesis?.cancel?.();reconocer?.stop();boton.focus();}
+    function abrir(desdeUsuario=true) {if(!vigente())return;panel.hidden=false;boton.setAttribute('aria-expanded','true');if(desdeUsuario){gesto=true;hablar(ultimaRespuesta);}input.focus({preventScroll:true});}
+    function cerrar() {panel.hidden=true;boton.setAttribute('aria-expanded','false');window.speechSynthesis?.cancel?.();reconocer?.abort();widget.classList.remove('hablando');boton.focus();}
+    function teclado(e){if(!vigente())return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();abrir();}else if(e.key==='Escape'&&!panel.hidden)cerrar();}
     function montar() {
-        const css=document.createElement('link');css.rel='stylesheet';css.href='css/ardia-global.css?v=20261005-diseno-v8';document.head.append(css);
-        const widget=document.createElement('div');widget.className='ardia-global';
+        if(!document.querySelector('link[href^="css/ardia-global.css"]')){const css=document.createElement('link');css.rel='stylesheet';css.href='css/ardia-global.css?v=20261005-v9';document.head.append(css);}
+        widget=document.createElement('div');widget.className='ardia-global';
         widget.innerHTML=`<button class="ardia-lanzador" id="ardia-abrir" type="button" aria-expanded="false" aria-controls="ardia-panel" aria-label="Abrir Ard.IA y accesos rápidos"><span aria-hidden="true">✦</span> Ard.IA <kbd>Ctrl K</kbd></button>
         <section class="ardia-panel" id="ardia-panel" role="dialog" aria-label="Ard.IA y accesos rápidos" hidden><header><div><strong>Ard.IA</strong><small>Tu asistente y accesos rápidos</small></div><button type="button" id="ardia-cerrar" aria-label="Cerrar asistente">×</button></header><div class="ardia-mensajes" id="ardia-mensajes" role="log" aria-live="polite"></div><nav class="ardia-accesos" id="ardia-accesos" aria-label="Accesos sugeridos"></nav><form id="ardia-form"><label class="ardia-sr" for="ardia-input">Pregunta o busca un apartado</label><input id="ardia-input" type="search" name="pmo-assistant-query" autocomplete="off" data-lpignore="true" data-1p-ignore="true" placeholder="Pregunta o busca un apartado…" maxlength="500"><button id="ardia-enviar" type="submit" aria-label="Enviar pregunta">↑</button></form><footer><button id="ardia-voz" type="button" aria-pressed="false">Leer respuestas</button><button id="ardia-mic" type="button" hidden>Dictar</button><span>Ctrl K · Escape para cerrar</span></footer></section>`;
         document.body.append(widget);panel=document.getElementById('ardia-panel');mensajes=document.getElementById('ardia-mensajes');input=document.getElementById('ardia-input');accesos=document.getElementById('ardia-accesos');boton=document.getElementById('ardia-abrir');enviar=document.getElementById('ardia-enviar');
         boton.addEventListener('click',()=>panel.hidden?abrir():cerrar());document.getElementById('ardia-cerrar').addEventListener('click',cerrar);
         document.getElementById('ardia-form').addEventListener('submit',e=>{e.preventDefault();preguntar(input.value);});input.addEventListener('input',()=>enlaces(buscar(input.value).slice(0,6)));
-        document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();abrir();}else if(e.key==='Escape'&&!panel.hidden)cerrar();});
-        const voz=document.getElementById('ardia-voz');voz.disabled=!window.speechSynthesis;
-        voz.addEventListener('click',()=>{leyendo=!leyendo;voz.setAttribute('aria-pressed',String(leyendo));voz.textContent=leyendo?'Silenciar voz':'Leer respuestas';if(!leyendo)window.speechSynthesis?.cancel();});
+        estado=panel.querySelector('header small');estado.setAttribute('role','status');
+        const preguntas=document.createElement('div');preguntas.className='ardia-preguntas';preguntas.setAttribute('aria-label','Preguntas rápidas');
+        for(const [titulo,pregunta]of [['Mi día','Mi resumen de hoy'],['Mis horas','Mis horas de este mes'],['FO-EST-03','Mi FO-EST-03'],['Mis salas','Mis salas de videollamadas']]){const b=document.createElement('button');b.type='button';b.textContent=titulo;b.addEventListener('click',()=>preguntar(pregunta));preguntas.append(b);}
+        mensajes.after(preguntas);
+        document.addEventListener('keydown',teclado);window.addEventListener('storage',cambioSesion);window.addEventListener('pmo:sesion-cerrada',destruir);window.addEventListener('pagehide',destruir,{once:true});
+        const voz=document.getElementById('ardia-voz');voz.disabled=!window.speechSynthesis||!window.SpeechSynthesisUtterance;
+        leyendo=localStorage.getItem(`ardia-voz-${usuario.id}`)==='1';
+        const actualizarVoz=()=>{voz.setAttribute('aria-pressed',String(leyendo));voz.textContent=leyendo?'Silenciar voz':'Activar voz';};actualizarVoz();
+        voz.addEventListener('click',()=>{if(!vigente())return;gesto=true;leyendo=!leyendo;localStorage.setItem(`ardia-voz-${usuario.id}`,leyendo?'1':'0');actualizarVoz();if(leyendo)hablar(ultimaRespuesta);else window.speechSynthesis?.cancel();});
+        const repetir=document.createElement('button');repetir.type='button';repetir.textContent='Escuchar respuesta';repetir.disabled=voz.disabled;voz.after(repetir);
+        repetir.addEventListener('click',()=>{if(!vigente())return;gesto=true;leyendo=true;actualizarVoz();hablar(ultimaRespuesta);});
         const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-        if(SR){const mic=document.getElementById('ardia-mic');mic.hidden=false;reconocer=new SR();reconocer.lang='es-MX';reconocer.onresult=e=>{input.value=e.results[0][0].transcript;enlaces(buscar(input.value).slice(0,6));input.focus();};reconocer.onend=()=>{mic.textContent='Dictar';};reconocer.onerror=()=>mensaje('No se pudo usar el micrófono. Revisa el permiso del navegador o escribe tu pregunta.');mic.addEventListener('click',()=>{try{reconocer.start();mic.textContent='Escuchando…';}catch(_){reconocer.stop();}});}
-        mensaje('Hola. Puedes buscar cualquier apartado o preguntarme por tu asistencia, FO-EST-03 y videollamadas.');enlaces(buscar(''));
-        window.PMOArdia={abrir,cerrar};
+        if(SR){const mic=document.getElementById('ardia-mic');mic.hidden=false;mic.textContent='Hablar';mic.setAttribute('aria-pressed','false');reconocer=new SR();reconocer.lang='es-MX';reconocer.continuous=false;reconocer.interimResults=false;reconocer.onresult=e=>{if(vigente()&&!panel.hidden)preguntar(e.results[0][0].transcript);};reconocer.onend=()=>{escuchando=false;mic.textContent='Hablar';mic.setAttribute('aria-pressed','false');};reconocer.onerror=e=>{if(e.error!=='aborted')mensaje('No se pudo usar el micrófono. Revisa el permiso del navegador o escribe tu pregunta.');};mic.addEventListener('click',()=>{if(!vigente()||ocupado)return;if(escuchando){reconocer.stop();return;}gesto=true;window.speechSynthesis?.cancel();try{reconocer.start();escuchando=true;mic.textContent='Dejar de escuchar';mic.setAttribute('aria-pressed','true');estado.textContent='Te escucho…';}catch(_){estado.textContent='Espera un momento y pulsa Hablar otra vez.';}});}
+        mensaje(`Hola, ${usuario.nombreCompleto||usuario.nombre||'bienvenido'}. Soy Ard.IA. Ya estás dentro de JJM. Puedo consultar tus horas, tu seguimiento y tus salas, o llevarte al apartado que necesitas. Pulsa Escuchar respuesta para oírme.`);enlaces(buscar(''));estado.textContent='Lista para ayudarte';
+        window.PMOArdia={abrir,cerrar,preguntar};
+        if(sessionStorage.getItem('ardia-bienvenida')===String(usuario.id)){sessionStorage.removeItem('ardia-bienvenida');abrir(false);}
     }
-    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',montar,{once:true});else montar();
+    async function iniciar(){token=localStorage.getItem('sesionTokenPMO');if(!token||typeof window.restaurarSesionPMO!=='function')return;usuario=await window.restaurarSesionPMO();if(!usuario?.id||localStorage.getItem('sesionTokenPMO')!==token)return;montar();}
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',iniciar,{once:true});else iniciar();
 })();

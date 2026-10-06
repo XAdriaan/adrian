@@ -19,6 +19,8 @@
     window.limpiarSesionPMO = function () {
         localStorage.removeItem("sesionTokenPMO");
         localStorage.removeItem("usuarioActivo");
+        try { sessionStorage.removeItem("ardia-bienvenida"); } catch (_) {}
+        window.dispatchEvent(new Event("pmo:sesion-cerrada"));
     };
 
     // Un usuario guardado sin token no constituye una sesión autenticada.

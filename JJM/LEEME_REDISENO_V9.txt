@@ -1,0 +1,122 @@
+JJM PROJECTSPHERE V9 — AZUL MARINO, ARD.IA, GRABACIONES Y PERIODOS
+
+PAQUETE COMPLETO
+Descomprime el ZIP completo. Contiene JJM, SUBIR_V9.ps1 y estas instrucciones.
+Esta versión se entrega para que tú la subas. No se ha desplegado automáticamente.
+
+QUÉ CAMBIA
+- Tema azul y azul marino en el acceso, Dashboard, seguimiento, documentos,
+  perfil, proyectos, tareas, videollamadas y asistente; tarjetas y formularios oscuros.
+- Menú compacto: accesos principales siempre visibles, búsqueda y secciones
+  adicionales que se abren de una en una. Ctrl + K abre Ard.IA.
+- Ard.IA solo aparece con sesión confirmada por el servidor. Al entrar se abre
+  una bienvenida una sola vez. Consulta horas, FO-EST-03, seguimiento y salas.
+  Pulsa Escuchar respuesta o Activar voz para oírla. Hablar permite enviar una
+  pregunta por voz en navegadores compatibles. No se activa el micrófono solo.
+  Es un asistente de la plataforma basado en sus consultas y accesos; no incluye
+  un servicio externo de IA generativa ni necesita una clave para funcionar.
+- Sala general para usuarios con sesión y salas privadas por proyecto para
+  administradores y miembros asignados; el backend comprueba el acceso.
+- Grabaciones: al detener se descarga una copia y se guarda el video en el
+  servidor. Videollamadas > Grabaciones permite filtrar por mes y sala,
+  consultar por fecha, reproducir y descargar con autorización de la sesión.
+  Las grabaciones privadas solo se muestran a quienes conservan acceso al proyecto.
+- Administración > Documentos por periodo agrupa alumnos en Enero–Abril,
+  Mayo–Agosto y Septiembre–Diciembre, con filtro adicional por año de estadía.
+  Usa primero el periodo académico registrado y después la fecha de inicio.
+  Si ambos faltan, conserva al alumno en Sin periodo académico.
+- FO-EST-03 y Pases de lista permanecen dentro de Mi seguimiento de estadía.
+  Se conserva el Excel oficial sin modificaciones y la descarga del pase en PDF.
+- Se conserva la separación Nginx 80 / Spring Boot 8080 y la red privada de API.
+  Ahora el frontend espera a que el backend y MySQL respondan antes de arrancar.
+  Si el backend está reiniciándose, la API muestra un error claro y permite reintentar.
+
+SUBIR A GITHUB
+Dentro de la carpeta extraída del ZIP, abre PowerShell y ejecuta:
+
+    .\SUBIR_V9.ps1
+
+Usa C:\Users\24050\Downloads\JJM_REPO_NUEVO. Comprueba que sea el repositorio
+XAdriaan/adrian y la rama main, actualiza, copia JJM, crea un commit y hace push.
+No elimina .git ni el historial. Si hay cambios locales pendientes, se detiene
+para que puedas guardarlos antes de copiar.
+Si tu clon está en otra carpeta:
+
+    .\SUBIR_V9.ps1 -Repositorio "C:\ruta\de\tu\repositorio"
+
+Si PowerShell bloquea la ejecución del archivo, usa estos comandos manuales,
+tras confirmar que git status esté limpio y que origin sea XAdriaan/adrian:
+
+    $paqueteJJM = "$env:USERPROFILE\Downloads\JJM_ELEGANTE_ARDIA_GRABACIONES_PERIODOS_20261005_V9"
+    $repoJJM = "$env:USERPROFILE\Downloads\JJM_REPO_NUEVO"
+    if (!(Test-Path -LiteralPath "$paqueteJJM\JJM")) { throw "No se encontró JJM dentro del paquete." }
+    if (!(Test-Path -LiteralPath "$repoJJM\.git")) { throw "El destino no es tu repositorio Git." }
+    Set-Location -LiteralPath $repoJJM
+    git status
+    if (git status --porcelain) { throw "Guarda los cambios locales antes de copiar." }
+    git pull --ff-only origin main
+    if ($LASTEXITCODE -ne 0) { throw "No se pudo actualizar el repositorio." }
+    robocopy "$paqueteJJM\JJM" "$repoJJM\JJM" /E /R:2 /W:1
+    if ($LASTEXITCODE -ge 8) { throw "Falló la copia." }
+    git add JJM
+    git commit -m "Integra diseño azul marino ArdIA grabaciones y documentos por periodo"
+    git push origin main
+
+DESPLEGAR EN COOLIFY
+1. Abre adrian:main-rhg3r12zlxt0qxxc0upwdw74, del repositorio XAdriaan/adrian.
+2. General > Reload Compose. Conserva el dominio del frontend y las variables
+   DB_URL, DB_USER, DB_PASSWORD y correo que ya están configuradas.
+3. Actions > Redeploy. Espera Success y confirma que el commit sea el nuevo.
+4. Abre https://oficina.jjmti.com.mx/login.html y pulsa Ctrl + F5.
+5. Entra, activa la voz del asistente y revisa Mi seguimiento de estadía.
+6. En Videollamadas, prueba dos cuentas en la sala general y luego una sala de
+   proyecto con una cuenta asignada y otra ajena. La ajena debe ser rechazada.
+7. Dentro de la llamada pulsa Grabar. Selecciona Esta pestaña y Compartir audio.
+   Detén la grabación y espera el mensaje de guardado antes de cerrar la página.
+8. Abre Videollamadas > Grabaciones y reproduce el video. Como administrador,
+   abre Documentos por periodo y revisa los alumnos de cada cohorte y año.
+
+PERSISTENCIA Y RESPALDO DE VIDEOS
+El Compose crea un volumen de la aplicación llamado pmo_recordings, montado en
+/app/grabaciones. Contiene videos WebM y metadatos. No almacena videos en MySQL
+ni cambia su recurso, credenciales o volumen. Los videos completos sobreviven a
+un redespliegue cuando se conserva este volumen. No lo elimines al redesplegar.
+Un respaldo de MySQL no incluye las grabaciones: respalda también este volumen.
+Cada video admite hasta 512 MB; el volumen tiene un límite de aplicación de 10 GB.
+Las cargas se dividen en partes de 4 MB. Si falla el guardado, conserva el WebM
+descargado; el sistema avisa del fallo y no anuncia que quedó guardado en JJM.
+No se eliminan automáticamente las grabaciones publicadas.
+
+COMPATIBILIDAD DE VOZ Y VIDEOLLAMADAS
+La voz necesita una interacción inicial: Escuchar respuesta o Activar voz.
+Los navegadores bloquean audio automático sin esa interacción. El dictado depende
+de la compatibilidad del navegador y del permiso del micrófono.
+La grabación usa captura de pestaña/pantalla: prueba Chrome o Edge en computadora.
+Comparte el audio de la pestaña para incluir a los participantes remotos.
+Avisa a los participantes antes de grabar.
+Las llamadas utilizan WebRTC con señalización propia y protegida por JJM.
+Para redes móviles, empresariales o NAT restrictivas puede hacer falta TURN:
+
+    PMO_TURN_URLS
+    PMO_TURN_USERNAME
+    PMO_TURN_CREDENTIAL
+
+Son las variables opcionales existentes del backend. Solo configúralas con los
+datos reales de tu servidor TURN. No se incluyen credenciales inventadas.
+Para grupos grandes se requiere infraestructura de video SFU.
+
+VERIFICACIÓN
+- Backend Java 21: 36 pruebas aprobadas, incluidas permisos, identidad de sesión,
+  cargas reintentadas y recuperación de grabaciones tras reiniciar el controlador.
+- Frontend: 43 pruebas aprobadas, incluidas periodos, sesión, WebRTC, FO-EST-03,
+  asistencia y cortes de conexión al guardar un video.
+- Navegador: login y bienvenida; voz y dictado con una simulación sin usar tu
+  micrófono; filtros de periodos y años con alumnos de prueba.
+- Grabación WebM de video sintético, guardado por partes y reproducción 640 x 360
+  desde la biblioteca. El navegador usó APIs de prueba locales, sin tocar MySQL.
+- El servidor actual respondió correctamente a /api/salud durante la revisión.
+  Estas nuevas funciones requieren subir el ZIP y redesplegar para probarlas
+  con las cuentas, navegadores y redes reales de producción.
+
+No ejecutes los SQL de instalación sobre la base de producción.
+Los archivos LEEME de versiones anteriores son historial; sigue este V9.

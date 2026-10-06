@@ -4,9 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Documentos | PMO Platform</title>
-    <link rel="stylesheet" href="css/documentos.css?v=20261002-formatos-automaticos-v1">
-<link rel="stylesheet" href="css/sidebar-global.css?v=20261005-diseno-v8">
-<link rel="stylesheet" href="css/projectsphere.css?v=20261005-diseno-v8">
+    <link rel="stylesheet" href="css/documentos.css?v=20261005-v9">
+<link rel="stylesheet" href="css/sidebar-global.css?v=20261005-v9">
+<link rel="stylesheet" href="css/projectsphere.css?v=20261005-v9">
+<link rel="stylesheet" href="css/ardia-global.css?v=20261005-v9">
+<link rel="stylesheet" href="css/elegancia-v9.css?v=20261005-v9">
 </head>
 <body>
 <div class="dashboard-container">
@@ -94,7 +96,7 @@
                 <p>Selecciona un periodo y abre el expediente del alumno para consultar sus datos y documentos.</p>
             </div></div>
             <p id="avisoCargaExpedientes" role="status" hidden></p>
-            <div id="listaExpedientesPeriodo" aria-live="polite"></div>
+            <div class="periodo-year"><label for="anioExpedientes">Año de estadía</label><select id="anioExpedientes"><option value="">Todos los años</option></select><button type="button" class="btn-secondary" id="periodosTodos">Todos los periodos</button></div><div id="periodosDock" class="periodos-dock" aria-label="Periodos de estadía"></div><div id="listaExpedientesPeriodo" aria-live="polite"></div>
         </section>
 
         <section class="document-tabs">
@@ -401,13 +403,14 @@
     <a href="documentos/plantillas/PLANTILLA_CARTA_TERMINACION.pdf" target="_blank">Carta de término</a>
     <a href="documentos/plantillas/PLANTILLA_REPORTE_DE_DESEMPENO.docx" target="_blank">Reporte de desempeño</a>
 </section>
-<script src="js/api-config.js?v=20261005-diseno-v8"></script>
-<script src="js/permisos-globales.js?v=20261005-diseno-v8"></script>
+<script src="js/api-config.js?v=20261005-v9"></script>
+<script src="js/permisos-globales.js?v=20261005-v9"></script>
 <!-- Generación local en navegador de PDF real para cartas y formatos automáticos -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<script src="js/documentos.js?v=20261003-asistencia-foest03-v2"></script>
-<script src="js/ardia-global.js?v=20261005-diseno-v8"></script>
+<script src="js/periodos.js?v=20261005-v9"></script>
+<script src="js/documentos.js?v=20261005-v9"></script>
+<script src="js/ardia-global.js?v=20261005-v9"></script>
 </body>
 </html>

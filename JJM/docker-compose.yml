@@ -14,10 +14,19 @@ services:
       PMO_TURN_URLS: ${PMO_TURN_URLS:-}
       PMO_TURN_USERNAME: ${PMO_TURN_USERNAME:-}
       PMO_TURN_CREDENTIAL: ${PMO_TURN_CREDENTIAL:-}
+      PMO_RECORDINGS_DIR: /app/grabaciones
       TZ: America/Mexico_City
       JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=75.0 -Dfile.encoding=UTF-8}
     expose:
       - "8080"
+    volumes:
+      - pmo_recordings:/app/grabaciones
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/api/salud"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 90s
     networks:
       default:
       pmo_api:
@@ -30,9 +39,16 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     expose:
       - "80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/api/salud"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     networks:
       default:
       pmo_api:
@@ -43,3 +59,6 @@ networks:
   default:
   pmo_api:
     internal: true
+
+volumes:
+  pmo_recordings:

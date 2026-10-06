@@ -26,6 +26,7 @@ let grabacionRecorder = null, grabacionChunks = [], grabacionPantallaStream = nu
 let grabacionMicrofonoStream = null, grabacionAudioContext = null, grabacionStreamFinal = null;
 let grabacionDeteniendose = false, grabacionFinalizada = Promise.resolve();
 const grabacionesLocales = [];
+let grabacionInicio=0, grabacionBytes=0;
 const esSalaGeneral = obtenerParametroURL("general") === "1";
 const idProyecto = esSalaGeneral ? null : obtenerParametroURL("id");
 let idReunion = obtenerParametroURL("reunion");
@@ -48,6 +49,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         meetingLoadingMessage.textContent = esSalaGeneral ? "Todos los usuarios con sesión pueden entrar." : "Acceso exclusivo para administración y miembros asignados al proyecto.";
         btnEntrarSala.hidden = false; estadoReunion.textContent = "Sala lista. Pulsa Entrar a la sala.";
         configurarEventos(); iniciarTemporizador(); renderizarGrabacionesLocales();
+        document.querySelector("[data-grabaciones-sala]").dataset.grabacionesSala=esSalaGeneral?"general":String(idReunion);
+        window.PMOGrabaciones.preparar();
     } catch(e) { mostrarErrorConexion(e.message || "No fue posible abrir la sala."); }
 });
 async function cargarReunion() {
@@ -230,7 +233,7 @@ async function iniciarGrabacionLocal() {
         });
 
         grabacionRecorder.addEventListener("dataavailable", evento => {
-            if (evento.data && evento.data.size > 0) grabacionChunks.push(evento.data);
+            if (evento.data && evento.data.size > 0) {grabacionChunks.push(evento.data);grabacionBytes+=evento.data.size;if(grabacionBytes>500*1024*1024&&!grabacionDeteniendose)detenerGrabacionLocal();}
         });
 
         grabacionRecorder.addEventListener("error", evento => {
@@ -239,7 +242,7 @@ async function iniciarGrabacionLocal() {
         });
 
         grabacionFinalizada = new Promise(resolve => {
-            grabacionRecorder.addEventListener("stop", () => {
+            grabacionRecorder.addEventListener("stop", async () => {
                 try {
                     const blob = new Blob(grabacionChunks, { type: mimeType });
                     grabacionChunks = [];
@@ -249,7 +252,13 @@ async function iniciarGrabacionLocal() {
                     grabacionesLocales.push(archivo);
                     descargarGrabacionLocal(archivo);
                     renderizarGrabacionesLocales();
-                    estadoReunion.textContent = "Grabación lista. Guarda el archivo en tu equipo.";
+                    limpiarRecursosGrabacion();
+                    estadoReunion.textContent = "Guardando grabación en JJM…";
+                    try {
+                        const guardada=await window.PMOGrabaciones.subir(blob,{sala:esSalaGeneral?'general':String(idReunion),titulo:esSalaGeneral?'Reunión general':(reunionActual.titulo||proyectoActual?.nombre||'Reunión de proyecto'),duracionSegundos:(Date.now()-grabacionInicio)/1000},porcentaje=>{estadoReunion.textContent=`Guardando grabación… ${porcentaje}%`;});
+                        archivo.idServidor=guardada.id;renderizarGrabacionesLocales();await window.PMOGrabaciones.cargar();
+                        estadoReunion.textContent="Grabación guardada. Ya puedes verla en Videollamadas → Grabaciones.";
+                    } catch(e) {estadoReunion.textContent="No se pudo guardar en JJM: "+e.message+" Conserva la copia descargada.";}
                 } catch (error) {
                     estadoReunion.textContent = "No se pudo preparar la grabación: " + error.message;
                 } finally {
@@ -266,7 +275,7 @@ async function iniciarGrabacionLocal() {
             if (grabando && !grabacionDeteniendose) detenerGrabacionLocal();
         });
 
-        grabacionRecorder.start(1000);
+        grabacionBytes=0;grabacionInicio=Date.now();grabacionRecorder.start(1000);
         grabando = true;
         actualizarBotonesGrabacion();
         estadoReunion.textContent = "● Grabando reunión. Para detener usa el botón Detener.";
@@ -330,11 +339,11 @@ function actualizarBotonesGrabacion() {
 
 function renderizarGrabacionesLocales() {
     if (!listaGrabaciones) return;
-    listaGrabaciones.innerHTML = grabacionesLocales.length ? grabacionesLocales.map((g,i) => `
+    listaGrabaciones.innerHTML = grabacionesLocales.some(g=>!g.idServidor) ? grabacionesLocales.map((g,i) => g.idServidor?"":`
         <article class="recording-item"><strong>${escaparHTML(g.nombre)}</strong>
         <small>${formatearBytes(g.blob.size)} · ${formatearFechaHora(g.fecha)}</small>
         <button type="button" data-grabacion-local="${i}">Descargar de nuevo</button></article>`).join("")
-        : '<p class="recordings-empty">Aquí aparecerán los videos que grabes durante esta sesión.</p>';
+        : '<p class="recordings-empty">Los videos guardados aparecen arriba; aquí verás las copias pendientes de guardar.</p>';
     listaGrabaciones.querySelectorAll('[data-grabacion-local]').forEach(b => b.addEventListener('click', () =>
         descargarGrabacionLocal(grabacionesLocales[Number(b.dataset.grabacionLocal)])));
 }

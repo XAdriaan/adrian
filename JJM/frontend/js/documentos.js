@@ -77,6 +77,7 @@ let documentoRevisionActual = null;
 let datosAcademicosDocumentosCache = {};
 let filtroPersonaDocumentosValor = "";
 let filtroPeriodoDocumentos = "";
+let filtroAnioDocumentos = "";
 let vistaPreviaDocumentoId = null;
 let vistaPreviaBlobUrl = null;
 
@@ -7089,111 +7090,23 @@ function obtenerNombreMiembroDocumentos(
     );
 }
 
-function obtenerPeriodoMiembroDocumentos(
-    miembro
-) {
-
-    if (!miembro) {
-        return "";
-    }
-
-    /*
-     * La fuente principal es el periodo académico capturado
-     * por el alumno. La fecha de registro de la cuenta NO
-     * representa su periodo de estadía.
-     */
-
-    const datos =
-        obtenerDatosAcademicosMiembroDocumentos(
-            miembro
-        );
-
-    const periodo =
-        datos?.periodoEstadia ||
-        datos?.periodo ||
-        miembro?.periodoEstadia ||
-        miembro?.periodo ||
-        "";
-
-    const texto =
-        normalizarTextoDocumentos(
-            periodo
-        );
-
-
-    if (texto.includes("enero") || texto.includes("abril")) {
-
-        return "enero-abril";
-
-    }
-
-
-    if (texto.includes("mayo") || texto.includes("agosto")) {
-
-        return "mayo-agosto";
-
-    }
-
-
-    if (texto.includes("septiembre") || texto.includes("diciembre")) {
-
-        return "septiembre-diciembre";
-
-    }
-
-
-    /*
-     * Último recurso: fecha de inicio de estadía.
-     */
-
-    const fechaInicio =
-        datos?.fechaInicio ||
-        datos?.fecha_inicio ||
-        miembro?.fechaInicio ||
-        miembro?.fecha_inicio;
-
-
-    if (fechaInicio) {
-
-        const fecha =
-            new Date(fechaInicio);
-
-        if (!Number.isNaN(fecha.getTime())) {
-
-            const mes =
-                (/^\d{4}-(\d{2})-\d{2}/.exec(String(fechaInicio))
-                    ? Number(String(fechaInicio).slice(5, 7))
-                    : fecha.getMonth() + 1);
-
-            if (mes >= 1 && mes <= 4) {
-
-                return "enero-abril";
-
-            }
-
-            if (
-                mes >= 5 &&
-                mes <= 8
-            ) {
-
-                return "mayo-agosto";
-
-            }
-
-            if (
-                mes >= 9 &&
-                mes <= 12
-            ) {
-
-                return "septiembre-diciembre";
-
-            }
-        }
-    }
-
-
-    return "";
+function infoPeriodoAlumnoDocumentos(miembro) {
+    const d=obtenerDatosAcademicosMiembroDocumentos(miembro)||{};
+    return window.PMOPeriodos.clasificar({periodoEstadia:d.periodoEstadia||d.periodo||miembro?.periodoEstadia||miembro?.periodo,fechaInicio:d.fechaInicio||d.fecha_inicio||miembro?.fechaInicio||miembro?.fecha_inicio});
 }
+function obtenerPeriodoMiembroDocumentos(miembro) {return infoPeriodoAlumnoDocumentos(miembro).clave;}
+function actualizarPeriodosDockDocumentos() {
+    const dock=document.getElementById('periodosDock'),select=document.getElementById('anioExpedientes');if(!dock||!select)return;
+    const todos=(miembrosPMO||[]).filter(esAlumnoDocumentos),anios=[...new Set(todos.map(a=>infoPeriodoAlumnoDocumentos(a).anio).filter(Boolean))].sort().reverse();
+    select.innerHTML='<option value="">Todos los años</option>'+anios.map(a=>`<option value="${a}">${a}</option>`).join('');select.value=filtroAnioDocumentos;
+    const alumnos=todos.filter(a=>!filtroAnioDocumentos||infoPeriodoAlumnoDocumentos(a).anio===filtroAnioDocumentos);
+    dock.innerHTML=window.PMOPeriodos.grupos.map((clave,i)=>{const n=alumnos.filter(a=>obtenerPeriodoMiembroDocumentos(a)===clave).length;return `<button type="button" class="periodo-selector" data-periodo="${clave}" aria-pressed="${filtroPeriodoDocumentos===clave}"><strong>${window.PMOPeriodos.nombres[i]}</strong><span>${n} ${n===1?'alumno':'alumnos'}</span></button>`;}).join('');
+    dock.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{filtroPeriodoDocumentos=b.dataset.periodo;filtroPersonaDocumentosValor=filtroPeriodoDocumentos;filtroPersonaDocumentos.value=filtroPeriodoDocumentos;renderizarDocumentos();}));
+}
+document.addEventListener('DOMContentLoaded',()=>{
+    document.getElementById('anioExpedientes')?.addEventListener('change',e=>{filtroAnioDocumentos=e.target.value;renderizarDocumentos();});
+    document.getElementById('periodosTodos')?.addEventListener('click',()=>{filtroPeriodoDocumentos='';filtroPersonaDocumentosValor='';filtroPersonaDocumentos.value='';renderizarDocumentos();});
+});
 // ==========================================================
 // OBTENER PERIODO DEL ALUMNO
 // ==========================================================
@@ -7275,6 +7188,7 @@ function obtenerAlumnosFiltradosDocumentos() {
      * Más reciente primero.
      */
 
+    if(filtroAnioDocumentos)alumnos=alumnos.filter(a=>infoPeriodoAlumnoDocumentos(a).anio===filtroAnioDocumentos);
     alumnos.sort(
         function (a, b) {
 
@@ -7402,6 +7316,8 @@ function actualizarFiltroPersonaDocumentos() {
     filtroPersonaDocumentos.appendChild(
         opcionMayo
     );
+
+    filtroPersonaDocumentos.insertBefore(opcionMayo, opcionSeptiembre);
 
     /*
      * Restaurar el filtro seleccionado.
@@ -8945,6 +8861,7 @@ function renderizarDocumentos() {
     const alumnos =
         obtenerAlumnosFiltradosDocumentos();
 
+    actualizarPeriodosDockDocumentos();
     renderizarExpedientesPorPeriodo(alumnos);
 
     const documentos =
@@ -9430,7 +9347,7 @@ function renderizarTablaMisDocumentosAdmin(
         tablaMisDocumentos.innerHTML = `
             <tr>
                 <td colspan="7" class="empty-state">
-                    No hay alumnos que coincidan con el filtro.
+                    No hay documentos registrados para los filtros seleccionados.
                 </td>
             </tr>
         `;
@@ -9806,20 +9723,16 @@ function cargarDocumentosStorage() {
 function renderizarExpedientesPorPeriodo(alumnos) {
     const contenedor = document.getElementById("listaExpedientesPeriodo");
     if (!contenedor) return;
-    const periodos = {
-        "enero-abril": "Enero - Abril",
-        "mayo-agosto": "Mayo - Agosto",
-        "septiembre-diciembre": "Septiembre - Diciembre",
-        "": "Sin periodo académico registrado"
-    };
+    const periodos=new Map();
+    alumnos.slice().sort((a,b)=>{const pa=infoPeriodoAlumnoDocumentos(a),pb=infoPeriodoAlumnoDocumentos(b);return pb.anio.localeCompare(pa.anio)||window.PMOPeriodos.grupos.indexOf(pa.clave)-window.PMOPeriodos.grupos.indexOf(pb.clave);}).forEach(alumno=>{const p=infoPeriodoAlumnoDocumentos(alumno);periodos.set(p.clave+'|'+p.anio,p.nombre+(p.anio?' · '+p.anio:''));});
     if (!alumnos.length) {
         contenedor.innerHTML = '<p class="empty-state">No hay alumnos con datos académicos correspondientes al periodo seleccionado.</p>';
         return;
     }
-    contenedor.innerHTML = Object.entries(periodos).map(([clave, titulo]) => {
-        const grupo = alumnos.filter(alumno => obtenerPeriodoMiembroDocumentos(alumno) === clave);
+    contenedor.innerHTML = [...periodos].map(([clave, titulo],indice) => {
+        const grupo = alumnos.filter(alumno => infoPeriodoAlumnoDocumentos(alumno).clave+"|"+infoPeriodoAlumnoDocumentos(alumno).anio === clave);
         if (!grupo.length) return "";
-        return `<section class="expedientes-periodo"><h3>${titulo} · ${grupo.length} alumnos</h3>${grupo.map(alumno => {
+        return `<details class="expedientes-periodo" name="periodo-expedientes" ${indice===0?"open":""}><summary>${titulo} · ${grupo.length} ${grupo.length===1?'alumno':'alumnos'}</summary>${grupo.map(alumno => {
             const datos = obtenerDatosAcademicosMiembroDocumentos(alumno);
             const documentos = obtenerDocumentosAlumnoDocumentos(alumno).slice().sort((a,b)=>obtenerFechaOrdenDocumento(b)-obtenerFechaOrdenDocumento(a));
             const e = escaparTextoDocumento;
@@ -9830,7 +9743,7 @@ function renderizarExpedientesPorPeriodo(alumnos) {
             const carrera = e(normalizarCarreraCarta(datos.carrera) || "Sin registrar");
             const cuatrimestre = e(normalizarCuatrimestreCarta(datos.cuatrimestre) || "Sin registrar");
             const periodo = e(datos.periodoEstadia || titulo);
-            return `<details class="expediente-alumno" open>
+            return `<details class="expediente-alumno" name="expediente-activo">
                 <summary>
                     <span class="expediente-summary-id"><span class="record-avatar">●</span><span><strong>${nombre}</strong><small>Matrícula: ${matricula}</small></span></span>
                     <span class="expediente-summary-actions">
@@ -9849,7 +9762,7 @@ function renderizarExpedientesPorPeriodo(alumnos) {
                     ${documentos.length ? `<div class="table-wrapper"><table><thead><tr><th>Documento</th><th>Archivo</th><th>Estado</th><th>Fecha de carga</th><th>Observaciones</th><th>Acciones</th></tr></thead><tbody>${documentos.map(doc => crearFilaDocumentoExpedienteAdminHTML(doc)).join("")}</tbody></table></div>` : '<p class="empty-state">Este alumno todavía no tiene documentos registrados.</p>'}
                 </div>
             </details>`;
-        }).join("")}</section>`;
+        }).join("")}</details>`;
     }).join("");
 }
 

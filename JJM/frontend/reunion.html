@@ -4,10 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reunión | Oficina de Proyectos</title>
-    <link rel="stylesheet" href="css/reunion.css?v=20261005-diseno-v8">
-<link rel="stylesheet" href="css/sidebar-global.css?v=20261005-diseno-v8">
-<link rel="stylesheet" href="css/projectsphere.css?v=20261005-diseno-v8">
-<link rel="stylesheet" href="css/sala-v7.css?v=20261005-diseno-v8">
+    <link rel="stylesheet" href="css/reunion.css?v=20261005-v9">
+<link rel="stylesheet" href="css/sidebar-global.css?v=20261005-v9">
+<link rel="stylesheet" href="css/projectsphere.css?v=20261005-v9">
+<link rel="stylesheet" href="css/sala-v7.css?v=20261005-v9">
+<link rel="stylesheet" href="css/ardia-global.css?v=20261005-v9">
+<link rel="stylesheet" href="css/elegancia-v9.css?v=20261005-v9">
 </head>
 <body>
 <div class="meeting-app">
@@ -50,7 +52,7 @@
             <div class="recordings-head">
                 <div>
                     <h2>Grabaciones</h2>
-                    <p>Descárgalas en tu equipo al terminar.</p>
+                    <p>Guárdalas y vuelve a verlas por fecha.</p>
                 </div>
             </div>
 
@@ -58,14 +60,15 @@
                 <strong>¿Cómo funciona?</strong>
                 <p>
                     Pulsa <b>Grabar</b> y, cuando el navegador lo solicite, selecciona <b>Esta pestaña</b> y activa <b>Compartir audio</b>.
-                    Al detener se descarga el video en tu equipo. Guarda el archivo antes de salir de esta pantalla; también podrás descargarlo de nuevo durante esta sesión.
+                    Al detener se conserva una copia en tu equipo y se guarda el video en JJM. Después lo encontrarás en Videollamadas → Grabaciones, organizado por fecha. Avisa a los participantes antes de grabar.
                 </p>
             </div>
 
             <div class="recording-help">
                 <strong>Tu conexión</strong><p>La sala usa tu cuenta de JJM. Activa cámara y micrófono desde los botones de arriba.</p><button id="btnEscuchar" type="button" class="meeting-btn">Activar audio</button><button id="btnReconectar" type="button" class="meeting-btn secondary">Reconectar</button></div>
 
-            <div id="listaGrabaciones" class="recordings-list">
+            <div data-grabaciones-sala="" data-grabaciones-auto="false"><button type="button" class="meeting-btn secondary" id="actualizarGrabaciones">↻ Actualizar videos</button><p id="avisoGrabaciones" role="status" hidden></p><div id="grabacionesServidor" aria-live="polite"></div></div>
+<div id="listaGrabaciones" class="recordings-list">
                 <p class="recordings-empty">Aquí aparecerán tus grabaciones de esta sesión.</p>
             </div>
         </aside>
@@ -77,9 +80,10 @@
     </footer>
 </div>
 
-<script src="js/api-config.js?v=20261005-diseno-v8"></script>
-<script src="js/sala-webrtc.js?v=20261005-diseno-v8"></script>
-<script src="js/reunion.js?v=20261005-diseno-v8"></script>
-<script src="js/ardia-global.js?v=20261005-diseno-v8"></script>
+<script src="js/api-config.js?v=20261005-v9"></script>
+<script src="js/sala-webrtc.js?v=20261005-v9"></script>
+<script src="js/grabaciones.js?v=20261005-v9"></script>
+<script src="js/reunion.js?v=20261005-v9"></script>
+<script src="js/ardia-global.js?v=20261005-v9"></script>
 </body>
 </html>

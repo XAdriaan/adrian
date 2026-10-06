@@ -17,10 +17,10 @@ function entorno(fetch, almacen = { sesionTokenPMO: 'token-actual', usuarioActiv
         location: { origin: 'https://oficina.jjmti.com.mx',
             href: 'https://oficina.jjmti.com.mx/dashboard.html',
             pathname: '/dashboard.html', search: '',
-            replace: ruta => navegaciones.push(ruta) }, fetch
+            replace: ruta => navegaciones.push(ruta) }, fetch, dispatchEvent() {}
     };
     const contexto = vm.createContext({ window, URL, URLSearchParams, Headers, Request,
-        AbortController, setTimeout, clearTimeout, console: { warn() {}, error() {} },
+        AbortController, Event, sessionStorage: {getItem:()=>null,setItem(){},removeItem(){}}, setTimeout, clearTimeout, console: { warn() {}, error() {} },
         localStorage: { getItem: key => storage.get(key) ?? null,
             setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) } });
     vm.runInContext(codigoApi, contexto);
