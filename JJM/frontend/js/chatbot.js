@@ -42,7 +42,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
 async function inicializarChatbot() {
     if (!usuarioActivo) {
-        mensajesChatbot = [{ id: `msg-${Date.now()}`, tipo: "bot", texto: "No detecté una sesión activa. Inicia sesión para poder consultar tu contexto de ProjectSphere.", fecha: new Date().toISOString() }];
+        mensajesChatbot = [{ id: `msg-${Date.now()}`, tipo: "bot", texto: "No detecté una sesión activa. Inicia sesión para poder consultar tu contexto de JJM Oficina de Proyectos.", fecha: new Date().toISOString() }];
         renderizarMensajesChatbot();
         if (estadoArdia) estadoArdia.textContent = "Sin sesión";
         return;
@@ -79,7 +79,7 @@ async function enviarMensajeUsuario() {
     if (!texto) return;
     agregarMensaje("user", texto);
     inputChatbot.value = "";
-    const idTemporal = agregarMensaje("bot", "Analizando tu contexto de ProjectSphere...", true);
+    const idTemporal = agregarMensaje("bot", "Analizando tu contexto de JJM Oficina de Proyectos...", true);
     try {
         const respuesta = await generarRespuestaChatbot(texto);
         actualizarMensaje(idTemporal, respuesta, true);
@@ -98,7 +98,7 @@ function limpiarChatbot(){if(!confirm("¿Limpiar la conversación con Ard.IA?"))
 
 async function generarRespuestaChatbot(pregunta) {
     const t=normalizarTexto(pregunta);const d=await cargarDatosPermitidos();
-    if(contieneAlguna(t,["hola","buenos dias","buenas tardes","buenas noches","que tal"]))return `Hola${nombreCortoUsuario()?", "+nombreCortoUsuario():""}. Estoy conectado a tu contexto de ProjectSphere. Puedo revisar contigo proyecto, tareas, horas, asistencia, documentos, FO-EST y riesgos.`;
+    if(contieneAlguna(t,["hola","buenos dias","buenas tardes","buenas noches","que tal"]))return `Hola${nombreCortoUsuario()?", "+nombreCortoUsuario():""}. Estoy conectado a tu contexto de JJM Oficina de Proyectos. Puedo revisar contigo proyecto, tareas, horas, asistencia, documentos, FO-EST y riesgos.`;
     if(contieneAlguna(t,["quien soy","mi cuenta","mi rol"]))return responderIdentidad();
     if(contieneAlguna(t,["que debo hacer hoy","qué debo hacer hoy","prioridad","prioridades","hoy"]))return responderPrioridades(d);
     if(contieneAlguna(t,["pase de lista","pases de lista","asistencia","entrada","salida","jornada"]))return responderAsistencia(d.registrosHoras);
@@ -122,7 +122,7 @@ async function obtenerDatosAPI(url,claves){const r=await fetch(url);const d=awai
 async function obtenerObjetoAPI(url){const r=await fetch(url);const d=await json(r);if(!r.ok)throw new Error(d.mensaje||"No fue posible consultar el seguimiento.");return d||{}}
 async function json(r){try{return await r.json()}catch(_){return{}}}
 
-function responderIdentidad(){const rol=obtenerNombreRolUsuario()||"Usuario";return `Eres **${nombreCompletoUsuario()||"usuario de ProjectSphere"}**. Tu rol actual es **${rol}**. Solo consultaré información autorizada para tu sesión.`}
+function responderIdentidad(){const rol=obtenerNombreRolUsuario()||"Usuario";return `Eres **${nombreCompletoUsuario()||"usuario de JJM Oficina de Proyectos"}**. Tu rol actual es **${rol}**. Solo consultaré información autorizada para tu sesión.`}
 function responderPermisos(){const rol=obtenerNombreRolUsuario()||"Sin rol";return esAdministrador()?`Tu rol es **${rol}**. Puedes consultar operación general, proyectos, tareas, alertas, horas, documentos y seguimiento.`:`Tu rol es **${rol}**. Puedo ayudarte con tu proyecto, tareas, horas, asistencia, documentos y seguimiento visibles.`}
 function responderAsistencia(registros){const hoy=new Date();const ym=`${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,"0")}`;const mes=registros.filter(r=>String(r.fecha||"").slice(0,7)===ym);const dias=new Set(mes.map(r=>String(r.fecha||"").slice(0,10)).filter(Boolean)).size;const horas=mes.reduce((a,r)=>a+num(r.horasTrabajadas??r.horas),0);const abiertas=mes.filter(r=>r.horaEntrada&&!r.horaSalida).length;return `**Pases de lista de este mes:**\n- Días registrados: ${dias}.\n- Horas acumuladas: ${horas.toFixed(1)} h.\n- Jornadas abiertas sin salida: ${abiertas}.\nPuedes registrar entrada/salida en **Control de horas** y generar el PDF oficial desde **Mi seguimiento de estadía → Pases de lista**.`}
 function responderSeguimiento(seg,docs){const s=seg?.seguimiento||{};const e=seg?.documentos||{};const lista=[];lista.push(`Carta de presentación: ${e.cartaPresentacion?"aceptada":"pendiente"}`);lista.push(`Carta de aceptación: ${e.cartaAceptacion?"liberada":"pendiente"}`);lista.push(`Carta de término: ${e.cartaTermino?"liberada":"pendiente"}`);lista.push(`FO-EST-02: ${s.empresa?"contestado":"pendiente"}`);lista.push(`FO-EST-03: ${s.foEst03?"evaluado":"disponible / pendiente de evaluación"}`);lista.push(`FO-EST-08: ${s.satisfaccion?"contestado":"pendiente"}`);return `**Tu seguimiento de estadía:**\n- ${lista.join(".\n- ")}.\nEl FO-EST-03 y los pases de lista están disponibles desde **Mi seguimiento de estadía**.`}
@@ -135,7 +135,7 @@ function responderProyectos(p,t){if(!p.length)return"No encontré proyectos visi
 function responderEncuestas(e){if(!e.length)return"No encontré encuestas visibles.";const prom=e.length?e.reduce((a,x)=>a+num(x.calificacion),0)/e.length:0;return `Tienes ${e.length} encuesta(s) visible(s), con promedio registrado de ${prom.toFixed(1)}/5.`}
 function responderRecomendaciones(d){const b=d.tareas.filter(x=>normalizarTexto(x.estado).includes("bloque")).length;return b?`Mi recomendación es resolver primero las ${b} tarea(s) bloqueada(s), validar dependencias y después actualizar horas/evidencias.`:"Mantén tareas, horas, asistencia y evidencias actualizadas; revisa riesgos antes de iniciar nuevas actividades."}
 function responderResumen(d){return `**Resumen de tu contexto:**\n- Proyectos: ${d.proyectos.length}\n- Tareas: ${d.tareas.length}\n- Alertas: ${d.alertas.length}\n- Registros de horas: ${d.registrosHoras.length}\n- Documentos visibles: ${d.documentos.length}`}
-function responderAyuda(d){return `Puedo conversar contigo usando el contexto de ProjectSphere. Por ejemplo: **¿qué debo hacer hoy?**, **¿cómo va mi asistencia?**, **¿qué FO-EST tengo pendiente?**, **¿cómo va mi proyecto?**, **explícame PMBOK 8** o **dame un resumen**.`}
+function responderAyuda(d){return `Puedo conversar contigo usando el contexto de JJM Oficina de Proyectos. Por ejemplo: **¿qué debo hacer hoy?**, **¿cómo va mi asistencia?**, **¿qué FO-EST tengo pendiente?**, **¿cómo va mi proyecto?**, **explícame PMBOK 8** o **dame un resumen**.`}
 
 function inicializarVoz(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(SR){reconocimiento=new SR();reconocimiento.lang="es-MX";reconocimiento.interimResults=false;reconocimiento.continuous=false;reconocimiento.onstart=()=>{escuchando=true;btnMicrofonoChatbot?.classList.add("listening");if(estadoArdia)estadoArdia.textContent="Escuchando..."};reconocimiento.onresult=e=>{const texto=e.results?.[0]?.[0]?.transcript||"";if(inputChatbot)inputChatbot.value=texto};reconocimiento.onend=()=>{escuchando=false;btnMicrofonoChatbot?.classList.remove("listening");if(estadoArdia)estadoArdia.textContent="Contexto conectado";if(inputChatbot?.value.trim())enviarMensajeUsuario()};reconocimiento.onerror=()=>{escuchando=false;btnMicrofonoChatbot?.classList.remove("listening")}}else if(btnMicrofonoChatbot){btnMicrofonoChatbot.disabled=true;btnMicrofonoChatbot.title="Tu navegador no ofrece reconocimiento de voz"}actualizarBotonVoz()}
 function alternarMicrofono(){if(!reconocimiento)return;if(escuchando){try{reconocimiento.stop()}catch(_){}}else{detenerVoz();try{reconocimiento.start()}catch(_){}}}

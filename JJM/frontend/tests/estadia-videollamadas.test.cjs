@@ -6,9 +6,9 @@ const path=require('node:path');
 const codigo=n=>fs.readFileSync(path.join(__dirname,'../js',n),'utf8');
 const json=(d,s=200)=>new Response(JSON.stringify(d),{status:s});
 function entorno(archivo,fetch){
- const elementos={},eventos={};const el=id=>elementos[id]||(elementos[id]={value:'',files:[],disabled:false,hidden:false,style:{},dataset:{},classList:{add(){},remove(){}},querySelectorAll:()=>[],addEventListener(){},reset(){this.reiniciado=true;}});
+ const elementos={},eventos={};const el=id=>elementos[id]||(elementos[id]={value:'',files:[],disabled:false,hidden:false,style:{},dataset:{},classList:{add(){},remove(){},toggle(){}},querySelectorAll:()=>[],querySelector:()=>null,setAttribute(n,v){this[n]=v;},addEventListener(){},reset(){this.reiniciado=true;}});
  const window={apiUrl:r=>r,location:{search:'?id=2&reunion=9',href:'http://localhost/reunion.html?id=2&reunion=9',replace(){}},history:{replaceState(){}},addEventListener(){}};
- const contexto=vm.createContext({window,document:{getElementById:el,addEventListener:(n,f)=>eventos[n]=f,querySelectorAll:()=>[]},
+ const contexto=vm.createContext({window,document:{getElementById:el,addEventListener:(n,f)=>eventos[n]=f,querySelectorAll:()=>[],querySelector:()=>el('panel')},
    localStorage:{getItem:k=>k==='usuarioActivo'?JSON.stringify({id:7,nombre:'Mi nombre'}):'token'},
    location:{href:'',hash:''},fetch,Response,Blob,TextEncoder,Uint8Array,URL,URLSearchParams,setTimeout(){},setInterval(){return 1;},clearInterval(){},console:{warn(){},error(){}},
    FileReader:class{readAsDataURL(){this.result='data:application/pdf;base64,JVBERg==';this.onload();}}});

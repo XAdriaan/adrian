@@ -36,7 +36,7 @@
         const bytes=b=>{partes.push(b);offset+=b.length;};
         const objeto=n=>{offsets[n]=offset;texto(`${n} 0 obj\n`);};
         const ids=paginas.map((_,i)=>3+i*3), total=3+paginas.length*3;
-        texto('%PDF-1.4\n%ProjectSphere\n');
+        texto('%PDF-1.4\n%JJM Oficina de Proyectos\n');
         objeto(1);texto('<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
         objeto(2);texto(`<< /Type /Pages /Kids [${ids.map(id=>id+' 0 R').join(' ')}] /Count ${paginas.length} >>\nendobj\n`);
         paginas.forEach((p,i)=>{

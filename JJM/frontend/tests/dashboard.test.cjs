@@ -23,7 +23,7 @@ function dashboard(rol, opciones = {}) {
             const ruta = new URL(url).pathname;
             llamadas.push(ruta);
             if (ruta === '/api/proyectos') return json({ proyectos: [{ id: 1, nombre: 'Proyecto' }] });
-            if (ruta === '/api/tareas') return json({ tareas: [{ id: 2, idMiembro: 42, titulo: 'Tarea' }] });
+            if (ruta === '/api/tareas') return json({ tareas: opciones.tareas || [{ id: 2, idMiembro: 42, titulo: 'Tarea' }] });
             if (ruta === '/api/miembros/mi-sesion') {
                 if (opciones.sinMiembro) return json({ estado: 'error',
                     mensaje: 'El usuario activo no tiene un registro de miembro vinculado.' }, 404);
@@ -60,6 +60,15 @@ test('administrador conserva la consulta al equipo completo', async () => {
     assert.ok(e.llamadas.includes('/api/miembros'));
     assert.equal(e.llamadas.includes('/api/miembros/mi-sesion'), false);
     assert.equal(e.elementos.mensajeDashboard.style.display, 'none');
+});
+test('Mis tareas reconoce idMiembroAsignado de la API y excluye las de otro alumno', async () => {
+    const e = dashboard('Colaborador', {tareas:[
+        {id:1,idMiembroAsignado:42,titulo:'Mi tarea'},
+        {id:2,idMiembroAsignado:80,titulo:'Tarea de otro alumno'}
+    ]});
+    await e.cargar();
+    assert.equal(String(e.elementos.totalTareas.textContent),'1');
+    assert.equal(vm.runInContext('obtenerTareasVisibles()[0].id',e.contexto),1);
 });
 
 test('ver todos los proyectos no autoriza pedir el equipo completo', async () => {

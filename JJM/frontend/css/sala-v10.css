@@ -1,0 +1,27 @@
+.meeting-app{background:#081225;height:100dvh;min-height:0}
+.meeting-topbar{background:#0c192e;padding:15px 24px;min-height:80px}
+.meeting-title h1{font-size:22px;color:#f1f6ff}.meeting-title p{max-width:500px;color:#99b5dc}
+.meeting-topbar .meeting-pill{background:#182e4e;border-color:#304b70;color:#c5dbf8}
+.meeting-device-strip{padding:12px 24px;display:flex;justify-content:space-between;gap:15px;color:#a9c3e7;font-size:12px;border-bottom:1px solid #20334f;background:#0b1629}
+.meeting-device-strip span:last-child{color:#698bb8}.meeting-device-alert{margin:12px 24px 0;border:1px solid #d99a454d;background:#392b1a;color:#ffdcaa;padding:14px 18px;border-radius:12px;line-height:1.6;font-size:13px}
+.meeting-main{grid-template-columns:minmax(0,1fr);flex:1;padding:20px 24px;min-height:0;align-items:stretch;overflow:auto}
+.meeting-main.con-panel{grid-template-columns:minmax(0,1fr) 315px}.recordings-panel[hidden]{display:none!important}
+.meeting-stage{min-height:0!important;border-color:#253c60;background:radial-gradient(ellipse at top,#172f57,#091426);box-shadow:0 16px 50px #0003}
+.meeting-stage .rtc-grid{min-height:0!important;padding:20px;align-content:center;overflow:auto;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr))}
+.rtc-persona{min-height:250px;aspect-ratio:16/10;background:linear-gradient(135deg,#142d50,#1c3868);border:1px solid #3b5d8c;box-shadow:0 8px 24px #0004}
+.rtc-persona video{background:#0b1930}.rtc-persona video[hidden]{display:none}.rtc-persona[data-propia=true] video{transform:scaleX(-1)}
+.rtc-persona[data-pantalla=true] video{transform:none}.rtc-avatar{width:85px;height:85px;font-size:35px;background:#30599b;box-shadow:0 0 0 12px #294d812a}
+.rtc-avatar[hidden]{display:none!important}.rtc-estado{top:14px;right:14px;background:#0c192ec9;color:#bed5f7}
+.meeting-loading{background:radial-gradient(ellipse at center,#173863,#0b1930)}.meeting-loading h2{margin-top:18px}.meeting-loading p{max-width:470px;line-height:1.8}
+.meeting-loading button{font-size:14px;padding:14px 32px}.meeting-controls{position:sticky;bottom:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;background:#0b192eeF;backdrop-filter:blur(18px);padding:16px 24px;border-top:1px solid #2c4467;box-shadow:0 -10px 35px #0002}
+.meeting-controls-devices,.meeting-controls-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.call-control{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;min-height:74px;min-width:145px;border:1px solid #37517a;border-radius:13px;background:#172842;color:#bfd2ed;cursor:pointer;padding:10px 14px;font:600 12px 'Segoe UI',sans-serif;position:relative}
+.call-control svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.call-control[data-estado=apagado]:not(#btnPantalla)::after{content:'';position:absolute;width:29px;height:2px;background:#e1a0a0;top:25px;transform:rotate(-45deg);box-shadow:0 0 0 2px #172842}
+.call-control[data-estado=activo]{background:#1c4590;border-color:#6299ef;color:#fff;box-shadow:inset 0 0 0 1px #6299ef30}
+.call-control[data-estado=activo] span::before{content:'● ';font-size:9px;color:#a4cbff}.call-control:hover{border-color:#85b8ff}.call-control:disabled{opacity:.6;cursor:default}.call-control:focus-visible,.meeting-btn:focus-visible{outline:3px solid #97c1ff;outline-offset:3px}
+.meeting-controls .meeting-btn{min-height:42px;padding:11px 15px;font-size:12px}.meeting-controls .hangup{background:#b82f47;border-color:#e8546b}.meeting-controls .record{background:#244575;color:#d4e7ff;border-color:#527fbd}
+.meeting-footer{padding:10px 24px;color:#8cadd7;background:#081225;font-size:12px}.meeting-provider{display:none}
+body:has(.meeting-app) .ardia-global{bottom:155px}.meeting-controls [hidden],.meeting-device-alert[hidden]{display:none!important}
+@media(max-width:1100px){.meeting-main.con-panel{grid-template-columns:1fr}.meeting-app:has(.con-panel){height:auto;min-height:100dvh}.meeting-controls{justify-content:center}.meeting-controls-tools{justify-content:center}}
+@media(max-width:600px){.meeting-topbar{padding:14px}.meeting-title{min-width:0}.meeting-title p{max-width:calc(100vw - 65px)}.meeting-device-strip{padding:10px 14px}.meeting-device-strip span:last-child{display:none}.meeting-main{padding:12px}.meeting-controls{padding:12px 8px;gap:12px}.meeting-controls-devices{gap:6px;width:100%;justify-content:center}.call-control{min-width:0;width:calc((100vw - 34px)/3);font-size:10px;padding:8px 4px;min-height:70px}.meeting-controls-tools{gap:6px}.meeting-controls .meeting-btn{padding:8px;font-size:10px;min-height:36px}.meeting-device-alert{margin:10px 12px 0}.rtc-grid{padding:10px;grid-template-columns:1fr}.rtc-persona{min-height:200px}.meeting-footer{padding:10px 14px;font-size:11px}body:has(.meeting-app) .ardia-global{bottom:225px}}

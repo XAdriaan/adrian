@@ -676,6 +676,7 @@ function normalizarTarea(tarea) {
             "Sin asignar",
 
         idMiembro:
+            tarea.idMiembroAsignado ||
             tarea.idMiembro ||
             tarea.miembroId ||
             tarea.asignadoId ||

@@ -33,7 +33,9 @@
             const etiqueta = document.createElement('strong'); etiqueta.textContent = nombre || 'Participante';
             const conexion = document.createElement('small'); conexion.className = 'rtc-estado'; conexion.textContent = propia ? 'Tu conexión' : 'Conectando…';
             div.append(video, avatar, etiqueta, conexion); this.contenedor.append(div);
-            video.addEventListener('loadeddata', () => { avatar.hidden = video.videoWidth > 0; });
+            if (propia) { div.dataset.propia = 'true'; this.videoLocal = video; this.avatarLocal = avatar; }
+            video.addEventListener('loadeddata', () => { avatar.hidden = propia
+                ? !!(this.medios.video?.enabled && this.medios.video?.readyState === 'live') : video.videoWidth > 0; });
             return {div, video, avatar, conexion};
         }
         async sincronizar(lista) {
@@ -118,9 +120,21 @@
         }
         async cambiar(tipo, pista) {
             this.medios[tipo] = pista;
-            await Promise.all([...this.peers.values()].map(p => (tipo === 'audio' ? p.audio : p.videoSender)?.replaceTrack(pista)));
-            const local = this.contenedor.querySelector('video[muted]') || this.contenedor.querySelector('.rtc-persona video');
-            if (local) { local.srcObject = new MediaStream(Object.values(this.medios).filter(Boolean)); local.muted = true; }
+            this.actualizarVistaLocal();
+            const resultados = await Promise.allSettled([...this.peers.values()].map(p =>
+                (tipo === 'audio' ? p.audio : p.videoSender)?.replaceTrack(pista)));
+            if (resultados.some(r => r.status === 'rejected')) this.estado.textContent =
+                'Tu dispositivo está activo. Un participante perdió la conexión; puede pulsar Reconectar.';
+        }
+        actualizarVistaLocal() {
+            const local = this.videoLocal;
+            if (!local) return;
+            local.srcObject = new MediaStream(Object.values(this.medios).filter(t => t?.readyState === 'live'));
+            local.muted = true;
+            const visible = this.medios.video?.readyState === 'live' && this.medios.video.enabled;
+            local.hidden = !visible;
+            if (this.avatarLocal) this.avatarLocal.hidden = !!visible;
+            if (visible) local.play().catch(() => {});
         }
         async salir(keepalive = false) {
             ++this.generacion; this.activa = false; clearTimeout(this.timer);

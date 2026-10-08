@@ -26,9 +26,11 @@ class DirectorioReunionesTest {
     private final SesionService sesiones = mock(SesionService.class);
     private MockMvc mvc;
     private Usuario usuario;
+    private ReunionController controller;
 
     @BeforeEach void preparar() {
-        mvc = MockMvcBuilders.standaloneSetup(new ReunionController(jdbc, usuarios, proyectos, miembros, asignaciones))
+        controller = new ReunionController(jdbc, usuarios, proyectos, miembros, asignaciones);
+        mvc = MockMvcBuilders.standaloneSetup(controller)
                 .addFilters(new AutenticacionTokenFilter(sesiones, new ObjectMapper())).build();
         usuario = new Usuario(); usuario.setId(7); usuario.setEstado("Activo");
         Rol rol = new Rol(); rol.setNombre("Colaborador"); usuario.setRol(rol);
@@ -100,5 +102,47 @@ class DirectorioReunionesTest {
         when(jdbc.queryForList(anyString(),any(Object[].class))).thenReturn(List.of(Map.of("id",9L,"idProyecto",2,"estado","Finalizada","idCreador",8)));
         mvc.perform(get("/api/reuniones/9").header("Authorization","Bearer sesion-prueba")).andExpect(status().isOk());
         mvc.perform(post("/api/reuniones/9/unirse").header("Authorization","Bearer sesion-prueba")).andExpect(status().isConflict());
+    }
+
+    @Test void esquemaOriginalConsultaIniciaYSaleSinCambiarColumnas() throws Exception {
+        when(jdbc.queryForList("SHOW COLUMNS FROM reuniones_proyecto")).thenReturn(List.of(
+                Map.of("Field","sala_jitsi"), Map.of("Field","id_creador_usuario")));
+        when(jdbc.queryForList("SHOW COLUMNS FROM participantes_reunion")).thenReturn(List.of(
+                Map.of("Field","id_participante_reunion")));
+        controller.prepararEstructura();
+        usuario.getRol().setNombre("Administrador");
+        when(proyectos.findAll()).thenReturn(List.of(proyecto(2,50,"Proyecto")));
+        when(proyectos.findById(2)).thenReturn(Optional.of(proyecto(2,50,"X".repeat(250))));
+        Map<String,Object> reunion = Map.of("id",9L,"idProyecto",2,"sala","anterior",
+                "estado","Activa","idCreador",7);
+        when(jdbc.queryForList(anyString(),any(Object[].class))).thenReturn(List.of(reunion));
+        mvc.perform(get("/api/reuniones").header("Authorization","Bearer sesion-prueba"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.proyectos[0].reunionActiva.sala").value("anterior"));
+        verify(jdbc).queryForList(contains("sala_jitsi AS sala"),any(Object[].class));
+        verify(jdbc).queryForList(contains("id_creador_usuario AS idCreador"),any(Object[].class));
+        // Sin reunión activa: el INSERT también debe usar las columnas antiguas.
+        when(jdbc.queryForList(contains("LOWER(estado)"),any(Object[].class))).thenReturn(List.of(),List.of(reunion));
+        mvc.perform(post("/api/proyectos/2/reuniones").header("Authorization","Bearer sesion-prueba"))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.reunion.id").value(9));
+        verify(jdbc).update(contains("(id_proyecto, sala_jitsi, titulo, estado, id_creador_usuario, fecha_inicio)"),any(Object[].class));
+        verify(jdbc).update(contains("INSERT INTO reuniones_proyecto"),eq(2),anyString(),argThat((String titulo)->titulo.length()==180),eq(7),any(java.time.LocalDateTime.class));
+        mvc.perform(post("/api/reuniones/9/unirse").header("Authorization","Bearer sesion-prueba"))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/reuniones/9/salir").header("Authorization","Bearer sesion-prueba"))
+                .andExpect(status().isOk());
+        verify(jdbc).update(contains("WHERE id_participante_reunion="),any(Object[].class));
+        verify(jdbc,never()).execute(matches("(?is).*\\b(ALTER|DROP|DELETE)\\b.*"));
+    }
+
+    @Test void esquemaActualSigueUsandoLasColumnasActuales() throws Exception {
+        when(jdbc.queryForList("SHOW COLUMNS FROM reuniones_proyecto")).thenReturn(List.of(
+                Map.of("Field","sala"),Map.of("Field","id_creador")));
+        when(jdbc.queryForList("SHOW COLUMNS FROM participantes_reunion")).thenReturn(List.of(Map.of("Field","id_participante")));
+        controller.prepararEstructura();
+        usuario.getRol().setNombre("Administrador");
+        when(proyectos.findAll()).thenReturn(List.of(proyecto(2,50,"Proyecto")));
+        mvc.perform(get("/api/reuniones").header("Authorization","Bearer sesion-prueba"))
+                .andExpect(status().isOk());
+        verify(jdbc).queryForList(contains("sala AS sala"),any(Object[].class));
     }
 }

@@ -7,6 +7,7 @@
 ========================================================= */
 
 const RUTAS_SOLO_ADMINISTRADOR = [
+    "asignaciones.html",
     "equipo.html",
     "organizaciones.html",
     "bitacora.html",
@@ -17,6 +18,7 @@ const RUTAS_SOLO_ADMINISTRADOR = [
 
 
 const PERMISOS_RUTA_PMO = {
+    "asignaciones.html": "equipo.ver",
     "equipo.html": "equipo.ver",
     "organizaciones.html": "organizaciones.ver",
     "bitacora.html": "bitacora.ver",
@@ -79,7 +81,7 @@ function cargarEstiloSidebarUnificadoPMO() {
     const enlace = document.createElement("link");
     enlace.id = "sidebar-unificado-pmo-css";
     enlace.rel = "stylesheet";
-    enlace.href = "css/sidebar-global.css?v=20261005-v9";
+    enlace.href = "css/sidebar-global.css?v=20261005-v10";
     document.head.appendChild(enlace);
 
     document.body.classList.add("sidebar-unificado-pmo");
@@ -91,6 +93,7 @@ function cargarEstiloSidebarUnificadoPMO() {
    aunque otra función vuelva a mostrar enlaces dinámicamente.
 ========================================================= */
 const ENLACES_ADMIN_OCULTOS_GLOBAL = [
+    "asignaciones.html",
     "equipo.html",
     "organizaciones.html",
     "bitacora.html",
@@ -115,6 +118,8 @@ function instalarCSSPermisosMenuGlobal() {
     const estilo = document.createElement("style");
     estilo.id = "pmo-css-permisos-menu";
     estilo.textContent = `
+        body[data-pmo-menu-scope="colaborador"] .sidebar-menu a[href*="asignaciones.html"],
+        body[data-pmo-menu-scope="consulta"] .sidebar-menu a[href*="asignaciones.html"],
         body[data-pmo-menu-scope="colaborador"] .sidebar-menu a[href*="equipo.html"],
         body[data-pmo-menu-scope="colaborador"] .sidebar-menu a[href*="organizaciones.html"],
         body[data-pmo-menu-scope="colaborador"] .sidebar-menu a[href*="bitacora.html"],
@@ -2381,7 +2386,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const grupos = [
             ["Mi cuenta y documentos", ["perfil.html", "datos-academicos.html", "documentos.html"]],
             ["Herramientas", ["tareas.html", "cursos.html", "alertas.html", "encuestas.html", "chatbot.html"]],
-            ["Administración", ["seguimiento-estadia.html", "equipo.html", "organizaciones.html", "bitacora.html", "reportes.html", "roles-permisos.html", "proyecto-avanzado.html"]]
+            ["Administración", ["asignaciones.html", "seguimiento-estadia.html", "equipo.html", "organizaciones.html", "bitacora.html", "reportes.html", "roles-permisos.html", "proyecto-avanzado.html"]]
         ].map(([nombre, rutas]) => {
             const details = document.createElement("details");
             details.className = "pmo-menu-grupo";
@@ -2406,10 +2411,18 @@ document.addEventListener("DOMContentLoaded", function () {
         menu.appendChild(aviso);
         const pagina = location.pathname.split("/").pop();
         const normalizar = v => String(v).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-        let organizando = false;
+        let organizando = false, primeraOrganizacion = true, buscando = false;
+        const abiertosAntesDeBuscar = new Map();
         const expedientesAdmin=document.createElement('a');expedientesAdmin.href='documentos.html#expedientesPorPeriodo';
         expedientesAdmin.textContent='Documentos por periodo';expedientesAdmin.dataset.pmoAdministracion='true';expedientesAdmin.hidden=true;
         grupos[2].details.appendChild(expedientesAdmin);
+        let asignacionesAdmin = menu.querySelector('a[href="asignaciones.html"]');
+        if (!asignacionesAdmin) {
+            asignacionesAdmin = document.createElement('a'); asignacionesAdmin.href = 'asignaciones.html';
+            asignacionesAdmin.textContent = 'Alumnos y proyectos';
+            grupos[2].details.appendChild(asignacionesAdmin);
+        }
+        asignacionesAdmin.hidden = true;
         function organizar() {
             if (organizando) return;
             organizando = true;
@@ -2429,21 +2442,28 @@ document.addEventListener("DOMContentLoaded", function () {
                 const ruta = enlace.getAttribute("href").split(/[?#]/)[0].split("/").pop();
                 const grupo = enlace.dataset.pmoAdministracion==='true'?grupos[2]:grupos.find(g => g.rutas.includes(ruta));
                 if (grupo && enlace.parentNode !== grupo.details) grupo.details.appendChild(enlace);
-                enlace.classList.toggle("active", ruta === pagina);
-                if (ruta === pagina) {
+                const actual = ruta === pagina && (enlace.dataset.pmoAdministracion !== 'true' || location.hash === '#expedientesPorPeriodo');
+                enlace.classList.toggle("active", actual);
+                if (actual) {
                     if (enlace.getAttribute("aria-current") !== "page") enlace.setAttribute("aria-current", "page");
-                    if (grupo) grupo.details.open = true;
+                    if (grupo && primeraOrganizacion) grupo.details.open = true;
                 } else enlace.removeAttribute("aria-current");
             });
+            primeraOrganizacion = false;
             filtrar();
             organizando = false;
         }
         function filtrar() {
-            expedientesAdmin.hidden=!window.PMOPermisos.esAdministradorReal();
+            const ocultarAdministracion=!window.PMOPermisos.esAdministradorReal();
+            if(expedientesAdmin.hidden!==ocultarAdministracion) expedientesAdmin.hidden=ocultarAdministracion;
+            if(asignacionesAdmin.hidden!==ocultarAdministracion) asignacionesAdmin.hidden=ocultarAdministracion;
             const usuario = obtenerUsuarioActivoGlobal();
             const correo = String(usuario?.correo || usuario?.email || "").trim().toLowerCase();
             if (correo && busqueda.value.trim().toLowerCase() === correo) busqueda.value = "";
             const texto = normalizar(busqueda.value.trim());
+            if (texto && !buscando) grupos.forEach(g => abiertosAntesDeBuscar.set(g.details, g.details.open));
+            const terminoBusqueda = !texto && buscando;
+            buscando = !!texto;
             let visibles = 0;
             menu.querySelectorAll("a[href]").forEach(a => {
                 const coincide = !texto || normalizar(a.textContent).includes(texto);
@@ -2458,7 +2478,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     !a.hidden && !a.hasAttribute("data-pmo-busqueda-oculto") && getComputedStyle(a).display !== "none");
                 if (g.details.hidden !== oculto) g.details.hidden = oculto;
                 if (texto && !g.details.hidden) g.details.open = true;
-                if (!texto) g.details.open = !!g.details.querySelector('a[aria-current="page"]');
+                if (terminoBusqueda) g.details.open = abiertosAntesDeBuscar.get(g.details) || false;
             });
             if (aviso.hidden !== (visibles > 0)) aviso.hidden = visibles > 0;
         }
@@ -2486,7 +2506,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const sidebar = document.querySelector(".sidebar");
     if (sidebar && !document.getElementById("pmo-menu-movil")) {
         const movil = document.createElement("div"); movil.className = "pmo-mobile-bar";
-        movil.innerHTML = '<span>JJM <b>ProjectSphere</b></span><button id="pmo-menu-movil" type="button" aria-expanded="false" aria-label="Abrir menú de navegación">☰ Menú</button>';
+        movil.innerHTML = '<span>JJM <b>Oficina de Proyectos</b></span><button id="pmo-menu-movil" type="button" aria-expanded="false" aria-label="Abrir menú de navegación">☰ Menú</button>';
         document.body.prepend(movil);
         const boton = movil.querySelector("button");
         boton.addEventListener("click", () => {

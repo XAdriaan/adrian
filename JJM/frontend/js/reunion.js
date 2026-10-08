@@ -27,6 +27,49 @@ let grabacionMicrofonoStream = null, grabacionAudioContext = null, grabacionStre
 let grabacionDeteniendose = false, grabacionFinalizada = Promise.resolve();
 const grabacionesLocales = [];
 let grabacionInicio=0, grabacionBytes=0;
+const mediosPendientes = new Set();
+const iconosSala = {
+    audio: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/></svg>',
+    video: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="13" height="14" rx="3"/><path d="m15 9 7-4v14l-7-4"/></svg>',
+    pantalla: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 22h8M12 17v5M12 13V7m-4 4 4-4 4 4"/></svg>'
+};
+function pintarControlSala(boton, tipo, activo, texto) {
+    boton.innerHTML = iconosSala[tipo] + '<span>' + texto + '</span>';
+    boton.dataset.estado = activo ? 'activo' : 'apagado';
+    boton.setAttribute('aria-pressed', String(activo));
+    boton.setAttribute('aria-label', texto + '. ' + (activo ? 'Pulsa para desactivar' : 'Pulsa para activar'));
+}
+function actualizarMediosSala() {
+    const audio = !!(rtc?.activa && rtc.medios.audio?.readyState === 'live' && rtc.medios.audio.enabled);
+    const video = !!(rtc?.activa && camaraPropia?.readyState === 'live' && camaraPropia.enabled);
+    const pantalla = !!(rtc?.activa && pantallaCompartida?.getVideoTracks().some(t=>t.readyState==='live'));
+    pintarControlSala(btnMicrofono, 'audio', audio, mediosPendientes.has('audio') ? 'Permiso de micrófono…' : audio ? 'Micrófono activo' : 'Micrófono apagado');
+    pintarControlSala(btnCamara, 'video', video && !pantalla, mediosPendientes.has('video') ? 'Permiso de cámara…' : pantalla ? 'Cámara en pausa' : video ? 'Cámara encendida' : 'Cámara apagada');
+    pintarControlSala(btnPantalla, 'pantalla', pantalla, mediosPendientes.has('pantalla') ? 'Elige qué compartir…' : pantalla ? 'Dejar de compartir' : 'Compartir pantalla');
+    btnMicrofono.disabled = !rtc?.activa || mediosPendientes.has('audio');
+    btnCamara.disabled = !rtc?.activa || pantalla || mediosPendientes.has('video');
+    if (pantalla) btnCamara.setAttribute('aria-label', 'Cámara en pausa mientras compartes pantalla');
+    btnPantalla.disabled = !rtc?.activa || mediosPendientes.has('pantalla') || mediosPendientes.has('video');
+    const estado = document.getElementById('estadoDispositivos');
+    if (estado) estado.textContent = `${audio ? 'Micrófono activo' : 'Micrófono apagado'} · ${pantalla ? 'Compartiendo pantalla' : video ? 'Cámara encendida' : 'Cámara apagada'}`;
+    grabacionMicrofonoStream?.getAudioTracks().forEach(t=>t.enabled=audio);
+    rtc?.actualizarVistaLocal();
+    const tarjeta=jitsiContainer.querySelector('[data-propia]');
+    if(tarjeta) tarjeta.dataset.pantalla=String(pantalla);
+}
+function avisoMediosSala(texto = '') {
+    const aviso = document.getElementById('avisoMedios');
+    if (aviso) { aviso.hidden = !texto; aviso.textContent = texto; }
+}
+function errorMediosSala(e, tipo) {
+    const nombre = tipo === 'audio' ? 'micrófono' : tipo === 'video' ? 'cámara' : 'pantalla';
+    if (e.name === 'NotAllowedError' || e.name === 'SecurityError') return tipo === 'pantalla'
+        ? 'No se compartió la pantalla. Vuelve a pulsar Compartir pantalla y elige una pestaña, ventana o pantalla.'
+        : `El permiso del ${nombre} está bloqueado. Abre el candado junto a la dirección, permite el ${nombre} y pulsa el botón otra vez.`;
+    if (e.name === 'NotFoundError') return `No se encontró ${nombre}. Conecta el dispositivo y vuelve a intentarlo.`;
+    if (e.name === 'NotReadableError' || e.name === 'AbortError') return `No se pudo abrir el ${nombre}. Cierra otras aplicaciones que lo estén usando y revisa los permisos de Windows.`;
+    return e.message || `No se pudo activar ${nombre}.`;
+}
 const esSalaGeneral = obtenerParametroURL("general") === "1";
 const idProyecto = esSalaGeneral ? null : obtenerParametroURL("id");
 let idReunion = obtenerParametroURL("reunion");
@@ -35,7 +78,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (window.restaurarSesionPMO) await window.restaurarSesionPMO();
     usuarioActivo = obtenerUsuarioActivo(); tokenSesion = localStorage.getItem("sesionTokenPMO");
     if (!usuarioActivo || !tokenSesion) { location.replace("login.html"); return; }
-    btnGrabar.disabled = true;
+    btnGrabar.disabled = true; actualizarMediosSala();
     try {
         await cargarReunion(); await cargarProyecto();
         if (normalizarTexto(reunionActual.estado) !== "activa") throw new Error("Esta reunión ya terminó.");
@@ -46,7 +89,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         btnFinalizarReunion.hidden = !reunionActual.puedeFinalizar;
         rtc = new window.PMOSalaWebRTC({sala:esSalaGeneral?'general':String(idReunion),contenedor:jitsiContainer,
             estado:estadoReunion,participantes:contadorParticipantes,alCerrar:restablecerControles});
-        meetingLoadingMessage.textContent = esSalaGeneral ? "Todos los usuarios con sesión pueden entrar." : "Acceso exclusivo para administración y miembros asignados al proyecto.";
+        meetingLoadingMessage.textContent = (esSalaGeneral ? "Todos los usuarios con sesión pueden entrar." : "Acceso exclusivo para administración y miembros asignados al proyecto.")
+            + " Entras con cámara y micrófono apagados. Después actívalos desde la barra de controles.";
         btnEntrarSala.hidden = false; estadoReunion.textContent = "Sala lista. Pulsa Entrar a la sala.";
         configurarEventos(); iniciarTemporizador(); renderizarGrabacionesLocales();
         document.querySelector("[data-grabaciones-sala]").dataset.grabacionesSala=esSalaGeneral?"general":String(idReunion);
@@ -73,15 +117,15 @@ function restablecerControles() {
     pantallaCompartida?.getTracks().forEach(t=>t.stop()); pantallaCompartida=null;
     conectadoSala = false; btnEntrarSala.hidden = false; btnEntrarSala.disabled = false;
     if (grabando) detenerGrabacionLocal().catch(()=>{});
-    btnGrabar.disabled = true; [btnMicrofono,btnCamara,btnPantalla].forEach(b=>b.disabled=true);
-    btnMicrofono.textContent='Activar micrófono'; btnCamara.textContent='Activar cámara'; btnPantalla.textContent='Compartir pantalla';
+    btnGrabar.disabled = true; actualizarMediosSala();
 }
 function configurarEventos() {
     btnEntrarSala.addEventListener('click', async () => {
         btnEntrarSala.disabled = true;
         try { await rtc.entrar(); if (!rtc.activa) return; conectadoSala=true; ocultarCarga(); btnEntrarSala.hidden=true;
-            [btnMicrofono,btnCamara,btnPantalla].forEach(b=>b.disabled=false); actualizarBotonesGrabacion();
-            if (!esSalaGeneral) await fetch(`${API_REUNIONES}/${idReunion}/unirse`,{method:'POST'});
+            actualizarMediosSala(); actualizarBotonesGrabacion();
+            if (!esSalaGeneral) { const r = await fetch(`${API_REUNIONES}/${idReunion}/unirse`,{method:'POST'});
+                if (!r.ok) { const d=await r.json().catch(()=>({})); throw new Error(d.mensaje || 'No se pudo confirmar la entrada al proyecto.'); } }
         } catch(e) { await rtc.salir(); restablecerControles(); estadoReunion.textContent=e.message; }
         finally { btnEntrarSala.disabled=false; }
     });
@@ -93,34 +137,51 @@ function configurarEventos() {
     btnCopiarEnlace.addEventListener('click',copiarInvitacion); btnColgarReunion.addEventListener('click',colgarVideollamada);
     btnVolverProyecto.addEventListener('click',volverAlProyecto); btnFinalizarReunion.addEventListener('click',finalizarReunion);
     btnGrabar.addEventListener('click',iniciarGrabacionLocal); btnDetenerGrabacion.addEventListener('click',detenerGrabacionLocal);
+    document.getElementById('btnPanelGrabaciones').addEventListener('click', () => {
+        const panel=document.querySelector('.recordings-panel'), b=document.getElementById('btnPanelGrabaciones');
+        panel.hidden=!panel.hidden; b.setAttribute('aria-expanded',String(!panel.hidden));
+        document.querySelector('.meeting-main').classList.toggle('con-panel',!panel.hidden);
+    });
     window.addEventListener('pagehide',()=>{registrarSalida({keepalive:true});liberarJitsi();});
 }
 async function activarMedio(tipo, boton) {
-    if (!rtc?.activa) return; boton.disabled=true;
+    if (!rtc?.activa || mediosPendientes.has(tipo) || (tipo==='video'&&pantallaCompartida)) return;
+    const sala=rtc, epoca=rtc.generacion;
+    mediosPendientes.add(tipo); avisoMediosSala(); actualizarMediosSala();
     try {
-        if (tipo==='video' && pantallaCompartida) { pantallaCompartida.getTracks().forEach(t=>t.stop()); pantallaCompartida=null; btnPantalla.textContent='Compartir pantalla'; }
         const actual=rtc.medios[tipo];
-        if (actual && actual.readyState==='live') { actual.enabled=!actual.enabled; boton.textContent=actual.enabled ? (tipo==='audio'?'Silenciar micrófono':'Apagar cámara') : (tipo==='audio'?'Activar micrófono':'Activar cámara'); }
+        if (actual && actual.readyState==='live') { actual.enabled=!actual.enabled; }
         else {
             if (!navigator.mediaDevices?.getUserMedia) throw new Error('El navegador necesita HTTPS y permiso para usar cámara y micrófono.');
-            const flujo=await navigator.mediaDevices.getUserMedia(tipo==='audio'?{audio:{echoCancellation:true,noiseSuppression:true},video:false}:{video:{width:{ideal:640},height:{ideal:360}},audio:false});
-            if (!rtc.activa) { flujo.getTracks().forEach(t=>t.stop()); return; }
-            const pista=flujo.getTracks()[0]; if(tipo==='video') camaraPropia=pista;
-            await rtc.cambiar(tipo,pista); boton.textContent=tipo==='audio'?'Silenciar micrófono':'Apagar cámara';
+            let flujo;
+            try { flujo=await navigator.mediaDevices.getUserMedia(tipo==='audio'?{audio:{echoCancellation:true,noiseSuppression:true},video:false}:{video:{width:{ideal:640},height:{ideal:360}},audio:false}); }
+            catch(e) { if (tipo!=='video'||e.name!=='OverconstrainedError') throw e; flujo=await navigator.mediaDevices.getUserMedia({video:true,audio:false}); }
+            if (!sala.activa || sala.generacion!==epoca) { flujo.getTracks().forEach(t=>t.stop()); return; }
+            const pista=tipo==='audio'?flujo.getAudioTracks()[0]:flujo.getVideoTracks()[0];
+            if(!pista){flujo.getTracks().forEach(t=>t.stop());throw new Error('El dispositivo no entregó una señal. Vuelve a intentarlo.');}
+            if(tipo==='video') camaraPropia=pista;
+            pista.addEventListener('ended',actualizarMediosSala,{once:true});
+            await sala.cambiar(tipo,pista);
         }
-    } catch(e) { estadoReunion.textContent=e.name==='NotAllowedError'?'Permite el acceso a cámara o micrófono desde el candado del navegador.':e.message; }
-    finally { boton.disabled=!rtc?.activa; }
+    } catch(e) { if(sala.activa&&sala.generacion===epoca)avisoMediosSala(errorMediosSala(e,tipo)); }
+    finally { mediosPendientes.delete(tipo); actualizarMediosSala(); }
 }
 async function compartirPantalla() {
-    if (!rtc?.activa) return;
-    if (pantallaCompartida) { pantallaCompartida.getTracks().forEach(t=>t.stop()); return; }
+    if (!rtc?.activa || mediosPendientes.has('pantalla') || mediosPendientes.has('video')) return;
+    if (pantallaCompartida) { const anterior=pantallaCompartida; pantallaCompartida=null; anterior.getTracks().forEach(t=>t.stop());
+        await rtc.cambiar('video',camaraPropia?.readyState==='live'?camaraPropia:null); actualizarMediosSala(); return; }
+    const sala=rtc, epoca=rtc.generacion; mediosPendientes.add('pantalla'); avisoMediosSala(); actualizarMediosSala();
     try {
+        if (!navigator.mediaDevices?.getDisplayMedia) throw new Error('Compartir pantalla requiere un navegador de escritorio compatible y HTTPS.');
         const flujo=await navigator.mediaDevices.getDisplayMedia({video:true,audio:false});
-        if(!rtc.activa){flujo.getTracks().forEach(t=>t.stop());return;}
+        if(!sala.activa||sala.generacion!==epoca){flujo.getTracks().forEach(t=>t.stop());return;}
         pantallaCompartida=flujo; const pista=flujo.getVideoTracks()[0];
-        await rtc.cambiar('video',pista); btnPantalla.textContent='Dejar de compartir'; btnCamara.disabled=true;
-        pista.addEventListener('ended',async()=>{pantallaCompartida=null;btnPantalla.textContent='Compartir pantalla';btnCamara.disabled=!rtc.activa;if(rtc.activa)await rtc.cambiar('video',camaraPropia?.readyState==='live'?camaraPropia:null);},{once:true});
-    } catch(e) { estadoReunion.textContent=e.name==='NotAllowedError'?'Compartir pantalla se canceló.':e.message; }
+        pista.addEventListener('ended',async()=>{if(pantallaCompartida!==flujo)return;pantallaCompartida=null;
+            if(sala.activa&&sala.generacion===epoca)await sala.cambiar('video',camaraPropia?.readyState==='live'?camaraPropia:null);
+            actualizarMediosSala();},{once:true});
+        await sala.cambiar('video',pista);
+    } catch(e) { if(sala.activa&&sala.generacion===epoca)avisoMediosSala(errorMediosSala(e,'pantalla')); }
+    finally { mediosPendientes.delete('pantalla'); actualizarMediosSala(); }
 }
 async function registrarSalida(opciones={}) {
     if (!esSalaGeneral && idReunion) await fetch(`${API_REUNIONES}/${idReunion}/salir`,{method:'POST',keepalive:!!opciones.keepalive}).catch(()=>{});
@@ -167,21 +228,10 @@ async function iniciarGrabacionLocal() {
             preferCurrentTab: true
         });
 
-        // El audio de la pestaña normalmente contiene a los participantes remotos,
-        // pero no siempre incluye la propia voz. Añadimos el micrófono del usuario.
-        try {
-            grabacionMicrofonoStream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    autoGainControl: true
-                },
-                video: false
-            });
-        } catch (errorMicrofono) {
-            console.warn("No se pudo añadir el micrófono a la grabación.", errorMicrofono);
-            grabacionMicrofonoStream = null;
-        }
+        // La grabación respeta Silenciar; no abre otro micrófono a espaldas del control.
+        const microfonoSala=rtc?.medios.audio;
+        grabacionMicrofonoStream=microfonoSala?.readyState==='live'
+            ? new MediaStream([microfonoSala.clone()]) : null;
 
         const videoTrack = grabacionPantallaStream.getVideoTracks()[0];
         if (!videoTrack) throw new Error("No se recibió video de la pestaña seleccionada.");

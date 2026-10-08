@@ -39,3 +39,13 @@ test('salir o retirar un participante cierra su canal y las señales no pasan a 
  await sala.enviar('c','candidate',{candidate:'prueba'});assert.equal(llamadas[0].url,'/api/videollamadas/general/senal');assert.equal(JSON.parse(llamadas[0].opts.body).conexion,'b');
  await sala.salir();await assert.rejects(()=>sala.enviar('c','candidate',{}),/cerrada/);
 });
+
+test('un participante desconectado no bloquea la cámara ni el envío al resto de la sala',async()=>{
+ const {sala,estado}=entorno();let recibida,preview=0;
+ sala.actualizarVistaLocal=()=>preview++;
+ sala.peers.set('fuera',{videoSender:{replaceTrack:async()=>{throw new Error('Conexión cerrada')}}});
+ sala.peers.set('dentro',{videoSender:{replaceTrack:async pista=>recibida=pista}});
+ const pista={kind:'video',readyState:'live',enabled:true};
+ await sala.cambiar('video',pista);assert.equal(recibida,pista);assert.equal(sala.medios.video,pista);assert.equal(preview,1);
+ assert.match(estado.textContent,/dispositivo está activo.*Reconectar/);
+});

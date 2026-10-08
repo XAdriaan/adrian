@@ -229,14 +229,13 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
 
             boolean nuevo = proyecto.getId() == null;
 
-            proyecto.setCodigo(item.codigo());
-            proyecto.setNombre(item.etiquetaCorta());
-            proyecto.setDescripcion(item.nombreOficial());
-            proyecto.setClienteArea(item.clavesFuente());
-            proyecto.setClasificacionProyecto("Interno");
-            proyecto.setTipoProyecto("Normal");
-
             if (nuevo) {
+                proyecto.setCodigo(item.codigo());
+                proyecto.setNombre(item.etiquetaCorta());
+                proyecto.setDescripcion(item.nombreOficial());
+                proyecto.setClienteArea(item.clavesFuente());
+                proyecto.setClasificacionProyecto("Interno");
+                proyecto.setTipoProyecto("Normal");
                 proyecto.setEstado("Ejecución");
                 proyecto.setPrioridad("Media");
                 proyecto.setFechaInicio(LocalDate.of(2026, 9, 1));
@@ -248,22 +247,24 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
                 );
             }
 
-            Proyecto guardado = proyectoRepository.save(proyecto);
-            sincronizarAlumno(guardado, item);
-            sincronizarTareasBase(guardado, item);
+            Proyecto guardado = nuevo ? proyectoRepository.save(proyecto) : proyecto;
+            MiembroEquipo alumno = sincronizarAlumno(guardado, item);
+            sincronizarTareasBase(guardado, item, alumno);
         }
     }
 
-    private void sincronizarAlumno(
+    private MiembroEquipo sincronizarAlumno(
             Proyecto proyecto,
             ProyectoCatalogo item
     ) {
+        List<MiembroEquipo> asignados = alumnosAsignados(proyecto.getId());
+        if (!asignados.isEmpty()) return asignados.size() == 1 ? asignados.get(0) : null;
         if (item.alumnoFuente() == null || item.alumnoFuente().isBlank()) {
             LOGGER.info(
                     "Equipo " + item.equipo()
                             + ": el documento fuente no muestra un alumno para asignar."
             );
-            return;
+            return null;
         }
 
         List<MiembroEquipo> coincidencias = buscarMiembros(item.alumnoFuente());
@@ -277,24 +278,24 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
                             + coincidencias.size()
                             + ". La asignación automática se omitió."
             );
-            return;
+            return null;
         }
 
         MiembroEquipo alumno = coincidencias.get(0);
 
-        if (!"Activo".equalsIgnoreCase(alumno.getEstado())) {
+        if (!cuentaActiva(alumno)) {
             LOGGER.info(
                     "Equipo " + item.equipo()
                             + ": el alumno localizado está inactivo; no se asignó."
             );
-            return;
+            return null;
         }
 
         if (miembroProyectoRepository.existsByIdProyectoAndIdMiembro(
                 proyecto.getId(),
                 alumno.getId()
         )) {
-            return;
+            return alumno;
         }
 
         MiembroProyecto asignacion = new MiembroProyecto();
@@ -307,30 +308,26 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
         );
 
         miembroProyectoRepository.save(asignacion);
+        return alumno;
     }
 
 
     /**
-     * Crea un plan de trabajo de 600 horas únicamente cuando el proyecto
-     * todavía no tiene tareas. Nunca borra ni reemplaza tareas capturadas por
-     * el equipo.
+     * Conserva las tareas capturadas y completa su responsable cuando existe
+     * un alumno confirmado. Si no hay tareas, crea un plan editable de 600
+     * horas propuestas; esas actividades y horas no están detalladas en el PDF.
      */
-    private void sincronizarTareasBase(Proyecto proyecto, ProyectoCatalogo item) {
+    private void sincronizarTareasBase(Proyecto proyecto, ProyectoCatalogo item, MiembroEquipo alumno) {
         if (proyecto == null || proyecto.getId() == null) {
             return;
         }
 
-        if (tareaRepository.countByIdProyecto(proyecto.getId()) > 0) {
+        List<Tarea> existentes = tareaRepository.findByIdProyectoOrderByFechaCreacionDesc(proyecto.getId());
+        if (!existentes.isEmpty()) {
+            asignarTareasPendientes(existentes, alumno);
             return;
         }
-
-        Integer idAlumno = null;
-        if (item.alumnoFuente() != null && !item.alumnoFuente().isBlank()) {
-            List<MiembroEquipo> coincidencias = buscarMiembros(item.alumnoFuente());
-            if (coincidencias.size() == 1) {
-                idAlumno = coincidencias.get(0).getId();
-            }
-        }
+        Integer idAlumno = alumno == null ? null : alumno.getId();
 
         record TareaBase(
                 String titulo,
@@ -403,7 +400,8 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
             tarea.setIdProyecto(proyecto.getId());
             tarea.setIdMiembroAsignado(idAlumno);
             tarea.setTitulo(base.titulo());
-            tarea.setDescripcion(base.descripcion());
+            tarea.setDescripcion("Plan inicial editable para " + alcance + ". " + base.descripcion()
+                    + " Las actividades y horas son una propuesta de trabajo; el PDF identifica el proyecto y el alumno.");
             tarea.setEstado("Pendiente");
             tarea.setPrioridad(base.prioridad());
             tarea.setHorasEstimadas(BigDecimal.valueOf(base.horas()));
@@ -422,39 +420,82 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
     private List<MiembroEquipo> buscarMiembros(String nombreFuente) {
         String normalizadoFuente = normalizar(nombreFuente);
         Set<String> tokensFuente = tokens(normalizadoFuente);
+        // Los nombres parciales del PDF requieren confirmación del administrador.
+        if (tokensFuente.size() < 3) return List.of();
         List<MiembroEquipo> miembros = miembroEquipoRepository.findAll();
-        List<MiembroEquipo> exactos = new ArrayList<>();
+        return miembros.stream().filter(m -> tokens(normalizar(m.getNombreCompleto())).equals(tokensFuente)).toList();
+    }
 
-        for (MiembroEquipo miembro : miembros) {
-            String normalizadoMiembro = normalizar(miembro.getNombreCompleto());
-            if (normalizadoMiembro.equals(normalizadoFuente)) {
-                exactos.add(miembro);
+    private boolean cuentaActiva(MiembroEquipo miembro) {
+        return miembro != null && "Activo".equalsIgnoreCase(miembro.getEstado())
+                && miembro.getUsuario() != null && "Activo".equalsIgnoreCase(miembro.getUsuario().getEstado());
+    }
+
+    private List<MiembroEquipo> alumnosAsignados(Integer idProyecto) {
+        return miembroProyectoRepository.findByIdProyectoOrderByFechaAsignacionDesc(idProyecto).stream()
+                .filter(a -> "Estudiante".equalsIgnoreCase(a.getRolProyecto())
+                        || "Colaborador".equalsIgnoreCase(a.getRolProyecto())
+                        || String.valueOf(a.getNotas()).contains("Alumno confirmado por Administración para el catálogo"))
+                .map(a -> miembroEquipoRepository.findById(a.getIdMiembro()).orElse(null))
+                .filter(this::cuentaActiva).toList();
+    }
+
+    private void asignarTareasPendientes(List<Tarea> tareas, MiembroEquipo alumno) {
+        if (alumno == null) return;
+        for (Tarea tarea : tareas) {
+            if (tarea.getIdMiembroAsignado() == null) {
+                tarea.setIdMiembroAsignado(alumno.getId());
+                tareaRepository.save(tarea);
             }
         }
+    }
 
-        if (!exactos.isEmpty()) {
-            return exactos;
-        }
-
-        List<MiembroEquipo> porTokens = new ArrayList<>();
-
-        for (MiembroEquipo miembro : miembros) {
-            Set<String> tokensMiembro = tokens(normalizar(miembro.getNombreCompleto()));
-
-            boolean coincide;
-            if (tokensFuente.size() == 1) {
-                coincide = tokensMiembro.containsAll(tokensFuente);
-            } else {
-                coincide = tokensMiembro.containsAll(tokensFuente)
-                        || tokensFuente.containsAll(tokensMiembro);
+    /** Confirma el alumno sin quitar integrantes ni cambiar tareas con responsable. */
+    public synchronized void asignarAlumnoConfirmado(String codigo, Integer idMiembro) {
+        ProyectoCatalogo item = obtenerPorCodigo(codigo).orElseThrow(() -> new IllegalArgumentException("El código no pertenece al catálogo."));
+        Proyecto proyecto = proyectoRepository.findByCodigo(item.codigo()).orElseThrow(() -> new IllegalArgumentException("Primero sincroniza el catálogo."));
+        MiembroEquipo miembro = miembroEquipoRepository.findById(idMiembro).orElseThrow(() -> new IllegalArgumentException("El alumno no existe."));
+        if (!cuentaActiva(miembro)) throw new IllegalArgumentException("El alumno necesita una cuenta activa vinculada desde Equipo.");
+        if (!miembroProyectoRepository.existsByIdProyectoAndIdMiembro(proyecto.getId(), idMiembro)) {
+            MiembroProyecto asignacion = new MiembroProyecto();
+            asignacion.setIdProyecto(proyecto.getId()); asignacion.setIdMiembro(idMiembro);
+            asignacion.setRolProyecto("Estudiante"); asignacion.setHorasAsignadas(BigDecimal.ZERO);
+            asignacion.setNotas("Alumno confirmado por Administración para el catálogo Septiembre - Diciembre 2026.");
+            miembroProyectoRepository.save(asignacion);
+        } else {
+            MiembroProyecto asignacion = miembroProyectoRepository.findByIdProyectoAndIdMiembro(proyecto.getId(), idMiembro).orElseThrow();
+            if (!String.valueOf(asignacion.getNotas()).contains("Alumno confirmado por Administración para el catálogo")) {
+                asignacion.setNotas((asignacion.getNotas() == null ? "" : asignacion.getNotas() + "\n")
+                        + "Alumno confirmado por Administración para el catálogo Septiembre - Diciembre 2026.");
+                miembroProyectoRepository.save(asignacion);
             }
-
-            if (coincide) {
-                porTokens.add(miembro);
-            }
         }
+        sincronizarTareasBase(proyecto, item, miembro);
+    }
 
-        return porTokens;
+    public Map<String, Object> obtenerAsignaciones() {
+        List<Map<String, Object>> filas = new ArrayList<>();
+        for (ProyectoCatalogo item : CATALOGO) {
+            Proyecto proyecto = proyectoRepository.findByCodigo(item.codigo()).orElse(null);
+            List<MiembroEquipo> asignados = proyecto == null ? List.of() : alumnosAsignados(proyecto.getId());
+            List<Tarea> tareas = proyecto == null ? List.of() : tareaRepository.findByIdProyectoOrderByFechaCreacionDesc(proyecto.getId());
+            Map<String, Object> fila = new LinkedHashMap<>();
+            fila.put("equipo", item.equipo()); fila.put("codigo", item.codigo());
+            fila.put("proyectoId", proyecto == null ? null : proyecto.getId());
+            fila.put("proyecto", item.clavesFuente()); fila.put("nombreOficial", item.nombreOficial());
+            fila.put("alumnoPDF", item.alumnoFuente());
+            fila.put("alumnos", asignados.stream().map(m -> Map.of("id", m.getId(), "nombre", m.getNombreCompleto())).toList());
+            fila.put("tareas", tareas.size());
+            fila.put("tareasSinAsignar", tareas.stream().filter(t -> t.getIdMiembroAsignado() == null).count());
+            fila.put("estado", proyecto == null ? "Sin sincronizar" : asignados.isEmpty() ? "Pendiente de confirmar" : "Asignado");
+            filas.add(fila);
+        }
+        Map<String, Object> respuesta = new LinkedHashMap<>();
+        respuesta.put("estado", "correcto"); respuesta.put("periodo", "Septiembre - Diciembre 2026");
+        respuesta.put("proyectos", filas);
+        respuesta.put("alumnosDisponibles", miembroEquipoRepository.findAll().stream().filter(this::cuentaActiva)
+                .map(m -> Map.of("id", m.getId(), "nombre", m.getNombreCompleto())).toList());
+        return respuesta;
     }
 
     public String obtenerNombreVisual(Proyecto proyecto) {
@@ -493,18 +534,15 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
 
         String nombreNormalizado = normalizar(nombreAlumno);
         Set<String> tokensNombre = tokens(nombreNormalizado);
-
-        return CATALOGO.stream()
+        if (tokensNombre.size() < 3) return Optional.empty();
+        List<ProyectoCatalogo> coincidencias = CATALOGO.stream()
                 .filter(item -> item.alumnoFuente() != null)
                 .filter(item -> {
                     Set<String> tokensCatalogo = tokens(normalizar(item.alumnoFuente()));
-                    if (tokensCatalogo.size() == 1) {
-                        return tokensNombre.containsAll(tokensCatalogo);
-                    }
-                    return tokensNombre.containsAll(tokensCatalogo)
-                            || tokensCatalogo.containsAll(tokensNombre);
+                    return tokensCatalogo.size() >= 3 && tokensNombre.equals(tokensCatalogo);
                 })
-                .findFirst();
+                .toList();
+        return coincidencias.size() == 1 ? Optional.of(coincidencias.get(0)) : Optional.empty();
     }
 
     public List<String> obtenerNombresAsignados(Integer idProyecto) {

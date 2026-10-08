@@ -16,7 +16,10 @@ async function cargarSalasVideollamadas() {
         document.getElementById('mensajeSalas').hidden = true;
         renderSalasVideollamadas();
     } catch (e) {
+        salasVideollamadas = [];
         mostrarErrorSalas(e.message);
+        document.getElementById('resumenSalas').textContent = 'Conexión con las salas no disponible.';
+        document.getElementById('historialSalas').innerHTML = '<div class="pmo-empty">No se pudo consultar el historial. Pulsa Actualizar salas para reintentar.</div>';
         document.getElementById('salasProyectos').innerHTML = '<div class="pmo-empty">No se pudieron actualizar las salas. Pulsa Actualizar salas para reintentar.</div>';
     } finally { boton.disabled = false; }
 }

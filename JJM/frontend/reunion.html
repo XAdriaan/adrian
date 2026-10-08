@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reunión | Oficina de Proyectos</title>
-    <link rel="stylesheet" href="css/reunion.css?v=20261005-v9">
-<link rel="stylesheet" href="css/sidebar-global.css?v=20261005-v9">
-<link rel="stylesheet" href="css/projectsphere.css?v=20261005-v9">
-<link rel="stylesheet" href="css/sala-v7.css?v=20261005-v9">
-<link rel="stylesheet" href="css/ardia-global.css?v=20261005-v9">
-<link rel="stylesheet" href="css/elegancia-v9.css?v=20261005-v9">
+    <link rel="stylesheet" href="css/reunion.css?v=20261005-v10">
+<link rel="stylesheet" href="css/sidebar-global.css?v=20261005-v10">
+<link rel="stylesheet" href="css/projectsphere.css?v=20261005-v10">
+<link rel="stylesheet" href="css/sala-v7.css?v=20261005-v10">
+<link rel="stylesheet" href="css/ardia-global.css?v=20261005-v10">
+<link rel="stylesheet" href="css/elegancia-v9.css?v=20261005-v10">
+<link rel="stylesheet" href="css/sala-v10.css?v=20261005-v10">
 </head>
 <body>
 <div class="meeting-app">
@@ -23,17 +24,14 @@
         </div>
 
         <div class="meeting-actions">
-            <button id="btnMicrofono" class="meeting-btn" type="button" disabled>Activar micrófono</button><button id="btnCamara" class="meeting-btn" type="button" disabled>Activar cámara</button><button id="btnPantalla" class="meeting-btn" type="button" disabled>Compartir pantalla</button><span class="meeting-pill" id="meetingTimer">00:00:00</span>
+            <span class="meeting-pill" id="meetingTimer">00:00:00</span>
             <span class="meeting-pill" id="contadorParticipantes">0 participantes</span>
-            <button type="button" class="meeting-btn record" id="btnGrabar">● Grabar</button>
-            <button type="button" class="meeting-btn warning" id="btnDetenerGrabacion" hidden>■ Detener</button>
-            <button type="button" class="meeting-btn" id="btnCopiarEnlace">Copiar invitación</button>
-            <button type="button" class="meeting-btn hangup" id="btnColgarReunion">Colgar</button>
-            <button type="button" class="meeting-btn danger" id="btnFinalizarReunion" hidden>Finalizar para todos</button>
             <button type="button" class="meeting-btn secondary" id="btnVolverProyecto">Volver al proyecto</button>
         </div>
     </header>
 
+    <div class="meeting-device-strip"><span id="estadoDispositivos">Micrófono apagado · Cámara apagada</span><span>JJM Oficina de Proyectos</span></div>
+    <p class="meeting-device-alert" id="avisoMedios" role="alert" hidden></p>
     <main class="meeting-main">
         <section class="meeting-stage" aria-label="Videollamada de proyecto">
             <div id="jitsiContainer" class="jitsi-container rtc-grid"></div>
@@ -45,10 +43,10 @@
                 <button id="btnEntrarSala" class="meeting-btn" type="button" hidden>Entrar a la sala</button>
             </div>
 
-            
+
         </section>
 
-        <aside class="recordings-panel">
+        <aside class="recordings-panel" id="panelGrabaciones" hidden>
             <div class="recordings-head">
                 <div>
                     <h2>Grabaciones</h2>
@@ -65,7 +63,7 @@
             </div>
 
             <div class="recording-help">
-                <strong>Tu conexión</strong><p>La sala usa tu cuenta de JJM. Activa cámara y micrófono desde los botones de arriba.</p><button id="btnEscuchar" type="button" class="meeting-btn">Activar audio</button><button id="btnReconectar" type="button" class="meeting-btn secondary">Reconectar</button></div>
+                <strong>Tu conexión</strong><p>La sala usa tu cuenta de JJM. Activa cámara y micrófono desde la barra de controles de la llamada.</p><button id="btnEscuchar" type="button" class="meeting-btn">Activar audio</button><button id="btnReconectar" type="button" class="meeting-btn secondary">Reconectar</button></div>
 
             <div data-grabaciones-sala="" data-grabaciones-auto="false"><button type="button" class="meeting-btn secondary" id="actualizarGrabaciones">↻ Actualizar videos</button><p id="avisoGrabaciones" role="status" hidden></p><div id="grabacionesServidor" aria-live="polite"></div></div>
 <div id="listaGrabaciones" class="recordings-list">
@@ -74,16 +72,31 @@
         </aside>
     </main>
 
+    <nav class="meeting-controls" aria-label="Controles de la videollamada">
+        <div class="meeting-controls-devices">
+            <button id="btnMicrofono" class="call-control" type="button" aria-pressed="false" disabled>Micrófono apagado</button>
+            <button id="btnCamara" class="call-control" type="button" aria-pressed="false" disabled>Cámara apagada</button>
+            <button id="btnPantalla" class="call-control" type="button" aria-pressed="false" disabled>Compartir pantalla</button>
+        </div>
+        <div class="meeting-controls-tools">
+            <button type="button" class="meeting-btn record" id="btnGrabar">● Grabar</button>
+            <button type="button" class="meeting-btn warning" id="btnDetenerGrabacion" hidden>■ Detener grabación</button>
+            <button type="button" class="meeting-btn secondary" id="btnPanelGrabaciones" aria-expanded="false" aria-controls="panelGrabaciones">Grabaciones</button>
+            <button type="button" class="meeting-btn secondary" id="btnCopiarEnlace">Invitar</button>
+            <button type="button" class="meeting-btn hangup" id="btnColgarReunion">Salir de la llamada</button>
+            <button type="button" class="meeting-btn danger" id="btnFinalizarReunion" hidden>Finalizar para todos</button>
+        </div>
+    </nav>
     <footer class="meeting-footer">
         <span id="estadoReunion">Comprobando reunión...</span>
-        <span class="meeting-provider">Sala protegida · JJM ProjectSphere</span>
+        <span class="meeting-provider">Sala protegida · JJM Oficina de Proyectos</span>
     </footer>
 </div>
 
-<script src="js/api-config.js?v=20261005-v9"></script>
-<script src="js/sala-webrtc.js?v=20261005-v9"></script>
-<script src="js/grabaciones.js?v=20261005-v9"></script>
-<script src="js/reunion.js?v=20261005-v9"></script>
-<script src="js/ardia-global.js?v=20261005-v9"></script>
+<script src="js/api-config.js?v=20261005-v10"></script>
+<script src="js/sala-webrtc.js?v=20261005-v10"></script>
+<script src="js/grabaciones.js?v=20261005-v10"></script>
+<script src="js/reunion.js?v=20261005-v10"></script>
+<script src="js/ardia-global.js?v=20261005-v10"></script>
 </body>
 </html>

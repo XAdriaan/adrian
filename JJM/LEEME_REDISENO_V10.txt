@@ -1,0 +1,91 @@
+JJM OFICINA DE PROYECTOS — V10 COMPLETA
+
+Esta versión se entrega en ZIP para que la subas tú a GitHub y Coolify.
+No se ha desplegado automáticamente ni se han modificado tus datos de MySQL.
+
+QUÉ SE CORRIGE
+- El HTTP 500 de las salas: el servidor real usa sala_jitsi, id_creador_usuario
+  e id_participante_reunion. El código detecta estas columnas y también admite
+  el esquema reciente, sin renombrar, borrar ni migrar las tablas existentes.
+- Se pueden iniciar llamadas desde cada proyecto autorizado. La sala general
+  permanece abierta a todas las cuentas activas. Las salas por proyecto siguen
+  restringidas a administradores y miembros asignados; se valida en el servidor.
+- Mi cuenta y documentos y Herramientas se abren y mantienen la elección del
+  usuario. Buscar un apartado expande los resultados; al limpiar restaura el menú.
+- Ard.IA incluye nueve preguntas predeterminadas: Mi día, Mi proyecto, Mis horas, Pase de
+  lista, FO-EST-03, Mis salas, Compartir pantalla, Cámara y micrófono, Grabaciones.
+  Se abre después del login confirmado y se puede usar en los apartados privados.
+  Pulsa Escuchar respuesta para oír la voz. Hablar requiere un navegador compatible.
+- Sala con controles inferiores e iconos: Micrófono activo/apagado, Cámara
+  encendida/apagada y Compartir pantalla/Dejar de compartir. Cualquier participante
+  autorizado puede compartir. Al terminar vuelve su cámara. No se encienden
+  dispositivos antes de entrar o sin pulsar sus controles.
+- Los errores de permisos, dispositivos ausentes u ocupados se muestran junto a
+  la llamada. Una conexión perdida de otro participante no impide tu vista local.
+- La vista de escritorio mantiene los controles y la llamada en una pantalla.
+  Las grabaciones se abren como panel desde el botón Grabaciones.
+- La grabación respeta el estado de silencio del micrófono de la llamada.
+  Activa tu micrófono antes de comenzar si quieres incluir tu propia voz.
+- El nombre visible es JJM Oficina de Proyectos; se conserva el diseño azul marino.
+- Incluye todas las mejoras acumuladas: FO-EST-03 y pases de lista en Mi seguimiento
+  de estadía, documentos por periodo y año, grabaciones por fecha, login y proxy API.
+- Administración > Alumnos y proyectos muestra los 15 equipos de Septiembre-Diciembre
+  2026 del PDF. Al arrancar se vinculan las cuentas activas con nombres completos
+  coincidentes; el orden de apellidos y los acentos no impiden una coincidencia.
+  Si ya existen tareas sin responsable, se asignan al alumno confirmado del proyecto.
+  Se conservan los responsables, avances, horas y asignaciones manuales anteriores.
+  Para cuentas registradas después del despliegue, pulsa Sincronizar asignaciones.
+- Martell, Emily y CRIPTO quedan pendientes si no tienen una asignación confirmada:
+  los dos primeros tienen nombres incompletos y el tercero no tiene alumno en el PDF.
+  No se crean cuentas ni se adivinan nombres. Las coincidencias duplicadas, cuentas
+  sin vincular o nombres escritos de forma distinta también requieren confirmación.
+- Si un proyecto no tiene tareas, recibe un plan inicial editable de 10 actividades
+  (600 horas propuestas). El PDF NO contiene esas tareas ni exige esas horas.
+  El administrador puede ajustar el plan desde el proyecto. No se duplican tareas.
+  En proyectos con varios alumnos se confirma quién recibe las tareas pendientes.
+
+SUBIR A GITHUB
+1. Guarda JJM_OFICINA_CORREGIDO_V10.zip en tu carpeta Downloads.
+2. Abre SUBIR_A_GITHUB.txt de este paquete y copia el bloque completo a PowerShell.
+   Usa tu repositorio existente C:\Users\24050\Downloads\JJM_REPO_NUEVO.
+   No necesitas ejecutar un .ps1 ni cambiar la política de PowerShell.
+3. El bloque actualiza main, copia la carpeta JJM, crea un commit y hace push.
+   Si detecta cambios locales pendientes, se detiene para que puedas guardarlos.
+4. Al terminar muestra GITHUB ACTUALIZADO y el commit que debes ver en Coolify.
+
+DESPLEGAR EN COOLIFY
+1. Abre adrian:main-rhg3r12zlxt0qxxc0upwdw74 del repositorio XAdriaan/adrian.
+2. Pulsa Actions > Redeploy y espera Success. Confirma que el commit sea el nuevo.
+3. Si todavía no cargaste el Compose de V9, pulsa primero General > Reload Compose.
+   Conserva el dominio del frontend y las variables existentes de base de datos,
+   correo y TURN. Conserva también el volumen pmo_recordings de las grabaciones.
+4. Abre https://oficina.jjmti.com.mx/login.html y pulsa Ctrl + F5.
+5. Inicia sesión y revisa los dos grupos del menú y las preguntas de Ard.IA.
+6. En Videollamadas inicia la sala de un proyecto asignado. Entra a la sala,
+   activa cámara y micrófono y permite cada dispositivo cuando lo pida el navegador.
+7. Con otra cuenta autorizada, comprueba video, audio y compartir pantalla en ambos
+   sentidos. La pantalla se comparte desde un navegador de escritorio compatible.
+8. Graba una prueba, detén la grabación, espera la confirmación de guardado y abre
+   Grabaciones para verla. Selecciona esta pestaña con audio al iniciar la grabación.
+9. Con cuenta administradora, abre Alumnos y proyectos y revisa los pendientes.
+   Selecciona la cuenta activa correcta y pulsa Vincular alumno y tareas pendientes.
+   El alumno verá su proyecto en Proyectos y sus actividades en Mis tareas al entrar.
+   Si falta su cuenta en la lista, revisa que esté activa y vinculada en Equipo.
+
+VALIDACIÓN
+53 pruebas de backend y 53 pruebas de frontend pasan. JavaScript revisado por
+sintaxis. Se probó el inicio de sala de proyecto, ambos grupos del menú, preguntas
+predeterminadas, video WebRTC de dos participantes en ambos sentidos y pantalla
+compartida mediante señales sintéticas locales, sin usar cámara o micrófono reales.
+Se comprobó también grabación y reproducción local. La prueba final de permisos,
+hardware y redes remotas debe hacerse después de desplegar esta versión.
+Las asignaciones se comprobaron con datos locales: nombres completos, duplicados,
+cuentas inactivas y sin vincular, conservación de tareas y confirmación administrativa.
+No se han aplicado asignaciones nuevas directamente a la base de producción.
+
+EN REDES RESTRINGIDAS
+El video entre redes con restricciones puede necesitar el servidor TURN previsto
+en PMO_TURN_URLS, PMO_TURN_USERNAME y PMO_TURN_CREDENTIAL. Esta versión no inventa
+credenciales ni cambia las que tengas. Las salas usan WebRTC entre participantes.
+Ard.IA consulta la plataforma y ofrece accesos y ayuda; no incorpora una API externa
+de IA generativa. La voz y el dictado dependen de las capacidades del navegador.

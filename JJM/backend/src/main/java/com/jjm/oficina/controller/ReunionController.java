@@ -32,6 +32,9 @@ public class ReunionController {
     private final ProyectoRepository proyectoRepository;
     private final MiembroEquipoRepository miembroEquipoRepository;
     private final MiembroProyectoRepository miembroProyectoRepository;
+    private String columnaSala = "sala";
+    private String columnaCreador = "id_creador";
+    private String columnaParticipante = "id_participante";
 
     public ReunionController(
             JdbcTemplate jdbc,
@@ -77,6 +80,29 @@ public class ReunionController {
                     KEY idx_participante_usuario (id_usuario)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """);
+        // La instalación original usa sala_jitsi y otras claves. Conservamos su esquema y sus datos.
+        Set<String> reuniones = columnas("reuniones_proyecto");
+        columnaSala = columnaCompatible(reuniones, "sala", "sala_jitsi");
+        columnaCreador = columnaCompatible(reuniones, "id_creador", "id_creador_usuario");
+        columnaParticipante = columnaCompatible(columnas("participantes_reunion"),
+                "id_participante", "id_participante_reunion");
+    }
+
+    private Set<String> columnas(String tabla) {
+        Set<String> nombres = new HashSet<>();
+        jdbc.queryForList("SHOW COLUMNS FROM " + tabla).forEach(f -> nombres.add(String.valueOf(f.get("Field"))));
+        return nombres;
+    }
+
+    private String columnaCompatible(Set<String> columnas, String actual, String anterior) {
+        if (columnas.contains(actual)) return actual;
+        if (columnas.contains(anterior)) return anterior;
+        throw new IllegalStateException("Estructura de reuniones incompatible: falta " + actual + " o " + anterior);
+    }
+
+    private String seleccionReunion() {
+        return "SELECT id_reunion AS id, id_proyecto AS idProyecto, " + columnaSala + " AS sala, titulo, estado, "
+                + columnaCreador + " AS idCreador, fecha_inicio AS fechaInicio, fecha_fin AS fechaFin ";
     }
 
     /** Directorio de salas limitado a proyectos a los que pertenece la sesión. */
@@ -100,9 +126,7 @@ public class ReunionController {
                 .sorted(Comparator.comparing(p -> textoSeguro(p.getNombre(), "Proyecto")))
                 .toList();
         List<Map<String, Object>> reuniones = proyectos.isEmpty() ? List.of() : jdbc.queryForList(
-                "SELECT id_reunion AS id, id_proyecto AS idProyecto, sala, titulo, estado, "
-                        + "id_creador AS idCreador, fecha_inicio AS fechaInicio, fecha_fin AS fechaFin "
-                        + "FROM reuniones_proyecto WHERE id_proyecto IN ("
+                seleccionReunion() + "FROM reuniones_proyecto WHERE id_proyecto IN ("
                         + String.join(",", Collections.nCopies(proyectos.size(), "?"))
                         + ") ORDER BY fecha_inicio DESC LIMIT 100",
                 proyectos.stream().map(Proyecto::getId).toArray());
@@ -134,9 +158,7 @@ public class ReunionController {
         if (proyecto == null) return error(HttpStatus.NOT_FOUND, "No se encontró el proyecto.");
         if (!tieneAcceso(usuario, proyecto)) return error(HttpStatus.FORBIDDEN, "No tienes acceso a las reuniones de este proyecto.");
 
-        List<Map<String,Object>> reuniones = jdbc.queryForList("""
-                SELECT id_reunion AS id, id_proyecto AS idProyecto, sala, titulo, estado,
-                       id_creador AS idCreador, fecha_inicio AS fechaInicio, fecha_fin AS fechaFin
+        List<Map<String,Object>> reuniones = jdbc.queryForList(seleccionReunion() + """
                 FROM reuniones_proyecto
                 WHERE id_proyecto=?
                 ORDER BY fecha_inicio DESC
@@ -168,11 +190,12 @@ public class ReunionController {
         if (activa == null) {
             String sala = "JJM-PROJ-" + idProyecto + "-" + UUID.randomUUID().toString().replace("-", "").substring(0, 14);
             String titulo = "Reunión · " + textoSeguro(proyecto.getNombre(), "Proyecto");
+            if (titulo.length() > 180) titulo = titulo.substring(0, 180);
             jdbc.update("""
                     INSERT INTO reuniones_proyecto
-                        (id_proyecto, sala, titulo, estado, id_creador, fecha_inicio)
+                        (id_proyecto, %s, titulo, estado, %s, fecha_inicio)
                     VALUES (?, ?, ?, 'Activa', ?, ?)
-                    """, idProyecto, sala, titulo, usuario.getId(), LocalDateTime.now());
+                    """.formatted(columnaSala, columnaCreador), idProyecto, sala, titulo, usuario.getId(), LocalDateTime.now());
             activa = obtenerActiva(idProyecto);
         }
 
@@ -255,16 +278,16 @@ public class ReunionController {
         jdbc.update("""
                 UPDATE participantes_reunion
                 SET fecha_salida=?
-                WHERE id_participante=(
+                WHERE %s=(
                     SELECT id FROM (
-                        SELECT id_participante AS id
+                        SELECT %s AS id
                         FROM participantes_reunion
                         WHERE id_reunion=? AND id_usuario=? AND fecha_salida IS NULL
-                        ORDER BY id_participante DESC
+                        ORDER BY %s DESC
                         LIMIT 1
                     ) t
                 )
-                """, LocalDateTime.now(), idReunion, usuario.getId());
+                """.formatted(columnaParticipante, columnaParticipante, columnaParticipante), LocalDateTime.now(), idReunion, usuario.getId());
 
         return ResponseEntity.ok(Map.of("estado", "correcto", "mensaje", "Salida registrada."));
     }
@@ -313,9 +336,7 @@ public class ReunionController {
     }
 
     private Map<String,Object> obtenerActiva(Integer idProyecto) {
-        List<Map<String,Object>> filas = jdbc.queryForList("""
-                SELECT id_reunion AS id, id_proyecto AS idProyecto, sala, titulo, estado,
-                       id_creador AS idCreador, fecha_inicio AS fechaInicio, fecha_fin AS fechaFin
+        List<Map<String,Object>> filas = jdbc.queryForList(seleccionReunion() + """
                 FROM reuniones_proyecto
                 WHERE id_proyecto=? AND LOWER(estado)='activa'
                 ORDER BY id_reunion DESC
@@ -325,9 +346,7 @@ public class ReunionController {
     }
 
     private Map<String,Object> obtenerReunion(Long idReunion) {
-        List<Map<String,Object>> filas = jdbc.queryForList("""
-                SELECT id_reunion AS id, id_proyecto AS idProyecto, sala, titulo, estado,
-                       id_creador AS idCreador, fecha_inicio AS fechaInicio, fecha_fin AS fechaFin
+        List<Map<String,Object>> filas = jdbc.queryForList(seleccionReunion() + """
                 FROM reuniones_proyecto
                 WHERE id_reunion=?
                 LIMIT 1
