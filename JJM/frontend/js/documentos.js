@@ -75,6 +75,7 @@ let miembrosPMO = [];
 let miembroSesionPMO = null;
 let documentoRevisionActual = null;
 let datosAcademicosDocumentosCache = {};
+let errorPadronDocumentos = "";
 let filtroPersonaDocumentosValor = "";
 let filtroPeriodoDocumentos = "";
 let filtroAnioDocumentos = "";
@@ -1249,13 +1250,11 @@ function configurarEventosDocumentos() {
                     filtroPeriodoDocumentos =
                         "mayo-agosto";
 
+                } else if (filtroPersonaDocumentosValor === "sin-periodo") {
+                    filtroPeriodoDocumentos = "sin-periodo";
                 } else {
-
-                    filtroPeriodoDocumentos =
-                        "";
+                    filtroPeriodoDocumentos = "";
                 }
-
-
                 renderizarDocumentos();
             }
         );
@@ -6455,6 +6454,7 @@ function normalizarMiembroDocumentos(miembro) {
 
 
 async function cargarMiembrosDocumentos() {
+    errorPadronDocumentos = "";
 
     const headers = obtenerHeadersDocumentos();
 
@@ -6519,6 +6519,20 @@ async function cargarMiembrosDocumentos() {
             .filter(Boolean)
             .map(normalizarMiembroDocumentos);
 
+        if (esAdministradorDocumentos()) {
+            // El padrón escolar incluye cuentas sin perfil MiembroEquipo y alumnos de periodos anteriores.
+            const respuestaAlumnos = await fetch(window.apiUrl("/api/supervision-escolar"), { headers });
+            const padron = await obtenerJSONDocumentos(respuestaAlumnos);
+            if (!respuestaAlumnos.ok) throw new Error(padron.mensaje || "No se pudo consultar el padrón de alumnos.");
+            for (const alumno of padron.alumnos || []) {
+                const existente = miembrosPMO.find(m => String(m.idUsuario) === String(alumno.idUsuario));
+                if (!existente) miembrosPMO.push(normalizarMiembroDocumentos({ ...alumno,
+                    id: `usuario-${alumno.idUsuario}`, nombreCompleto: alumno.nombre }));
+                datosAcademicosDocumentosCache[String(alumno.idUsuario)] = { ...alumno,
+                    nombreCompleto: alumno.nombre, horas: alumno.horas || 600 };
+            }
+        }
+
         const idMiembroSesion = obtenerIdMiembroSesionDocumentos();
         const idUsuarioSesion = obtenerIdUsuarioDocumentos();
 
@@ -6577,6 +6591,7 @@ async function cargarMiembrosDocumentos() {
         } else {
             miembrosPMO = [];
             miembroSesionPMO = null;
+            errorPadronDocumentos = error.message || "No se pudo consultar el padrón de alumnos. Pulsa Actualizar para reintentar.";
         }
     }
 }
@@ -6617,10 +6632,10 @@ async function cargarDatosAcademicosDocumentosBackend() {
         }
         const aviso = document.getElementById("avisoCargaExpedientes");
         if (aviso) {
-            aviso.hidden = !fallos;
-            aviso.textContent = fallos
+            aviso.hidden = !fallos && !errorPadronDocumentos;
+            aviso.textContent = errorPadronDocumentos || (fallos
                 ? `No se pudieron cargar ${fallos} expedientes. Pulsa Actualizar para reintentar; el listado puede estar incompleto.`
-                : "";
+                : "");
         }
 
         lista.forEach(function (registro) {
@@ -6984,6 +6999,10 @@ function esAlumnoDocumentos(miembro) {
             "admin pmo",
             "admin_pmo",
             "superadministrador",
+            "directivo escolar",
+            "directivo",
+            "director",
+            "supervisor",
             "asesor academico",
             "asesor académico",
             "asesor empresarial",
@@ -7007,6 +7026,7 @@ function esAlumnoDocumentos(miembro) {
     if (
         [
             "alumno",
+            "colaborador",
             "estudiante",
             "alumna",
             "estudiante pmo"
@@ -7100,7 +7120,8 @@ function actualizarPeriodosDockDocumentos() {
     const todos=(miembrosPMO||[]).filter(esAlumnoDocumentos),anios=[...new Set(todos.map(a=>infoPeriodoAlumnoDocumentos(a).anio).filter(Boolean))].sort().reverse();
     select.innerHTML='<option value="">Todos los años</option>'+anios.map(a=>`<option value="${a}">${a}</option>`).join('');select.value=filtroAnioDocumentos;
     const alumnos=todos.filter(a=>!filtroAnioDocumentos||infoPeriodoAlumnoDocumentos(a).anio===filtroAnioDocumentos);
-    dock.innerHTML=window.PMOPeriodos.grupos.map((clave,i)=>{const n=alumnos.filter(a=>obtenerPeriodoMiembroDocumentos(a)===clave).length;return `<button type="button" class="periodo-selector" data-periodo="${clave}" aria-pressed="${filtroPeriodoDocumentos===clave}"><strong>${window.PMOPeriodos.nombres[i]}</strong><span>${n} ${n===1?'alumno':'alumnos'}</span></button>`;}).join('');
+    const claves=[...window.PMOPeriodos.grupos,'sin-periodo'],nombres=[...window.PMOPeriodos.nombres,'Sin periodo académico'];
+    dock.innerHTML=claves.map((clave,i)=>{const n=alumnos.filter(a=>(obtenerPeriodoMiembroDocumentos(a)||'sin-periodo')===clave).length;return `<button type="button" class="periodo-selector" data-periodo="${clave}" aria-pressed="${filtroPeriodoDocumentos===clave}"><strong>${nombres[i]}</strong><span>${n} ${n===1?'alumno':'alumnos'}</span></button>`;}).join('');
     dock.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{filtroPeriodoDocumentos=b.dataset.periodo;filtroPersonaDocumentosValor=filtroPeriodoDocumentos;filtroPersonaDocumentos.value=filtroPeriodoDocumentos;renderizarDocumentos();}));
 }
 document.addEventListener('DOMContentLoaded',()=>{
@@ -7133,7 +7154,7 @@ function obtenerAlumnosFiltradosDocumentos() {
                     const periodo =
                         obtenerPeriodoMiembroDocumentos(
                             alumno
-                        );
+                        ) || 'sin-periodo';
 
                     return (
                         normalizarTextoDocumentos(
@@ -7318,6 +7339,9 @@ function actualizarFiltroPersonaDocumentos() {
     );
 
     filtroPersonaDocumentos.insertBefore(opcionMayo, opcionSeptiembre);
+    const opcionSinPeriodo = document.createElement("option");
+    opcionSinPeriodo.value = "sin-periodo"; opcionSinPeriodo.textContent = "Sin periodo académico";
+    filtroPersonaDocumentos.appendChild(opcionSinPeriodo);
 
     /*
      * Restaurar el filtro seleccionado.
@@ -8319,408 +8343,21 @@ if (docProyecto) {
 // GENERAR Y LIBERAR DOCUMENTO
 // ==========================================================
 
-async function guardarCartaLiberacion(
-    event
-) {
-
+async function guardarCartaLiberacion(event) {
     event.preventDefault();
-
-
-    if (
-        !puedeValidarDocumentos()
-    ) {
-
-        return;
-    }
-
-
-    const idMiembro =
-        miembroLiberacion?.value ||
-        "";
-
-
-    const tipo =
-        tipoLiberacion?.value ||
-        "";
-
-
-    if (!idMiembro) {
-
-        alert(
-            "Selecciona un alumno."
-        );
-
-        return;
-    }
-
-
-    if (!tipo) {
-
-        alert(
-            "Selecciona el tipo de documento."
-        );
-
-        return;
-    }
-
-
-    const miembro =
-        miembrosPMO.find(
-            function (item) {
-
-                const id =
-                    item.id ??
-                    item.idMiembro ??
-                    item.id_miembro;
-
-
-                return String(id) ===
-                    String(idMiembro);
-
-            }
-        );
-
-
-    if (!miembro) {
-
-        alert(
-            "No se encontró el alumno seleccionado."
-        );
-
-        return;
-    }
-
-
+    if (!puedeValidarDocumentos()) return;
+    const id = miembroLiberacion?.value || "";
+    const tipo = tipoLiberacion?.value || "";
+    const miembro = miembrosPMO.find(m => String(m.id ?? m.idMiembro ?? m.id_miembro) === String(id));
+    if (!miembro || !tipo) { alert("Selecciona un alumno y un tipo de documento."); return; }
+    const boton = formLiberacion?.querySelector('button[type="submit"]');
+    if (boton) boton.disabled = true;
     try {
-
-        const datos =
-            obtenerDatosAcademicosMiembroDocumentos(
-                miembro
-            );
-
-
-        // ==================================================
-        // VALIDAR CARTA DE ACEPTACIÓN
-        // ==================================================
-
-        if (
-            tipo ===
-            "Carta de aceptación"
-        ) {
-
-            const documentoExistente =
-                obtenerCartaAceptacionGeneradaAlumno(
-                    miembro
-                );
-
-
-            if (
-                documentoExistente
-            ) {
-
-                alert(
-                    "Este alumno ya tiene una Carta de aceptación generada y liberada."
-                );
-
-                return;
-            }
-
-        }
-
-
-        // ==================================================
-        // GENERAR DOCUMENTO
-        // ==================================================
-
-        const html =
-            generarDocumentoPersonalizadoHTML(
-                tipo,
-                datos,
-                miembro
-            );
-
-
-        // ==================================================
-        // NOMBRE DEL ALUMNO
-        // ==================================================
-
-        const nombreAlumno =
-            obtenerNombreMiembroDocumentos(
-                miembro
-            )
-                .replace(
-                    /[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]/g,
-                    ""
-                )
-                .trim()
-                .replace(
-                    /\s+/g,
-                    "_"
-                );
-
-
-        // ==================================================
-        // NOMBRE DEL ARCHIVO
-        // ==================================================
-
-        const nombreArchivo =
-            tipo
-                .toLowerCase()
-                .replace(
-                    / /g,
-                    "_"
-                )
-                .replace(
-                    /ó/g,
-                    "o"
-                )
-                .replace(
-                    /í/g,
-                    "i"
-                )
-                .replace(
-                    /é/g,
-                    "e"
-                )
-                .replace(
-                    /á/g,
-                    "a"
-                ) +
-            "_" +
-            nombreAlumno +
-            ".pdf";
-
-
-        // ==================================================
-        // CONVERTIR A PDF REAL
-        // ==================================================
-
-        const base64 =
-            tipo === "Carta de aceptación"
-                ? await generarCartaAceptacionPDFBase64(
-                    datos,
-                    miembro,
-                    nombreArchivo
-                )
-                : await convertirCartaHTMLaPDFBase64(
-                    html,
-                    nombreArchivo
-                );
-
-
-        // ==================================================
-        // CREAR DOCUMENTO
-        // ==================================================
-
-        const documento = {
-
-            id:
-                generarIdDocumento(),
-
-            idUsuario:
-                miembro.idUsuario ??
-                miembro.id_usuario ??
-                null,
-
-            idMiembro:
-                idMiembro,
-
-            colaboradorNombre:
-                obtenerNombreMiembroDocumentos(
-                    miembro
-                ),
-
-            colaboradorCorreo:
-                miembro.correo ||
-                miembro.email ||
-                "",
-
-            tipoDocumento:
-                tipo,
-
-            nombreArchivo:
-                nombreArchivo,
-
-            archivoBase64:
-                base64,
-
-            mimeType:
-                "application/pdf",
-
-            estado:
-                "Liberada",
-
-            observaciones:
-                observacionLiberacion?.value?.trim() ||
-                `${tipo} generada y liberada por administración.`,
-
-            fechaSubida:
-                new Date().toISOString(),
-
-            /*
-             * IMPORTANTE:
-             * La fecha de registro corresponde
-             * al registro del alumno.
-             */
-            fechaRegistro:
-                miembro.fechaRegistro ||
-                miembro.fecha_registro ||
-                new Date().toISOString(),
-
-            fechaRevision:
-                new Date().toISOString(),
-
-            generadoAutomaticamente:
-                true,
-
-            datosAcademicos:
-                datos
-        };
-
-
-        // ==================================================
-        // GUARDAR EN BACKEND
-        // ==================================================
-
-        const respuesta =
-            await fetch(
-                API_DOCUMENTOS,
-                {
-                    method: "POST",
-
-                    headers: {
-
-                        "Content-Type":
-                            "application/json",
-
-                        ...obtenerHeadersDocumentos()
-
-                    },
-
-                    body:
-                        JSON.stringify(
-                            documento
-                        )
-                }
-            );
-
-
-        const cuerpo =
-            await obtenerJSONDocumentos(
-                respuesta
-            );
-
-
-        if (!respuesta.ok) {
-
-            throw new Error(
-                cuerpo.mensaje ||
-                "No fue posible generar y liberar el documento."
-            );
-
-        }
-
-
-        // ==================================================
-        // DOCUMENTO DEVUELTO POR BACKEND
-        // ==================================================
-
-        const documentoBackend =
-            cuerpo.documento ||
-            cuerpo.data ||
-            documento;
-
-
-        // ==================================================
-        // EVITAR DUPLICADOS
-        // ==================================================
-
-        const indiceExistente =
-            documentosPMO.findIndex(
-                function (doc) {
-
-                    return String(
-                        doc.id
-                    ) ===
-                    String(
-                        documentoBackend.id
-                    );
-
-                }
-            );
-
-
-        if (
-            indiceExistente >= 0
-        ) {
-
-            documentosPMO[
-                indiceExistente
-            ] =
-                documentoBackend;
-
-        } else {
-
-            documentosPMO.push(
-                documentoBackend
-            );
-
-        }
-
-
-        // ==================================================
-        // GUARDAR Y ACTUALIZAR INTERFAZ
-        // ==================================================
-
-        guardarDocumentosStorage();
-
-
-        cerrarModalDocumentos(
-            modalLiberacion
-        );
-
-
-        renderizarDocumentos();
-
-
-        // ==================================================
-        // MENSAJE FINAL
-        // ==================================================
-
-        if (
-            tipo ===
-            "Carta de aceptación"
-        ) {
-
-            alert(
-                cuerpo.mensaje ||
-                "Carta de aceptación generada, liberada y enviada correctamente al alumno."
-            );
-
-        } else {
-
-            alert(
-                cuerpo.mensaje ||
-                `${tipo} generado y liberado correctamente.`
-            );
-
-        }
-
-
-    } catch (error) {
-
-        console.error(
-            "Error generando documento:",
-            error
-        );
-
-
-        alert(
-            error.message ||
-            "No fue posible generar y liberar el documento."
-        );
-
-    }
+        const resultado = await window.CartasLotePMO.generarParaAlumno(miembro,tipo,observacionLiberacion?.value || "");
+        guardarDocumentosStorage(); cerrarModalDocumentos(modalLiberacion); renderizarDocumentos();
+        alert(resultado.omitida ? "La carta ya estaba liberada para este periodo." : "Documento generado y liberado correctamente. Está disponible en la cuenta del alumno.");
+    } catch (error) { alert(error.message || "No fue posible generar el documento."); }
+    finally { if (boton) boton.disabled = false; }
 }
 
 
@@ -9788,4 +9425,3 @@ async function abrirLiberacionParaAlumno(idMiembro, tipoDocumento) {
     actualizarTextoTipoDocumento();
     abrirModalDocumentos(modalLiberacion);
 }
-

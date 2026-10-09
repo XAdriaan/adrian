@@ -80,7 +80,9 @@ loginForm.addEventListener("submit", async function (event) {
         localStorage.setItem("sesionTokenPMO", datos.token);
         try { sessionStorage.setItem("ardia-bienvenida", String(datos.usuario.id)); } catch (_) {}
 
-        const expedienteCompleto = await datosAcademicosCompletos(datos.usuario);
+        const rolLogin = String(datos.usuario.rol?.nombre || datos.usuario.rol || "").trim().toLowerCase();
+        const esDirectivoLogin = ["directivo escolar", "directivo"].includes(rolLogin);
+        const expedienteCompleto = esDirectivoLogin || await datosAcademicosCompletos(datos.usuario);
         if (localStorage.getItem("sesionTokenPMO") !== datos.token) {
             mostrarError("El servidor no confirmó tu sesión. Inicia sesión nuevamente.");
             return;
@@ -92,7 +94,8 @@ loginForm.addEventListener("submit", async function (event) {
         // el Dashboard/menú mostrará el acceso para completarlos sin romper
         // el inicio de sesión ni generar ciclos de redirección.
         setTimeout(function () {
-            window.location.replace(expedienteCompleto ? "dashboard.html" : "dashboard.html?completarDatos=1");
+            window.location.replace(esDirectivoLogin ? "supervision-escolar.html"
+                : (expedienteCompleto ? "dashboard.html" : "dashboard.html?completarDatos=1"));
         }, 350);
 
     } catch (error) {

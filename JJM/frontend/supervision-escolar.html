@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0b1220">
+    <title>Supervisión escolar | JJM Oficina de Proyectos</title>
+    <link rel="stylesheet" href="css/supervision-escolar.css?v=20261009-v13">
+</head>
+<body>
+<div class="school-layout">
+    <aside class="sidebar">
+        <a href="supervision-escolar.html" class="school-brand"><img src="img/LOGO-J2M.png" alt="JJM Oficina de Proyectos"></a>
+        <nav class="sidebar-menu" aria-label="Navegación">
+            <a href="supervision-escolar.html" class="active">Supervisión escolar</a>
+            <a href="perfil.html">Mi perfil</a>
+        </nav>
+        <div class="sidebar-footer"><p id="indicadorRolEscolar">Directivo escolar</p><a href="login.html">Cerrar sesión</a></div>
+    </aside>
+    <main class="school-main">
+        <header class="school-heading"><div><p class="school-eyebrow">OFICINA DE PROYECTOS</p><h1>Supervisión escolar</h1><p>Consulta los expedientes y el avance de los alumnos.</p></div><button id="actualizarEscolar" type="button">Actualizar</button></header>
+        <p id="mensajeEscolar" class="school-message" role="status" hidden></p>
+        <section class="school-summary" aria-label="Resumen">
+            <article><strong id="totalAlumnosEscolar">—</strong><span>Alumnos registrados</span></article>
+            <article><strong id="totalPeriodoEscolar">—</strong><span>Con periodo académico</span></article>
+            <article><strong id="totalDocumentosEscolar">—</strong><span>Documentos registrados</span></article>
+        </section>
+        <section class="school-card">
+            <div class="school-filters">
+                <label>Buscar alumno<input id="buscarEscolar" type="search" placeholder="Nombre, correo o matrícula"></label>
+                <label>Periodo<select id="periodoEscolar"><option value="">Todos los periodos</option><option value="enero-abril">Enero–Abril</option><option value="mayo-agosto">Mayo–Agosto</option><option value="septiembre-diciembre">Septiembre–Diciembre</option><option value="sin-periodo">Sin periodo académico</option></select></label>
+                <label>Año<select id="anioEscolar"><option value="">Todos los años</option></select></label>
+            </div>
+            <div class="school-table"><table><caption>Alumnos y expedientes</caption><thead><tr><th>Alumno</th><th>Periodo</th><th>Documentos</th><th>Cursos completados</th><th>Expediente</th></tr></thead><tbody id="alumnosEscolar"><tr><td colspan="5">Cargando alumnos…</td></tr></tbody></table></div>
+        </section>
+        <section id="expedienteEscolar" class="school-card" aria-live="polite" hidden>
+            <h2 id="nombreExpedienteEscolar">Expediente</h2>
+            <dl id="datosExpedienteEscolar" class="school-profile"></dl>
+            <h3>Documentos del alumno</h3>
+            <div class="school-table"><table><thead><tr><th>Documento</th><th>Archivo</th><th>Estado</th><th>Fecha</th><th>Observaciones</th><th>Consulta</th></tr></thead><tbody id="documentosEscolar"></tbody></table></div>
+            <h3>Certificados de cursos registrados</h3>
+            <div class="school-table"><table><thead><tr><th>Curso</th><th>Certificado registrado</th><th>Fecha</th><th>Estado</th></tr></thead><tbody id="certificadosEscolar"></tbody></table></div>
+        </section>
+    </main>
+</div>
+<script src="js/api-config.js?v=20261005-v10"></script>
+<script src="js/permisos-globales.js?v=20261009-v13"></script>
+<script src="js/periodos.js?v=20261005-v10"></script>
+<script src="js/supervision-escolar.js?v=20261009-v13"></script>
+</body>
+</html>

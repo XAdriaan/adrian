@@ -193,6 +193,17 @@
         </section>
 
         <section class="tab-content" id="tab-liberaciones">
+            <div class="document-card" id="panelCartasLote" hidden>
+                <h2>Liberar cartas por grupo</h2>
+                <p>Selecciona arriba el periodo y el año. Esta acción incluye a todos los alumnos del filtro y conserva las cartas ya liberadas.</p>
+                <label for="tipoCartaLote">Carta</label>
+                <select id="tipoCartaLote"><option>Carta de aceptación</option><option>Carta de término</option></select>
+                <div class="form-actions">
+                    <button type="button" class="btn-primary" id="generarCartasLote">Generar y liberar para todos</button>
+                    <button type="button" class="btn-secondary" id="liberarCartasLote">Liberar cartas ya generadas</button>
+                </div>
+                <div id="resultadoCartasLote" role="status" aria-live="polite"></div>
+            </div>
             <div class="document-card">
                 <div class="card-header">
                     <div>
@@ -409,8 +420,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<script src="js/periodos.js?v=20261005-v10"></script>
-<script src="js/documentos.js?v=20261005-v10"></script>
+<script src="js/periodos.js?v=20261009-v14"></script>
+<script src="js/documentos.js?v=20261009-v14"></script>
+<script src="js/cartas-lote.js?v=20261009-v14"></script>
 <script src="js/ardia-global.js?v=20261005-v10"></script>
 </body>
 </html>

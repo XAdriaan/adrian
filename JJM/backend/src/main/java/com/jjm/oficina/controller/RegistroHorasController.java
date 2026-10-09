@@ -15,6 +15,7 @@ import com.jjm.oficina.repositorio.RegistroHorasRepository;
 import com.jjm.oficina.repositorio.TareaRepository;
 import com.jjm.oficina.repositorio.UsuarioRepository;
 import com.jjm.oficina.servicio.BitacoraService;
+import com.jjm.oficina.servicio.AsistenciaAutomaticaService;
 
 import jakarta.transaction.Transactional;
 
@@ -391,6 +392,11 @@ public class RegistroHorasController {
 
         Usuario usuario = obtenerUsuario(idUsuarioActivo);
 
+        if (AsistenciaAutomaticaService.esAlumno(usuario)) {
+            return respuestaError(respuesta, HttpStatus.CONFLICT,
+                    "Tu asistencia se registra automáticamente mientras tienes abierta la plataforma.");
+        }
+
         if (usuario == null) {
             return respuestaError(
                     respuesta,
@@ -532,6 +538,9 @@ public class RegistroHorasController {
         }
 
         Integer idTareaAnterior = registro.getIdTarea();
+        if (AsistenciaAutomaticaService.esRegistroAutomatico(registro) && registro.getHoraSalida() == null) {
+            return respuestaError(respuesta, HttpStatus.CONFLICT, "La jornada automática sigue en curso.");
+        }
         String datosAnteriores = resumenRegistro(registro);
 
         MiembroEquipo miembro = resolverMiembroRegistro(
@@ -767,6 +776,11 @@ public class RegistroHorasController {
             );
         }
 
+        if (AsistenciaAutomaticaService.esRegistroAutomatico(registro)) {
+            return respuestaError(respuesta, HttpStatus.CONFLICT,
+                    "La asistencia automática se conserva en el historial. Puedes revisar su validación.");
+        }
+
         Integer idTarea = registro.getIdTarea();
         String datosEliminados = resumenRegistro(registro);
 
@@ -810,6 +824,11 @@ public class RegistroHorasController {
         Map<String, Object> respuesta = new LinkedHashMap<>();
 
         Usuario usuario = obtenerUsuario(idUsuarioActivo);
+
+        if (AsistenciaAutomaticaService.esAlumno(usuario)) {
+            return respuestaError(respuesta, HttpStatus.CONFLICT,
+                    "Tu jornada comienza automáticamente al abrir la plataforma dentro del horario escolar.");
+        }
 
         if (usuario == null) {
             return respuestaError(
@@ -932,6 +951,11 @@ public class RegistroHorasController {
         Map<String, Object> respuesta = new LinkedHashMap<>();
 
         Usuario usuario = obtenerUsuario(idUsuarioActivo);
+
+        if (AsistenciaAutomaticaService.esAlumno(usuario)) {
+            return respuestaError(respuesta, HttpStatus.CONFLICT,
+                    "Tu asistencia se pausa al cerrar la plataforma y termina a las 17:00.");
+        }
 
         if (usuario == null) {
             return respuestaError(
@@ -1448,6 +1472,7 @@ public class RegistroHorasController {
         );
 
         respuesta.put("tipoRegistro", registro.getTipoRegistro());
+        respuesta.put("automatico", AsistenciaAutomaticaService.esRegistroAutomatico(registro));
         respuesta.put("incidente", registro.getIncidente());
         respuesta.put("descripcion", registro.getDescripcion());
 

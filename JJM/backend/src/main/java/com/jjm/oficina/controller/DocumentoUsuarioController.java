@@ -171,6 +171,31 @@ public class DocumentoUsuarioController {
             estado = texto(datos, "estado");
         }
 
+        if (generado && esAdministrador(activo)) {
+            // Dos administradores o un reintento no deben generar la misma carta dos veces.
+            jdbc.queryForObject("SELECT id_usuario FROM usuarios WHERE id_usuario=? FOR UPDATE", Integer.class, idObjetivo);
+            Map<?,?> academicos = datos.get("datosAcademicos") instanceof Map<?,?> m ? m : Map.of();
+            String inicio = fechaClaveCarta(academicos.get("fechaInicio"));
+            String fin = fechaClaveCarta(academicos.get("fechaFin"));
+            List<Map<String,Object>> anteriores = jdbc.queryForList("""
+                    SELECT id_documento AS id FROM documentos_usuario
+                    WHERE id_usuario=? AND tipo_documento=? AND generado_automaticamente=TRUE
+                      AND estado='Liberada'
+                      AND COALESCE(LEFT(JSON_UNQUOTE(JSON_EXTRACT(
+                          CASE WHEN JSON_VALID(datos_academicos_json) THEN datos_academicos_json ELSE '{}' END,
+                          '$.fechaInicio')),10),'')=?
+                      AND COALESCE(LEFT(JSON_UNQUOTE(JSON_EXTRACT(
+                          CASE WHEN JSON_VALID(datos_academicos_json) THEN datos_academicos_json ELSE '{}' END,
+                          '$.fechaFin')),10),'')=?
+                    ORDER BY id_documento DESC LIMIT 1
+                    """, idObjetivo,tipo,inicio,fin);
+            if (!anteriores.isEmpty()) {
+                int existente = ((Number)anteriores.getFirst().get("id")).intValue();
+                return ResponseEntity.ok(Map.of("estado","correcto","yaExistente",true,
+                        "mensaje","La carta ya estaba liberada para este periodo.","documento",obtenerDocumento(existente)));
+            }
+        }
+
         jdbc.update("""
                 INSERT INTO documentos_usuario (
                     id_usuario,
@@ -612,6 +637,11 @@ public class DocumentoUsuarioController {
         );
 
         return ResponseEntity.ok(respuesta);
+    }
+
+    private String fechaClaveCarta(Object valor) {
+        String fecha = Objects.toString(valor, "").trim();
+        return fecha.length() > 10 ? fecha.substring(0,10) : fecha;
     }
 
     @DeleteMapping("/{id}")

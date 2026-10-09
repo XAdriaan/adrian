@@ -815,6 +815,16 @@ function limpiarSelectTareas(mensaje) {
 ========================================================= */
 
 function actualizarEstadoJornada() {
+    if (window.asistenciaAutomaticaPMO?.esAlumno()) {
+        if (btnCheckIn) btnCheckIn.hidden = true;
+        if (btnCheckOut) btnCheckOut.hidden = true;
+        if (btnRegistrarHoras) btnRegistrarHoras.hidden = true;
+        const asistencia = window.asistenciaAutomaticaPMO.estado();
+        if (textoJornada) textoJornada.textContent = asistencia?.mensaje || "Confirmando tu asistencia automática...";
+        if (jornadaStatus) jornadaStatus.className = "jornada-status " +
+                (asistencia?.contando ? "jornada-abierta" : "jornada-cerrada");
+        return;
+    }
     /*
      * Para un colaborador, el backend devuelve únicamente
      * sus propios registros. No se necesita volver a comparar
@@ -1393,7 +1403,7 @@ function mostrarRegistros() {
 function crearAccionesRegistro(registro) {
     const acciones = [];
 
-    if (esAdministrador() && puedeGestionarHorasGlobales()) {
+    if (esAdministrador() && puedeGestionarHorasGlobales() && (!registro.automatico || registro.horaSalida)) {
         acciones.push(`
             <button type="button" class="btn-editar-registro" title="Corregir registro">✏</button>
         `);
@@ -1408,7 +1418,7 @@ function crearAccionesRegistro(registro) {
         `);
     }
 
-    if (puedeEliminarRegistro(registro)) {
+    if (!registro.automatico && puedeEliminarRegistro(registro)) {
         acciones.push(`
             <button type="button" class="btn-eliminar-registro" title="Eliminar registro">🗑</button>
         `);
@@ -1533,7 +1543,29 @@ function actualizarEstadisticas() {
         horasAprobadas.textContent =
             totalAprobado.toFixed(2) + "h";
     }
+
+    actualizarContadorAutomatico();
 }
+
+function actualizarContadorAutomatico() {
+    const seguimiento = window.asistenciaAutomaticaPMO;
+    if (!seguimiento?.esAlumno()) return;
+    const estado = seguimiento.estado();
+    const segundos = seguimiento.segundosVisibles();
+    if (!estado || segundos == null) return;
+    const otrasHoras = registrosHoras.filter(r => Number(r.idMiembro) === Number(estado.idMiembro)
+            && Number(r.id) !== Number(estado.idRegistro))
+        .reduce((total, r) => total + Number(r.horasTrabajadas || 0), 0);
+    if (horasHoy) horasHoy.textContent = (segundos / 3600).toFixed(2) + "h / 10h";
+    if (horasTotales) horasTotales.textContent = (otrasHoras + segundos / 3600).toFixed(2) + "h";
+    if (textoJornada && !estado.error && estado.contando) {
+        const h = Math.floor(segundos / 3600), m = Math.floor(segundos % 3600 / 60), s = Math.floor(segundos % 60);
+        textoJornada.textContent = `Asistencia automática: ${[h,m,s].map(n => String(n).padStart(2,"0")).join(":")} de 10:00:00. Lunes a viernes, 07:00 a 17:00.`;
+    }
+}
+
+window.addEventListener("pmo:asistencia", () => { actualizarEstadoJornada(); actualizarEstadisticas(); });
+setInterval(actualizarContadorAutomatico, 1000);
 
 /* =========================================================
    EDITAR, VALIDAR Y ELIMINAR

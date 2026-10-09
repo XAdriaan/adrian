@@ -17,6 +17,7 @@
     };
 
     window.limpiarSesionPMO = function () {
+        window.dispatchEvent(new Event("pmo:antes-cerrar-sesion"));
         localStorage.removeItem("sesionTokenPMO");
         localStorage.removeItem("usuarioActivo");
         try { sessionStorage.removeItem("ardia-bienvenida"); } catch (_) {}
@@ -114,5 +115,11 @@
             clearTimeout(temporizador);
         }
         return null;
+    }
+    // Todas las páginas usan esta configuración: la presencia sigue al navegar.
+    if (typeof document !== "undefined" && document.createElement && document.head) {
+        const asistencia = document.createElement("script");
+        asistencia.src = "js/asistencia-automatica.js?v=20261009-v14";
+        document.head.appendChild(asistencia);
     }
 })();

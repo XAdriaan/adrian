@@ -16,6 +16,7 @@ public class PermisosService {
     public static final String ROL_SUPERADMIN = "Superadministrador";
     public static final String ROL_ADMIN = "Administrador";
     public static final String ROL_SUPERVISOR = "Supervisor";
+    private static final List<String> PERMISOS_DIRECTIVO = List.of("dashboard.ver", "supervision.ver");
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -26,6 +27,13 @@ public class PermisosService {
     public boolean esSuperadministrador(Usuario usuario) {
         return usuarioActivo(usuario)
                 && "superadministrador".equals(normalizar(usuario.getRol().getNombre()));
+    }
+
+    public static boolean esDirectivoEscolar(Usuario usuario) {
+        if (usuario == null || usuario.getRol() == null || usuario.getRol().getNombre() == null
+                || !"Activo".equalsIgnoreCase(usuario.getEstado())) return false;
+        String nombre = usuario.getRol().getNombre().trim().toLowerCase(Locale.ROOT);
+        return nombre.equals("directivo escolar") || nombre.equals("directivo");
     }
 
     public boolean esAdministradorBase(Usuario usuario) {
@@ -46,6 +54,7 @@ public class PermisosService {
         if (esSuperadministrador(usuario)) {
             return true;
         }
+        if (esDirectivoEscolar(usuario)) return PERMISOS_DIRECTIVO.contains(clave.trim());
         Integer idRol = usuario.getRol().getId();
         if (idRol == null) {
             return false;
@@ -103,6 +112,7 @@ public class PermisosService {
                     String.class
             );
         }
+        if (esDirectivoEscolar(usuario)) return PERMISOS_DIRECTIVO;
         return listarClaves(usuario.getRol());
     }
 

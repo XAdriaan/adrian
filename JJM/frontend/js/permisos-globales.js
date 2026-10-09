@@ -18,6 +18,7 @@ const RUTAS_SOLO_ADMINISTRADOR = [
 
 
 const PERMISOS_RUTA_PMO = {
+    "supervision-escolar.html": "supervision.ver",
     "asignaciones.html": "equipo.ver",
     "equipo.html": "equipo.ver",
     "organizaciones.html": "organizaciones.ver",
@@ -334,7 +335,12 @@ function obtenerPermisosUsuarioGlobal(usuario) {
 function tienePermisoGlobal(usuario, clave) {
     if (!usuario || !clave) return false;
     if (esSuperAdministradorGlobal(usuario)) return true;
+    if (esDirectivoEscolarGlobal(usuario)) return ["dashboard.ver", "supervision.ver"].includes(clave);
     return obtenerPermisosUsuarioGlobal(usuario).includes(clave);
+}
+
+function esDirectivoEscolarGlobal(usuario) {
+    return ["directivo escolar", "directivo"].includes(normalizarRolGlobal(obtenerRolUsuarioGlobal(usuario)));
 }
 
 function esSuperAdministradorGlobal(usuario) {
@@ -470,7 +476,7 @@ function tieneDatosAcademicosGlobal(usuario) {
 }
 
 function debeCompletarDatosAcademicosGlobal(usuario, paginaActual, esAdmin) {
-    if (!usuario || esAdmin || tieneAccesoGestionGlobal(usuario)) return false;
+    if (!usuario || esAdmin || esDirectivoEscolarGlobal(usuario) || tieneAccesoGestionGlobal(usuario)) return false;
 
     const paginasLibres = [
         "login.html",
@@ -591,6 +597,22 @@ function agregarEnlaceSeguimientoEstadiaGlobal() {
     }
     agregarEnlacesEstadiaRapidosGlobal();
     agregarEnlaceRolesPermisosGlobal();
+    agregarEnlaceSupervisionEscolarGlobal();
+}
+
+function agregarEnlaceSupervisionEscolarGlobal() {
+    const menu = document.querySelector(".sidebar-menu");
+    if (!menu) return;
+    let enlace = menu.querySelector('a[href="supervision-escolar.html"]');
+    const usuario = obtenerUsuarioActivoGlobal();
+    const permitido = esAdministradorGlobal(usuario) || tienePermisoGlobal(usuario, "supervision.ver");
+    if (!permitido) { enlace?.remove(); return; }
+    if (!enlace) {
+        enlace = document.createElement("a");
+        enlace.href = "supervision-escolar.html";
+        enlace.textContent = "Supervisión escolar";
+        menu.appendChild(enlace);
+    }
 }
 
 function agregarEnlacesEstadiaRapidosGlobal() {
