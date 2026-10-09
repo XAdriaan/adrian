@@ -587,7 +587,8 @@ public class MiembroProyectoController {
 
         String rol = normalizarTexto(usuario.getRol().getNombre());
 
-        return rol.equals("administrador") ||
+        return rol.equals("superadministrador") ||
+                rol.equals("administrador") ||
                 rol.equals("admin pmo") ||
                 rol.equals("admin_pmo") ||
                 rol.equals("administrador pmo");

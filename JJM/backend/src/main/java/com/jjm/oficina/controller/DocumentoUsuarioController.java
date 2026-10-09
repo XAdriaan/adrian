@@ -827,6 +827,7 @@ public class DocumentoUsuarioController {
                         .toLowerCase(Locale.ROOT);
 
         return Set.of(
+                "superadministrador",
                 "administrador",
                 "admin pmo",
                 "administrador pmo",

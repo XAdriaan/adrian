@@ -124,7 +124,7 @@ public class ProgresoCursosController {
     private boolean esAdministrador(Usuario u){
         if(u==null||u.getRol()==null||u.getRol().getNombre()==null)return false;
         String r=u.getRol().getNombre().trim().toLowerCase(Locale.ROOT);
-        return Set.of("administrador","admin pmo","administrador pmo","admin_pmo").contains(r);
+        return Set.of("superadministrador","administrador","admin pmo","administrador pmo","admin_pmo").contains(r);
     }
     private ResponseEntity<Map<String,Object>> error(HttpStatus s,String m){Map<String,Object> r=new LinkedHashMap<>();r.put("estado","error");r.put("mensaje",m);return ResponseEntity.status(s).body(r);}
 }
