@@ -4,6 +4,18 @@ const loginForm = document.getElementById("loginForm");
 const errorMessage = document.getElementById("error-message");
 const successMessage = document.getElementById("success-message");
 const btnLogin = document.getElementById("btnLogin");
+const passwordInputLogin = document.getElementById("password");
+const togglePasswordLogin = document.getElementById("togglePassword");
+
+togglePasswordLogin?.addEventListener("click", function () {
+    const visible = passwordInputLogin.type === "password";
+    passwordInputLogin.type = visible ? "text" : "password";
+    const etiqueta = visible ? "Ocultar contraseña" : "Mostrar contraseña";
+    togglePasswordLogin.setAttribute("aria-label", etiqueta);
+    togglePasswordLogin.setAttribute("aria-pressed", String(visible));
+    togglePasswordLogin.title = etiqueta;
+    togglePasswordLogin.classList.toggle("is-visible", visible);
+});
 
 loginForm.addEventListener("submit", async function (event) {
     event.preventDefault();

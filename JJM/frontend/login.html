@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Acceso | JJM Oficina de Proyectos</title>
     <meta name="theme-color" content="#0b1220">
-    <link rel="stylesheet" href="css/login.css?v=20261005-v10">
+    <link rel="stylesheet" href="css/login.css?v=20261009-v11">
 <link rel="stylesheet" href="css/acceso-v7.css?v=20261005-v10">
 <link rel="stylesheet" href="css/elegancia-v9.css?v=20261005-v10">
 </head>
@@ -80,7 +80,7 @@
                         <label for="password">Contraseña</label>
                         <a href="#" id="linkRecuperarPassword">¿Olvidaste tu contraseña?</a>
                     </div>
-                    <div class="input-icon">
+                    <div class="input-icon password-field">
                         <span aria-hidden="true">🔒</span>
                         <input
                             type="password"
@@ -90,6 +90,17 @@
                             autocomplete="current-password"
                             required
                         >
+                        <button type="button" class="password-toggle" id="togglePassword"
+                            aria-controls="password" aria-label="Mostrar contraseña"
+                            aria-pressed="false" title="Mostrar contraseña">
+                            <svg class="password-eye" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                            <svg class="password-eye-off" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                <path d="m3 3 18 18M10.6 5.1A12 12 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.1 4.1M6.1 6.1A19 19 0 0 0 2 12s3.5 7 10 7a12 12 0 0 0 5.9-1.9M9.9 9.9a3 3 0 0 0 4.2 4.2"></path>
+                            </svg>
+                        </button>
                     </div>
                 </div>
 
@@ -170,6 +181,6 @@
 </div>
 
 <script src="js/api-config.js?v=20261005-v10"></script>
-<script src="js/login.js?v=20261005-v10"></script>
+<script src="js/login.js?v=20261009-v11"></script>
 </body>
 </html>
