@@ -86,6 +86,12 @@ public class ProgresoCursosController {
                     detalle_json=VALUES(detalle_json)
                 """, idUsuario, total, completados, porcentaje, json(certificados));
 
+        // Retirar un curso elimina la vinculación actual; su PDF conserva el historial documental.
+        List<Integer> vigentes=certificados.stream().filter(this::estaCompletado).map(v->entero(((Map<?,?>)v).get("idCurso"),0)).filter(v->v>=1&&v<=26).distinct().toList();
+        if(vigentes.isEmpty())jdbc.update("DELETE FROM pmo_certificados_curso WHERE id_usuario=?",idUsuario);
+        else { List<Object> argumentos=new ArrayList<>();argumentos.add(idUsuario);argumentos.addAll(vigentes);
+            jdbc.update("DELETE FROM pmo_certificados_curso WHERE id_usuario=? AND id_curso NOT IN ("+String.join(",",Collections.nCopies(vigentes.size(),"?"))+")",argumentos.toArray()); }
+
         return ResponseEntity.ok(Map.of("estado","correcto","mensaje","Progreso de cursos guardado correctamente.","progreso",buscarProgreso(idUsuario)));
     }
 

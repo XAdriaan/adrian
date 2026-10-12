@@ -2407,7 +2407,7 @@ document.addEventListener("DOMContentLoaded", function () {
         menu.append(encabezado, zonaPrincipal);
         const grupos = [
             ["Mi cuenta y documentos", ["perfil.html", "datos-academicos.html", "documentos.html"]],
-            ["Herramientas", ["tareas.html", "cursos.html", "alertas.html", "encuestas.html", "chatbot.html"]],
+            ["Herramientas", ["tareas.html", "cursos.html", "alertas.html", "encuestas.html", "chatbot.html", "automatizaciones.html"]],
             ["Administración", ["asignaciones.html", "seguimiento-estadia.html", "equipo.html", "organizaciones.html", "bitacora.html", "reportes.html", "roles-permisos.html", "proyecto-avanzado.html"]]
         ].map(([nombre, rutas]) => {
             const details = document.createElement("details");

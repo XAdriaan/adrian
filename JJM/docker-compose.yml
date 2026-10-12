@@ -21,6 +21,7 @@ services:
       - "8080"
     volumes:
       - pmo_recordings:/app/grabaciones
+      - /srv/jjm-respaldos:/app/respaldos:ro
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/api/salud"]
       interval: 15s

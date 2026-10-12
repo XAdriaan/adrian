@@ -72,10 +72,11 @@
         objeto(2);texto(`<< /Type /Pages /Kids [${ids.map(id=>id+' 0 R').join(' ')}] /Count ${paginas.length} >>\nendobj\n`);
         paginas.forEach((p,i)=>{
             const id=ids[i];
-            objeto(id);texto(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 792 612] /Resources << /XObject << /Im0 ${id+1} 0 R >> >> /Contents ${id+2} 0 R >>\nendobj\n`);
+            const ancho=p.puntosAncho||792,alto=p.puntosAlto||612;
+            objeto(id);texto(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${ancho} ${alto}] /Resources << /XObject << /Im0 ${id+1} 0 R >> >> /Contents ${id+2} 0 R >>\nendobj\n`);
             objeto(id+1);texto(`<< /Type /XObject /Subtype /Image /Width ${p.ancho} /Height ${p.alto} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${p.bytes.length} >>\nstream\n`);
             bytes(p.bytes);texto('\nendstream\nendobj\n');
-            const c='q\n792 0 0 612 0 0 cm\n/Im0 Do\nQ\n';
+            const c=`q\n${ancho} 0 0 ${alto} 0 0 cm\n/Im0 Do\nQ\n`;
             objeto(id+2);texto(`<< /Length ${encoder.encode(c).length} >>\nstream\n${c}endstream\nendobj\n`);
         });
         const xref=offset;texto(`xref\n0 ${total}\n0000000000 65535 f \n`);

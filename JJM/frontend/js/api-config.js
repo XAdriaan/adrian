@@ -130,5 +130,8 @@
         estiloAsistencia.rel = "stylesheet";
         estiloAsistencia.href = "css/asistencia.css?v=20261012-v16";
         document.head.appendChild(estiloAsistencia);
+        const automatizaciones = document.createElement("script");
+        automatizaciones.src = "js/automatizaciones-global.js?v=20261012-v19";
+        document.head.appendChild(automatizaciones);
     }
 })();

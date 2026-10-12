@@ -1,0 +1,43 @@
+package com.jjm.oficina.servicio;
+import com.jjm.oficina.modelo.*;
+import com.jjm.oficina.repositorio.UsuarioRepository;
+import java.math.BigDecimal;
+import java.time.*;
+import java.util.*;
+import org.junit.jupiter.api.*;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.support.*;
+import org.springframework.web.server.ResponseStatusException;
+import tools.jackson.databind.ObjectMapper;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+class AutomatizacionesTest {
+    final JdbcTemplate jdbc=mock(JdbcTemplate.class);final UsuarioRepository usuarios=mock(UsuarioRepository.class);final PermisosService permisos=mock(PermisosService.class);final BitacoraService bitacora=mock(BitacoraService.class);
+    final Usuario admin=cuenta(1,"Superadministrador"),alumno=cuenta(10,"Colaborador"),otro=cuenta(11,"Alumna"),director=cuenta(15,"Directivo escolar");
+    AutomatizacionesService servicio;
+    static Usuario cuenta(int id,String nombre){Usuario u=new Usuario();u.setId(id);u.setEstado("Activo");Rol r=new Rol();r.setNombre(nombre);u.setRol(r);return u;}
+    @BeforeEach void preparar(){for(Usuario u:List.of(admin,alumno,otro,director))when(usuarios.findById(u.getId())).thenReturn(Optional.of(u));when(permisos.esSuperadministrador(admin)).thenReturn(true);
+        servicio=new AutomatizacionesService(jdbc,usuarios,permisos,Clock.fixed(Instant.parse("2026-10-12T23:05:00Z"),ZoneOffset.UTC),new ObjectMapper(),new TestTransactionManager(),bitacora);
+    }
+    static class TestTransactionManager extends AbstractPlatformTransactionManager {
+        protected Object doGetTransaction(){return new Object();}protected void doBegin(Object x,org.springframework.transaction.TransactionDefinition d){}protected void doCommit(DefaultTransactionStatus s){}protected void doRollback(DefaultTransactionStatus s){}
+    }
+    @Test void alumnosDirectivosYAsesoresNoPuedenCambiarReglas(){for(Usuario u:List.of(alumno,director,cuenta(20,"Asesor Académico"))){when(usuarios.findById(u.getId())).thenReturn(Optional.of(u));assertThrows(ResponseStatusException.class,()->servicio.configurar(u.getId(),Map.of("aprobarHoras",false)));}verifyNoInteractions(jdbc);}
+    @Test void clienteEInactivosNoPuedenLeerExpedientes(){Usuario cliente=cuenta(21,"Empresa"),inactivo=cuenta(22,"Colaborador");inactivo.setEstado("Inactivo");for(Usuario u:List.of(cliente,inactivo)){when(usuarios.findById(u.getId())).thenReturn(Optional.of(u));assertThrows(ResponseStatusException.class,()->servicio.panel(u.getId(),false));}verifyNoInteractions(jdbc);}
+    @Test void opcionesDesconocidasYValoresQueNoSonBooleanosSeRechazan(){assertThrows(ResponseStatusException.class,()->servicio.configurar(1,Map.of("rol","Superadministrador")));assertThrows(ResponseStatusException.class,()->servicio.configurar(1,Map.of("aprobarHoras","true")));verifyNoInteractions(jdbc);}
+    Map<String,Object> perfil(int id,String periodo){Map<String,Object>a=new HashMap<>();a.put("idUsuario",id);a.put("nombre","Alumno "+id);a.put("rol","Colaborador");a.put("estado","Activo");a.put("matricula","M"+id);a.put("universidad","Universidad");a.put("carrera","Ingeniería");a.put("periodo",periodo);a.put("fechaInicio","2026-09-01");a.put("fechaFin","2026-12-15");a.put("metaHoras",600);a.put("horasAprobadas",300);a.put("totalCursos",26);a.put("cursosDeclarados",26);a.put("empresa",1);a.put("satisfaccion",1);a.put("foEst03",1);return a;}
+    void perfiles(){when(jdbc.queryForList(contains("FROM usuarios u JOIN roles"),any(LocalDate.class))).thenReturn(List.of(perfil(10,"SEP - DIC"),perfil(11,"MAY-AGO")));}
+    @Test void consultaPropiaNoExponeOtrosAlumnosYUnPeriodoSinDatosPermanecePendiente(){perfiles();Map<String,Object> d=servicio.panel(10,false);List<?> lista=(List<?>)d.get("alumnos");assertEquals(1,lista.size());assertEquals(10,((Map<?,?>)lista.getFirst()).get("idUsuario"));assertEquals("Periodo pendiente",AutomatizacionReglas.periodo(null));assertEquals("Mayo–Agosto",AutomatizacionReglas.periodo("MAY - AGO"));}
+    @Test void cursosDeclaradosSinPdfRevisadoNoCompletanElExpediente(){perfiles();Map<String,Object>a=servicio.alumnos().getFirst();assertEquals(0,a.get("cursosDocumentados"));assertEquals(false,a.get("listoCarta"));assertTrue(((List<?>)a.get("faltantes")).stream().anyMatch(v->v.toString().contains("0/26")));}
+    @Test void losRecordatoriosSoloSeMarcanConLaCuentaDestinataria(){when(jdbc.update(contains("SET estado='Visto'"),eq(99L),eq(10))).thenReturn(0);assertThrows(ResponseStatusException.class,()->servicio.marcarLeido(10,99L));verify(jdbc).queryForList(contains("AND id_usuario=?"),eq(99L),eq(10));}
+    @Test void certificadoNoPermiteNombreDeArchivoNiIdDeCursoInvalidos(){assertThrows(ResponseStatusException.class,()->servicio.subirCertificado(10,27,Map.of()));assertThrows(ResponseStatusException.class,()->servicio.subirCertificado(10,1,Map.of("nombreArchivo","archivo.exe")));assertThrows(ResponseStatusException.class,()->servicio.subirCertificado(10,1,Map.of("nombreArchivo","curso.pdf","archivoBase64","no es base64")));verifyNoInteractions(jdbc);}
+    @Test void certificadoDescargadoSeConsultaConElUsuarioAutenticado(){when(jdbc.queryForList(contains("FROM pmo_certificados_curso c JOIN documentos_usuario"),eq(10),eq(1))).thenReturn(List.of(Map.of("nombreArchivo","curso.pdf","archivoBase64","contenido")));Map<String,Object> d=servicio.obtenerCertificado(10,1);assertEquals("curso.pdf",((Map<?,?>)d.get("documento")).get("nombreArchivo"));verify(jdbc).queryForList(contains("d.id_usuario=c.id_usuario"),eq(10),eq(1));}
+    @Test void noHaySegundoReporteParaLaMismaSemana(){Map<String,Object> opciones=Map.of("opciones_json","{\"reportesSemanales\":true}","ultima_revision_epoch",0);when(jdbc.queryForMap(contains("FOR UPDATE"))).thenReturn(opciones);when(jdbc.queryForList(contains("SELECT id FROM pmo_reportes_semanales"),any(LocalDate.class),any(LocalDate.class))).thenReturn(List.of(Map.of("id",1)));servicio.ejecutar(1,true);verify(jdbc,never()).update(contains("INSERT IGNORE INTO pmo_reportes_semanales"),any(LocalDate.class),any(LocalDate.class),anyString(),any(LocalDateTime.class));}
+    Map<String,Object> jornada(){Map<String,Object>j=new HashMap<>();j.put("fecha","2026-10-12");j.put("finalizada",true);j.put("rol","Colaborador");j.put("estadoUsuario","Activo");j.put("incidente","normal");j.put("estadoValidacion","Pendiente");j.put("tipoRegistro","Jornada");j.put("horaEntrada","07:00:00");j.put("horaSalida","17:00:00");j.put("segundos",36000);j.put("horas",BigDecimal.TEN);j.put("totalDia",BigDecimal.TEN);return j;}
+    @Test void soloSeApruebanSegundosMedidosEnJornadasCerradasDentroDelHorario(){assertTrue(AutomatizacionReglas.jornadaValida(jornada(),LocalDate.of(2026,10,12)));for(String campo:List.of("finalizada","horaEntrada","horaSalida","segundos","totalDia","estadoValidacion","incidente","tipoRegistro")){Map<String,Object>j=jornada();j.put(campo,switch(campo){case "finalizada"->false;case "horaEntrada"->"06:59:00";case "horaSalida"->"17:01:00";case "segundos"->35999;case "totalDia"->new BigDecimal("10.01");case "estadoValidacion"->"Rechazado";case "tipoRegistro"->"Manual";default->"justificado";});assertFalse(AutomatizacionReglas.jornadaValida(j,LocalDate.of(2026,10,12)),campo);}}
+    @Test void futuroFinDeSemanaYDuracionesImposiblesNoSeAprueban(){for(String dia:List.of("2026-10-13","2026-10-10","fecha incorrecta")){Map<String,Object>j=jornada();j.put("fecha",dia);assertFalse(AutomatizacionReglas.jornadaValida(j,LocalDate.of(2026,10,12)));}Map<String,Object>j=jornada();j.put("horaEntrada","16:30:00");assertFalse(AutomatizacionReglas.jornadaValida(j,LocalDate.of(2026,10,12)));}
+    @Test void pdfIncompletoYExcesoDeTamanoNoSeAceptan(){assertThrows(IllegalArgumentException.class,()->AutomatizacionReglas.pdf(Base64.getEncoder().encodeToString("%PDF-1.4 archivo truncado".getBytes())));assertThrows(IllegalArgumentException.class,()->AutomatizacionReglas.pdf("A".repeat(5_650_001)));assertThrows(IllegalArgumentException.class,()->AutomatizacionReglas.pdf(Base64.getEncoder().encodeToString("<script>datos</script>%%EOF".getBytes())));}
+    @Test void porcentajeRespetaMetaYSemanaAnteriorCruzaMes(){assertEquals(50,AutomatizacionReglas.porcentaje(new BigDecimal("300"),new BigDecimal("600")));assertEquals(100,AutomatizacionReglas.porcentaje(new BigDecimal("700"),new BigDecimal("600")));assertEquals(0,AutomatizacionReglas.porcentaje(BigDecimal.TEN,BigDecimal.ZERO));assertEquals(LocalDate.of(2026,9,28),AutomatizacionReglas.lunesAnterior(LocalDate.of(2026,10,5)));}
+}

@@ -339,8 +339,11 @@ function configurarEventosCursos() {
     if (formCertificadoCurso) {
         formCertificadoCurso.addEventListener("submit", async function (event) {
             event.preventDefault();
+            if(formCertificadoCurso.dataset.guardando==='true')return;
+            formCertificadoCurso.dataset.guardando='true';
             try { await guardarCertificadoCurso(); }
             catch (error) { alert(error.message || "No fue posible guardar el progreso del curso."); }
+            finally { formCertificadoCurso.dataset.guardando='false'; }
         });
     }
 
@@ -443,9 +446,13 @@ function abrirModalCurso(idCurso) {
     }
 
     if (certificado) {
-        estadoCursoModal.textContent = "Curso completado";
+        estadoCursoModal.textContent = certificado.idDocumento ? "Certificado PDF almacenado en el servidor" : "Registro anterior: falta adjuntar el PDF";
         certificadoActualBox.classList.add("completed");
-        certificadoActualTexto.textContent = `Certificado subido: ${certificado.nombreArchivo} · Fecha: ${formatearFecha(certificado.fechaCompletado)}`;
+        certificadoActualTexto.textContent = `Certificado: ${certificado.nombreArchivo} · Fecha: ${formatearFecha(certificado.fechaCompletado)}`;
+        let descargar=document.getElementById('descargarPdfCurso');
+        if(!descargar){descargar=document.createElement('button');descargar.id='descargarPdfCurso';descargar.type='button';descargar.textContent='Descargar PDF';certificadoActualBox.appendChild(descargar);}
+        descargar.hidden=!certificado.idDocumento;
+        descargar.onclick=()=>descargarCertificadoCurso(idCurso).catch(e=>alert(e.message));
 
         if (btnEliminarCertificado) {
             btnEliminarCertificado.style.display = "inline-block";
@@ -498,8 +505,8 @@ async function guardarCertificadoCurso() {
     const certificadoExistente = obtenerCertificadoCurso(idCurso);
     const archivo = archivoCertificado.files[0];
 
-    if (!archivo && !certificadoExistente) {
-        alert("Selecciona un archivo de certificado.");
+    if (!archivo && !certificadoExistente?.idDocumento) {
+        alert("Adjunta el PDF del certificado para almacenarlo en el servidor.");
         return;
     }
 
@@ -508,7 +515,15 @@ async function guardarCertificadoCurso() {
         return;
     }
 
+    let idDocumento=certificadoExistente?.idDocumento;
+    if(archivo) {
+        if(!/\.pdf$/i.test(archivo.name)||archivo.size>4*1024*1024)throw new Error('Adjunta un PDF de máximo 4 MB.');
+        const archivoBase64=await new Promise((resolver,rechazar)=>{const r=new FileReader();r.onload=()=>resolver(r.result);r.onerror=()=>rechazar(new Error('No se pudo leer el PDF.'));r.readAsDataURL(archivo);});
+        const respuesta=await fetch(window.apiUrl(`/api/automatizaciones/certificados/${idCurso}`),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombreArchivo:archivo.name,archivoBase64})});
+        const cuerpo=await respuesta.json();if(!respuesta.ok)throw new Error(cuerpo.mensaje||cuerpo.detail||cuerpo.message||'No se pudo almacenar el certificado.');idDocumento=cuerpo.idDocumento;
+    }
     const certificado = {
+        idDocumento,
         idCurso: idCurso,
         nombreCurso: curso.nombre,
         nombreArchivo: archivo ? archivo.name : certificadoExistente.nombreArchivo,
@@ -521,19 +536,28 @@ async function guardarCertificadoCurso() {
         fechaActualizacion: new Date().toISOString()
     };
 
+    const anteriores=certificadosCursos.slice();
     certificadosCursos = certificadosCursos.filter(function (item) {
         return Number(item.idCurso) !== idCurso;
     });
 
     certificadosCursos.push(certificado);
 
-    await guardarCertificadosCursos();
+    try { await guardarCertificadosCursos(); } catch(e) { certificadosCursos=anteriores;throw e; }
 
     cerrarModalCurso();
     renderizarCursos();
     actualizarProgresoCursos();
 
     alert("Certificado guardado correctamente.");
+}
+
+async function descargarCertificadoCurso(idCurso) {
+    const r=await fetch(window.apiUrl(`/api/automatizaciones/certificados/${idCurso}`)),d=await r.json();
+    if(!r.ok)throw new Error(d.mensaje||d.detail||d.message||'No se pudo descargar el certificado.');
+    const archivo=d.documento,bytes=Uint8Array.from(atob(String(archivo.archivoBase64).replace(/^data:[^,]*,/,'')),c=>c.charCodeAt(0));
+    const url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'})),a=document.createElement('a');
+    a.href=url;a.download=String(archivo.nombreArchivo).replace(/[\\/:*?"<>|]/g,'_');document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
 }
 
 async function eliminarCertificadoCurso() {
@@ -560,7 +584,7 @@ async function eliminarCertificadoCurso() {
 
 function actualizarProgresoCursos() {
     const completados = certificadosCursos.filter(function (item) {
-        return item.completado === true;
+        return item.completado === true && Number(item.idDocumento)>0;
     }).length;
 
     const total = cursos.length;
@@ -581,7 +605,7 @@ function actualizarProgresoCursos() {
 
 function cursoCompletado(idCurso) {
     return certificadosCursos.some(function (item) {
-        return Number(item.idCurso) === Number(idCurso) && item.completado === true;
+        return Number(item.idCurso) === Number(idCurso) && item.completado === true && Number(item.idDocumento)>0;
     });
 }
 
