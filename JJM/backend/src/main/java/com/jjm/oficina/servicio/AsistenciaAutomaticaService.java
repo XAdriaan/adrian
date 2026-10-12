@@ -63,7 +63,7 @@ public class AsistenciaAutomaticaService {
     }
 
     public static boolean esRegistroAutomatico(RegistroHoras registro) {
-        return registro != null && DESCRIPCION.equals(registro.getDescripcion());
+        return registro != null && (DESCRIPCION.equals(registro.getDescripcion()) || (registro.getDescripcion()!=null && registro.getDescripcion().startsWith(DESCRIPCION+"\n")));
     }
 
     public Map<String, Object> actualizar(Integer idUsuario, boolean senal) {
@@ -140,6 +140,8 @@ public class AsistenciaAutomaticaService {
                 WHERE id_miembro=? AND COALESCE(estado_validacion,'Pendiente')<>'Rechazado'
                 """,BigDecimal.class,miembro.getId());
         salida.put("horasAcumuladas",acumuladas==null?BigDecimal.ZERO:acumuladas);
+        BigDecimal aprobadas=miembro==null?BigDecimal.ZERO:jdbc.queryForObject("SELECT COALESCE(SUM(horas_trabajadas),0) FROM registros_horas WHERE id_miembro=? AND estado_validacion='Aprobado'",BigDecimal.class,miembro.getId());
+        salida.put("horasAprobadasAcumuladas",aprobadas==null?BigDecimal.ZERO:aprobadas);
         salida.put("segundosHastaCierre", Math.max(0,Duration.between(ahora,fin(fecha)).toSeconds()));
         salida.put("horas", horas(((Number)salida.get("segundos")).longValue()));
         salida.put("idRegistro", jornada == null ? null : jornada.getIdRegistro());

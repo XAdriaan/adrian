@@ -61,15 +61,20 @@ public class RegularizacionHorasService {
         for(Integer alumno:alumnos()) {
             Usuario u=usuarios.findById(alumno).orElseThrow();MiembroEquipo m=miembros.findByUsuarioId(alumno).orElse(null);
             List<RegistroHoras> lista=m==null?List.of():registros.findByIdMiembroAndFechaBetweenOrderByFechaDescFechaCreacionDesc(m.getId(),DESDE,HASTA);
-            BigDecimal faltante=BigDecimal.ZERO,existentes=BigDecimal.ZERO;
-            for(LocalDate dia:dias()){BigDecimal horas=horasDia(lista,dia);existentes=existentes.add(horas);faltante=faltante.add(faltan(horas));}
-            personas.add(Map.of("idUsuario",alumno,"nombre",nombre(u),"horasExistentes",existentes,"horasPorReconocer",faltante,"objetivoHoras",300));
+            BigDecimal faltante=BigDecimal.ZERO,existentes=BigDecimal.ZERO,porAprobar=BigDecimal.ZERO; int porIdentificar=0;
+            for(LocalDate dia:dias()){
+                BigDecimal horas=horasDia(lista,dia);existentes=existentes.add(horas);faltante=faltante.add(faltan(horas));
+                List<RegistroHoras> validos=validosDia(lista,dia);
+                porAprobar=porAprobar.add(validos.stream().filter(r->!"Aprobado".equalsIgnoreCase(r.getEstadoValidacion())).map(r->r.getHorasTrabajadas()==null?BigDecimal.ZERO:r.getHorasTrabajadas().max(BigDecimal.ZERO)).reduce(BigDecimal.ZERO,BigDecimal::add));
+                if(!validos.isEmpty()&&validos.stream().noneMatch(RegularizacionHorasService::esRegularizado))porIdentificar++;
+            }
+            personas.add(Map.of("idUsuario",alumno,"nombre",nombre(u),"horasExistentes",existentes,"horasPorReconocer",faltante,"horasPorAprobar",porAprobar,"diasPorIdentificar",porIdentificar,"objetivoHoras",300));
         }
         return Map.of("estado","correcto","desde",DESDE.toString(),"hasta",HASTA.toString(),"diasHabiles",dias().size(),"horasPorAlumno",300,"alumnos",personas);
     }
     @Transactional
     public Map<String,Object> aplicar(Integer id) {
-        Usuario actor=comprobar(id);int creados=0;BigDecimal reconocidas=BigDecimal.ZERO;
+        Usuario actor=comprobar(id);int creados=0,aprobados=0,identificados=0;BigDecimal reconocidas=BigDecimal.ZERO,horasAprobadas=BigDecimal.ZERO;
         List<Integer> ids=alumnos();
         for(Integer alumno:ids) {
             Usuario u=usuarios.buscarParaAsistencia(alumno).orElseThrow();
@@ -89,7 +94,22 @@ public class RegularizacionHorasService {
             List<RegistroHoras> lista=registros.buscarParaRegularizacion(miembro.getId(),DESDE,HASTA);
             for(LocalDate dia:dias()) {
                 BigDecimal agregar=faltan(horasDia(lista,dia));
-                if(agregar.signum()<=0)continue;
+                List<RegistroHoras> validos=validosDia(lista,dia);
+                // Aprueba las horas que ya se contaron en este corte, sin cambiar su duración ni sus conexiones.
+                for(RegistroHoras existente:validos) {
+                    if(!"Aprobado".equalsIgnoreCase(existente.getEstadoValidacion())) {
+                        existente.setEstadoValidacion("Aprobado");existente.setIdUsuarioValidador(actor.getId());registros.save(existente);
+                        aprobados++;horasAprobadas=horasAprobadas.add(existente.getHorasTrabajadas()==null?BigDecimal.ZERO:existente.getHorasTrabajadas().max(BigDecimal.ZERO));
+                    }
+                }
+                if(agregar.signum()<=0) {
+                    if(!validos.isEmpty()&&validos.stream().noneMatch(RegularizacionHorasService::esRegularizado)) {
+                        RegistroHoras origen=validos.getFirst();
+                        origen.setDescripcion(Objects.toString(origen.getDescripcion(),"")+"\n"+ORIGEN+" Horario reconocido: 07:00 a 17:00.");
+                        registros.save(origen);identificados++;
+                    }
+                    continue;
+                }
                 RegistroHoras r=new RegistroHoras();r.setIdMiembro(miembro.getId());r.setFecha(dia);r.setHorasTrabajadas(agregar);
                 r.setTipoRegistro("Manual");r.setIncidente("normal");r.setDescripcion(ORIGEN+" Jornada de 07:00 a 17:00 reconocida por administración.");
                 r.setEstadoValidacion("Aprobado");r.setIdUsuarioValidador(actor.getId());
@@ -109,8 +129,16 @@ public class RegularizacionHorasService {
             }
         }
         bitacora.registrar(actor.getId(),"HORAS","REGULARIZACION_SEP_DIC_2026","Usuarios",null,
-                "Reconocimiento administrativo de 30 días hábiles (300 horas por alumno), del 01/09/2026 al 12/10/2026. "+ids.size()+" alumnos; "+creados+" registros nuevos.",null,reconocidas.toPlainString());
-        return Map.of("estado","correcto","mensaje","Regularización aplicada. Se completaron las horas faltantes del periodo autorizado.","alumnos",ids.size(),"registrosCreados",creados,"horasReconocidas",reconocidas,"horasPorAlumno",300);
+                "Reconocimiento administrativo de 30 días hábiles (300 horas por alumno), del 01/09/2026 al 12/10/2026. "+ids.size()+" alumnos; "+creados+" registros nuevos; "+aprobados+" registros anteriores aprobados; "+identificados+" días identificados con horario reconocido.",null,reconocidas.add(horasAprobadas).toPlainString());
+        return Map.of("estado","correcto","mensaje","Regularización aplicada. Se completaron las horas faltantes del periodo autorizado.","alumnos",ids.size(),"registrosCreados",creados,"horasReconocidas",reconocidas,"registrosAprobados",aprobados,"horasAprobadas",horasAprobadas,"diasIdentificados",identificados,"horasPorAlumno",300);
+    }
+    public static boolean esRegularizado(RegistroHoras r) {
+        return r!=null && r.getFecha()!=null && !r.getFecha().isBefore(DESDE) && !r.getFecha().isAfter(HASTA)
+                && r.getFecha().getDayOfWeek().getValue()<=5 && !"Rechazado".equalsIgnoreCase(r.getEstadoValidacion())
+                && Objects.toString(r.getDescripcion(),"").contains(ORIGEN);
+    }
+    private static List<RegistroHoras> validosDia(List<RegistroHoras> lista,LocalDate dia) {
+        return lista.stream().filter(r->dia.equals(r.getFecha())&&!"Rechazado".equalsIgnoreCase(r.getEstadoValidacion())).toList();
     }
     static BigDecimal horasDia(List<RegistroHoras> lista,LocalDate dia) { return lista.stream().filter(r->dia.equals(r.getFecha())&&!"Rechazado".equalsIgnoreCase(r.getEstadoValidacion())).map(r->r.getHorasTrabajadas()==null?BigDecimal.ZERO:r.getHorasTrabajadas().max(BigDecimal.ZERO)).reduce(BigDecimal.ZERO,BigDecimal::add); }
     static BigDecimal faltan(BigDecimal existentes) { return BigDecimal.TEN.subtract(existentes).max(BigDecimal.ZERO); }

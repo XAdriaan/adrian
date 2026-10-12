@@ -16,6 +16,7 @@ import com.jjm.oficina.repositorio.TareaRepository;
 import com.jjm.oficina.repositorio.UsuarioRepository;
 import com.jjm.oficina.servicio.BitacoraService;
 import com.jjm.oficina.servicio.AsistenciaAutomaticaService;
+import com.jjm.oficina.servicio.RegularizacionHorasService;
 
 import jakarta.transaction.Transactional;
 
@@ -194,6 +195,10 @@ public class RegistroHorasController {
         MiembroEquipo miembro = obtenerMiembroDesdeUsuario(usuario);
         List<RegistroHoras> registros = miembro == null ? List.of()
                 : registroHorasRepository.findByIdMiembroOrderByFechaDescFechaCreacionDesc(miembro.getId());
+        respuesta.put("horasAprobadasCorte", registros.stream().filter(r -> r.getFecha()!=null
+                && !r.getFecha().isBefore(RegularizacionHorasService.DESDE) && !r.getFecha().isAfter(RegularizacionHorasService.HASTA)
+                && r.getFecha().getDayOfWeek().getValue()<=5 && "Aprobado".equalsIgnoreCase(r.getEstadoValidacion()))
+                .map(r -> r.getHorasTrabajadas()==null?BigDecimal.ZERO:r.getHorasTrabajadas()).reduce(BigDecimal.ZERO,BigDecimal::add));
         if (mes != null) {
             YearMonth periodo = YearMonth.of(anio, mes);
             registros = registros.stream().filter(r -> r.getFecha() != null
@@ -1471,6 +1476,9 @@ public class RegistroHorasController {
                         : BigDecimal.ZERO
         );
 
+        respuesta.put("regularizacionAdministrativa", RegularizacionHorasService.esRegularizado(registro));
+        respuesta.put("horaEntradaReconocida", RegularizacionHorasService.esRegularizado(registro) ? "07:00" : null);
+        respuesta.put("horaSalidaReconocida", RegularizacionHorasService.esRegularizado(registro) ? "17:00" : null);
         respuesta.put("tipoRegistro", registro.getTipoRegistro());
         respuesta.put("automatico", AsistenciaAutomaticaService.esRegistroAutomatico(registro));
         respuesta.put("incidente", registro.getIncidente());

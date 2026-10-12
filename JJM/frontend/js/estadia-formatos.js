@@ -8,6 +8,37 @@
         document.body.appendChild(enlace); enlace.click(); enlace.remove();
         setTimeout(() => URL.revokeObjectURL(url), 60000);
     }
+    const origen='Regularización administrativa Septiembre-Diciembre 2026 (01/09/2026 a 12/10/2026).';
+    const valido=r=>String(r.estadoValidacion||'').toLowerCase()!=='rechazado';
+    const horas=r=>Math.max(0,Number(r.horasTrabajadas)||0);
+    function regularizado(r) {
+        const fecha=String(r.fecha||'').slice(0,10),dia=new Date(fecha+'T12:00:00').getDay();
+        return valido(r)&&fecha>='2026-09-01'&&fecha<='2026-10-12'&&dia>=1&&dia<=5
+            && (r.regularizacionAdministrativa===true || String(r.descripcion||'').includes(origen));
+    }
+    function agruparRegistros(registros) {
+        const fechas=new Map();
+        registros.forEach(r=>{const f=String(r.fecha||'').slice(0,10);if(!fechas.has(f))fechas.set(f,[]);fechas.get(f).push(r);});
+        return [...fechas.entries()].sort(([a],[b])=>a.localeCompare(b)).flatMap(([fecha,lista])=>{
+            const validos=lista.filter(valido);
+            if(!validos.some(regularizado))return lista.slice().sort((a,b)=>String(a.horaEntrada||'').localeCompare(String(b.horaEntrada||'')));
+            // El horario reconocido se proyecta; los tiempos de conexión originales siguen en el historial.
+            return [{fecha,regularizacionAdministrativa:true,horaEntrada:'07:00',horaSalida:'17:00',
+                horasTrabajadas:validos.reduce((s,r)=>s+horas(r),0),
+                horasAprobadas:validos.filter(r=>String(r.estadoValidacion).toLowerCase()==='aprobado').reduce((s,r)=>s+horas(r),0),
+                estadoValidacion:validos.every(r=>String(r.estadoValidacion).toLowerCase()==='aprobado')?'Aprobado':'Pendiente',
+                incidente:'normal'}];
+        });
+    }
+    function resumenAsistencia({mes,registros,horasAprobadasCorte}) {
+        const mesLista=registros.filter(r=>valido(r)&&String(r.fecha||'').startsWith(mes));
+        const aprobados=mesLista.filter(r=>String(r.estadoValidacion).toLowerCase()==='aprobado');
+        const corte=registros.filter(r=>{const f=String(r.fecha||'').slice(0,10),dia=new Date(f+'T12:00:00').getDay();
+            return f>='2026-09-01'&&f<='2026-10-12'&&dia>=1&&dia<=5&&String(r.estadoValidacion).toLowerCase()==='aprobado';});
+        return {horasMes:mesLista.reduce((s,r)=>s+horas(r),0),aprobadasMes:aprobados.reduce((s,r)=>s+horas(r),0),
+            aprobadasCorte:horasAprobadasCorte==null?corte.reduce((s,r)=>s+horas(r),0):Math.max(0,Number(horasAprobadasCorte)||0),
+            tieneRegularizacion:registros.some(regularizado)};
+    }
     function filasAsistencia({mes, registros, datos}) {
         if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(mes)) throw new Error('Selecciona un periodo válido.');
         const [anio, numeroMes] = mes.split('-').map(Number);
@@ -21,7 +52,7 @@
             if (semana>0 && semana<6 && (!/^\d{4}-\d{2}-\d{2}$/.test(inicio) || fecha>=inicio)
                 && (!/^\d{4}-\d{2}-\d{2}$/.test(fin) || fecha<=fin)) fechas.add(fecha);
         }
-        const propios = registros.filter(r => String(r.fecha || '').startsWith(mes));
+        const propios = agruparRegistros(registros.filter(r => String(r.fecha || '').startsWith(mes)));
         propios.forEach(r => fechas.add(String(r.fecha).slice(0,10)));
         return [...fechas].sort().flatMap(fecha => {
             const jornadas = propios.filter(r => String(r.fecha).slice(0,10)===fecha)
@@ -62,12 +93,13 @@
     }
     async function generarAsistencia(contexto) {
         const filas=filasAsistencia(contexto);
+        const resumen=resumenAsistencia(contexto);
         if (!filas.length) throw new Error('El mes no contiene días dentro del periodo de estadía. Selecciona otro mes.');
         const paginas=[];
         let logo=null;
         try { logo=await new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=reject;i.src='img/LOGO-J2M.png';}); } catch (_) {}
         const cortes=[];
-        for(let i=0;i<filas.length;i+=24)cortes.push(filas.slice(i,i+24));
+        for(let i=0;i<filas.length;i+=22)cortes.push(filas.slice(i,i+22));
         cortes.forEach((grupo,indice)=>{
             const canvas=document.createElement('canvas');canvas.width=2200;canvas.height=1700;
             const ctx=canvas.getContext('2d');if(!ctx)throw new Error('El navegador no permite generar este formato.');
@@ -85,27 +117,34 @@
             const mesTexto=new Date(Number(contexto.mes.slice(0,4)),Number(contexto.mes.slice(5))-1,1,12).toLocaleDateString('es-MX',{month:'long',year:'numeric'});
             text('PERIODO: '+mesTexto,2110,294,20,false,'right');
             text('INSTITUCIÓN: '+(contexto.datos.universidad||'________________________________'),75,331,20);
-            const columnas=[75,277,891,1003,1247,1534,1779,2110];
-            const encabezados=['FECHA','NOMBRE','PISO','HORA ENTRADA','FIRMA','HORA SALIDA','FIRMA'];
-            const y=374,alto=38;
+            text(`HORAS DEL MES: ${resumen.horasMes.toFixed(2)} h    |    APROBADAS DEL MES: ${resumen.aprobadasMes.toFixed(2)} h`,75,374,21,true);
+            if(resumen.tieneRegularizacion)text(`APROBADAS DEL 01/09/2026 AL 12/10/2026: ${resumen.aprobadasCorte.toFixed(2)} h`,2110,374,21,true,'right');
+            const columnas=[75,277,825,930,1170,1385,1625,1840,1975,2110];
+            const encabezados=['FECHA','NOMBRE','PISO','ENTRADA','FIRMA','SALIDA','FIRMA','HORAS','APROB.'];
+            const y=415,alto=38;
             ctx.fillStyle='#e3e7e6';ctx.fillRect(75,y,2035,45);ctx.fillStyle='#161616';
             encabezados.forEach((s,i)=>text(s,(columnas[i]+columnas[i+1])/2,y+29,19,true,'center'));
             grupo.forEach((r,i)=>{
                 const py=y+45+i*alto;
                 if(String(r.incidente).toLowerCase()==='recuperacion'){ctx.fillStyle='#daeff5';ctx.fillRect(75,py,2035,alto);ctx.fillStyle='#161616';}
                 const fecha=String(r.fecha).split('-').reverse().join('/');
-                const codigo={justificado:'1',no_justificado:'2',recuperacion:'3'}[String(r.incidente||'').toLowerCase()]||'';
-                const values=[fecha,nombre,contexto.datos.piso||'',String(r.horaEntrada||'').slice(0,5),codigo,String(r.horaSalida||'').slice(0,5),''];
+                const aprobadas=r.horasAprobadas??(String(r.estadoValidacion).toLowerCase()==='aprobado'?horas(r):0);
+                const values=[fecha,nombre,contexto.datos.piso||'3',String(r.horaEntrada||'').slice(0,5),'',String(r.horaSalida||'').slice(0,5),'',
+                    r.horasTrabajadas==null?'':horas(r).toFixed(2),r.horasTrabajadas==null?'':Number(aprobadas).toFixed(2)];
                 values.forEach((v,j)=>{ctx.font='400 18px Arial';const lineas=envolver(ctx,v,columnas[j+1]-columnas[j]-15);text(lineas[0]||'',(columnas[j]+columnas[j+1])/2,py+25,18,false,'center');});
             });
             const bottom=y+45+grupo.length*alto;
             ctx.strokeStyle='#333';ctx.lineWidth=1;
             columnas.forEach(x=>{ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,bottom);ctx.stroke();});
             [y,y+45,...grupo.map((_,i)=>y+45+(i+1)*alto)].forEach(py=>{ctx.beginPath();ctx.moveTo(75,py);ctx.lineTo(2110,py);ctx.stroke();});
-            const sy=bottom+48;
+            const sy=bottom+36;
             text('SIMBOLOGÍA DE INCIDENCIAS',75,sy,19,true);
             text('1 - No laborado con justificación     2 - No laborado sin justificación     3 - Recuperación del día no laborado',75,sy+33,18);
-            const firmay=Math.max(sy+70,1390),roles=[['Estudiante',nombre,contexto.datos.universidad||''],['Asesor empresarial',contexto.datos.asesorEmpresarial||'','JJM Tecnologías Innovadoras, S.A. de C.V.'],['Representante de la empresa','','JJM Tecnologías Innovadoras, S.A. de C.V.']];
+            if(resumen.tieneRegularizacion) {
+                text('Regularización administrativa: 07:00–17:00 en días hábiles del 01/09 al 12/10/2026.',75,sy+63,19,true);
+                text('Horario reconocido por administración. Las conexiones reales se conservan en el historial; firmas por recabar.',75,sy+92,18);
+            }
+            const firmay=Math.max(sy+(resumen.tieneRegularizacion?114:70),1430),roles=[['Estudiante',nombre,contexto.datos.universidad||''],['Asesor empresarial',contexto.datos.asesorEmpresarial||'','JJM Tecnologías Innovadoras, S.A. de C.V.'],['Representante de la empresa','','JJM Tecnologías Innovadoras, S.A. de C.V.']];
             roles.forEach(([rol,nombreFirma,org],i)=>{
                 const x=75+i*686;ctx.strokeRect(x,firmay,663,174);text('Vo.Bo.',x+331,firmay+27,18,false,'center');
                 ctx.beginPath();ctx.moveTo(x+28,firmay+85);ctx.lineTo(x+635,firmay+85);ctx.stroke();
@@ -119,5 +158,5 @@
         return pdfDesdeJPEG(paginas);
     }
     async function descargarAsistencia(contexto){const blob=await generarAsistencia(contexto);descargarBlob(blob,`Lista_Asistencia_${contexto.mes}.pdf`);}
-    window.EstadiaFormatos={descargarAsistencia,descargarBlob,generarAsistencia,filasAsistencia,pdfDesdeJPEG};
+    window.EstadiaFormatos={descargarAsistencia,descargarBlob,generarAsistencia,filasAsistencia,pdfDesdeJPEG,agruparRegistros,resumenAsistencia};
 })();

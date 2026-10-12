@@ -1562,6 +1562,7 @@ function actualizarContadorAutomatico() {
     const acumuladas = estado.horasAcumuladas == null ? otrasHoras + Math.max(registradasHoy,segundos / 3600)
         : Number(estado.horasAcumuladas) + Math.max(0,segundos - Number(estado.segundos||0))/3600;
     if (horasTotales) horasTotales.textContent = acumuladas.toFixed(2) + "h";
+    if (horasAprobadas && estado.horasAprobadasAcumuladas != null) horasAprobadas.textContent = Number(estado.horasAprobadasAcumuladas).toFixed(2) + "h";
     if (textoJornada && !estado.error && estado.contando) {
         const h = Math.floor(segundos / 3600), m = Math.floor(segundos % 3600 / 60), s = Math.floor(segundos % 60);
         textoJornada.textContent = `Asistencia automática: ${[h,m,s].map(n => String(n).padStart(2,"0")).join(":")} de 10:00:00. Lunes a viernes, 07:00 a 17:00.`;

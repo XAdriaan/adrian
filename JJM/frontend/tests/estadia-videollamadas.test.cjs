@@ -12,6 +12,7 @@ function entorno(archivo,fetch){
    localStorage:{getItem:k=>k==='usuarioActivo'?JSON.stringify({id:7,nombre:'Mi nombre'}):'token'},
    location:{href:'',hash:''},fetch,Response,Blob,TextEncoder,Uint8Array,URL,URLSearchParams,setTimeout(){},setInterval(){return 1;},clearInterval(){},console:{warn(){},error(){}},
    FileReader:class{readAsDataURL(){this.result='data:application/pdf;base64,JVBERg==';this.onload();}}});
+ if(archivo==='mi-estadia.js')vm.runInContext(codigo('estadia-formatos.js'),contexto);
  vm.runInContext(codigo(archivo),contexto);return {el,window,eventos,contexto,run:s=>vm.runInContext(s,contexto)};
 }
 test('asistencia cambia de mes sin mostrar la respuesta anterior retrasada',async()=>{
@@ -68,6 +69,19 @@ test('pase de lista conserva dos jornadas del mismo día y registros del fin de 
 });
 test('periodos inválidos del PDF se rechazan sin fechas inventadas',()=>{
  const e=entorno('estadia-formatos.js');assert.throws(()=>e.window.EstadiaFormatos.filasAsistencia({mes:'2026-13',datos:{},registros:[]}),/válido/);
+});
+test('el formato regularizado agrupa el día sin duplicar horas y deja vacíos los días posteriores al corte',()=>{
+ const e=entorno('estadia-formatos.js');const registros=[{fecha:'2026-10-12',horaEntrada:'09:11',horaSalida:'10:00',horasTrabajadas:1,estadoValidacion:'Aprobado'},
+ {fecha:'2026-10-12',regularizacionAdministrativa:true,horasTrabajadas:9,estadoValidacion:'Aprobado'},
+ {fecha:'2026-10-12',horasTrabajadas:5,estadoValidacion:'Rechazado'}];
+ const f=e.window.EstadiaFormatos.filasAsistencia({mes:'2026-10',datos:{},registros});const dia=f.filter(r=>r.fecha==='2026-10-12');
+ assert.equal(dia.length,1);assert.equal(dia[0].horaEntrada,'07:00');assert.equal(dia[0].horaSalida,'17:00');assert.equal(dia[0].horasTrabajadas,10);assert.equal(dia[0].horasAprobadas,10);
+ assert.equal(registros[0].horaEntrada,'09:11');assert.equal(f.find(r=>r.fecha==='2026-10-13').horaEntrada,undefined);
+});
+test('el resumen del PDF suma 220 horas en septiembre y 80 en octubre con 300 aprobadas en el corte',()=>{
+ const e=entorno('estadia-formatos.js'),registros=[];for(let t=Date.UTC(2026,8,1);t<=Date.UTC(2026,9,12);t+=86400000){const d=new Date(t);if(d.getUTCDay()>0&&d.getUTCDay()<6)registros.push({fecha:d.toISOString().slice(0,10),horasTrabajadas:10,estadoValidacion:'Aprobado',regularizacionAdministrativa:true});}
+ for(const [mes,horas] of [['2026-09',220],['2026-10',80]]){const resumen=e.window.EstadiaFormatos.resumenAsistencia({mes,registros});assert.equal(resumen.horasMes,horas);assert.equal(resumen.aprobadasMes,horas);assert.equal(resumen.aprobadasCorte,300);}
+ const parciales=e.window.EstadiaFormatos.resumenAsistencia({mes:'2026-10',registros:registros.filter(r=>r.fecha.startsWith('2026-10')),horasAprobadasCorte:300});assert.equal(parciales.aprobadasCorte,300);
 });
 test('unirse reutiliza reunión activa sin crear otra',async()=>{
  let llamadas=0;const e=entorno('videollamadas.js',async()=>{llamadas++;return json({});});

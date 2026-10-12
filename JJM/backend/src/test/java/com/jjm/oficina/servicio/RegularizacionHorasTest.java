@@ -45,7 +45,8 @@ class RegularizacionHorasTest {
         Map<String,Object> resultado=servicio.aplicar(1);assertEquals(30,resultado.get("registrosCreados"));assertEquals(0,new BigDecimal("295.50").compareTo((BigDecimal)resultado.get("horasReconocidas")));
         assertEquals(0,new BigDecimal("300").compareTo(historial.stream().map(RegistroHoras::getHorasTrabajadas).reduce(BigDecimal.ZERO,BigDecimal::add)));
         assertTrue(historial.stream().skip(1).allMatch(r->r.getDescripcion().startsWith(RegularizacionHorasService.ORIGEN)&&r.getEstadoValidacion().equals("Aprobado")&&r.getTipoRegistro().equals("Manual")&&r.getIdUsuarioValidador().equals(1)&&r.getHoraEntrada()==null));
-        assertEquals("Pendiente",anterior.getEstadoValidacion());assertEquals(0,servicio.aplicar(1).get("registrosCreados"));assertEquals(31,historial.size());
+        assertEquals("Aprobado",anterior.getEstadoValidacion());assertEquals(1,resultado.get("registrosAprobados"));assertEquals(new BigDecimal("4.50"),resultado.get("horasAprobadas"));
+        Map<String,Object> repetido=servicio.aplicar(1);assertEquals(0,repetido.get("registrosCreados"));assertEquals(0,repetido.get("registrosAprobados"));assertEquals(31,historial.size());
     }
     @Test void otrosPeriodosAniosYAsesoresNoEntranEnElGrupo(){
         assertFalse(RegularizacionHorasService.corresponde(Map.of("rol","Colaborador","periodo","MAY-AGO","inicio","2026-05-01")));
@@ -65,5 +66,24 @@ class RegularizacionHorasTest {
     @Test void lasHorasRechazadasNoReducenElReconocimientoYLasHorasExistentesMayoresSeConservan(){
         RegistroHoras rechazado=new RegistroHoras();rechazado.setFecha(LocalDate.of(2026,9,1));rechazado.setHorasTrabajadas(BigDecimal.TEN);rechazado.setEstadoValidacion("Rechazado");
         assertEquals(BigDecimal.ZERO,RegularizacionHorasService.horasDia(List.of(rechazado),rechazado.getFecha()));assertEquals(BigDecimal.ZERO,RegularizacionHorasService.faltan(new BigDecimal("12")));
+    }
+    @Test void reparaTrescientasHorasYaRegistradasSinAgregarHorasYConservaTiemposObservados(){
+        for(LocalDate dia:RegularizacionHorasService.dias()) {
+            RegistroHoras r=new RegistroHoras();r.setFecha(dia);r.setHorasTrabajadas(BigDecimal.TEN);r.setEstadoValidacion("Pendiente");
+            r.setDescripcion("Registro previo");r.setHoraEntrada(LocalTime.of(9,11));r.setHoraSalida(LocalTime.of(16,45));historial.add(r);
+        }
+        Map<String,Object> vista=((List<Map<String,Object>>)servicio.previsualizar(1).get("alumnos")).getFirst();
+        assertEquals(BigDecimal.ZERO,vista.get("horasPorReconocer"));assertEquals(new BigDecimal("300"),vista.get("horasPorAprobar"));assertEquals(30,vista.get("diasPorIdentificar"));
+        Map<String,Object> resultado=servicio.aplicar(1);assertEquals(0,resultado.get("registrosCreados"));assertEquals(30,resultado.get("registrosAprobados"));assertEquals(new BigDecimal("300"),resultado.get("horasAprobadas"));
+        assertTrue(historial.stream().allMatch(r->RegularizacionHorasService.esRegularizado(r)&&r.getDescripcion().startsWith("Registro previo")&&r.getHoraEntrada().equals(LocalTime.of(9,11))&&r.getHoraSalida().equals(LocalTime.of(16,45))));
+        resultado=servicio.aplicar(1);assertEquals(0,resultado.get("registrosCreados"));assertEquals(0,resultado.get("registrosAprobados"));assertEquals(0,resultado.get("diasIdentificados"));assertEquals(30,historial.size());
+    }
+    @Test void aprobarElCorteNoApruebaRechazadosFinesDeSemanaNiFechasFueraDelCorte(){
+        for(LocalDate dia:List.of(LocalDate.of(2026,8,31),LocalDate.of(2026,9,5),LocalDate.of(2026,10,13))) {
+            RegistroHoras r=new RegistroHoras();r.setFecha(dia);r.setHorasTrabajadas(BigDecimal.TEN);r.setEstadoValidacion("Pendiente");historial.add(r);
+        }
+        RegistroHoras rechazado=new RegistroHoras();rechazado.setFecha(LocalDate.of(2026,9,1));rechazado.setHorasTrabajadas(BigDecimal.TEN);rechazado.setEstadoValidacion("Rechazado");historial.add(rechazado);
+        servicio.aplicar(1);assertTrue(historial.subList(0,3).stream().allMatch(r->"Pendiente".equals(r.getEstadoValidacion())&&r.getDescripcion()==null));assertEquals("Rechazado",rechazado.getEstadoValidacion());
+        assertEquals(new BigDecimal("300"),RegularizacionHorasService.dias().stream().map(d->RegularizacionHorasService.horasDia(historial,d)).reduce(BigDecimal.ZERO,BigDecimal::add));
     }
 }

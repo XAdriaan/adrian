@@ -829,89 +829,17 @@ function mostrarAvisoDescarga() {
     descargarAsistenciaPersonalPDF();
 }
 
-function descargarAsistenciaPersonalPDF() {
-    if (!datosMiembro) {
-        alert("Primero carga la información del integrante.");
-        return;
-    }
-
-    const mes = Number(mesFiltro?.value || new Date().getMonth() + 1);
-    const anio = Number(anioFiltro?.value || new Date().getFullYear());
-    const nombre = datosMiembro.nombreCompleto || datosMiembro.nombre || "Colaborador";
-    const institucion = "Universidad Politécnica de Tecámac";
-    const periodo = obtenerPeriodoActual();
-    const filas = construirFilasAsistenciaPersonal(mes, anio, nombre);
-    const firmasEncargados = obtenerFirmasEncargados();
-
-    const contenido = `
-        <section class="asistencia-oficial">
-            ${encabezadoAsistenciaPersonal(false)}
-
-            <h2 class="titulo-asistencia">LISTA DE ASISTENCIA PERSONAL DE JJM TECNOLOGÍAS INNOVADORAS, S.A. DE C.V.</h2>
-
-            <div class="datos-asistencia">
-                <span><strong>NOMBRE:</strong> ${escaparHTML(nombre)}</span>
-                <span><strong>INSTITUCIÓN:</strong> ${escaparHTML(institucion)}</span>
-                <span><strong>MES:</strong> ${escaparHTML(obtenerNombreMes(mes))}</span>
-                <span><strong>AÑO:</strong> ${escaparHTML(anio)}</span>
-            </div>
-
-            <table class="tabla-asistencia">
-                <thead>
-                    <tr>
-                        <th>FECHA</th>
-                        <th>NOMBRE</th>
-                        <th>PISO</th>
-                        <th>HORA ENTRADA</th>
-                        <th>FIRMA</th>
-                        <th>HORA SALIDA</th>
-                        <th>FIRMA</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${filas}
-                </tbody>
-            </table>
-
-            <div class="simbolos">
-                <h3>SIMBOLOGÍA DE LOS INCIDENTES</h3>
-                <p>1 ------ NO LABORADO CON JUSTIFICACIÓN</p>
-                <p>2 ------ NO LABORADO SIN JUSTIFICACIÓN</p>
-                <p>3 ------ RECUPERACIÓN DEL DÍA NO LABORADO</p>
-            </div>
-
-            <table class="tabla-firmas">
-                <tr>
-                    <td>
-                        <p>Vo.Bo.</p>
-                        <br><br>
-                        <strong>${escaparHTML(nombre)}</strong><br>
-                        Estudiante / Colaborador<br>
-                        UNIVERSIDAD POLITÉCNICA DE TECÁMAC
-                    </td>
-                    <td>
-                        <p>Vo.Bo.</p>
-                        ${firmasEncargados.miguel?.imagenBase64 ? `<img src="${firmasEncargados.miguel.imagenBase64}" class="firma-img">` : "<br><br>"}
-                        <strong>Miguel Ángel Hernández Herrera</strong><br>
-                        Asesor Empresarial<br>
-                        JJM TECNOLOGÍAS INNOVADORAS, S.A. DE C.V.
-                    </td>
-                    <td>
-                        <p>Vo.Bo.</p>
-                        ${firmasEncargados.julio?.imagenBase64 ? `<img src="${firmasEncargados.julio.imagenBase64}" class="firma-img">` : "<br><br>"}
-                        <strong>Julio Lara García</strong><br>
-                        CEO y Fundador<br>
-                        JJM TECNOLOGÍAS INNOVADORAS, S.A. DE C.V.
-                    </td>
-                </tr>
-            </table>
-        </section>
-    `;
-
-    abrirDocumentoAsistenciaImprimible(
-        `asistencia_personal_${normalizarNombreArchivo(nombre)}_${mes}_${anio}.pdf`,
-        contenido
-    );
+async function descargarAsistenciaPersonalPDF() {
+    if (!datosMiembro) { alert('Primero carga la información del integrante.'); return; }
+    try {
+        const respuesta=await fetch(`${API_REGISTROS_HORAS}/miembro/${idMiembroConsultado}`,{headers:obtenerHeadersSesion()});
+        const datos=await obtenerRespuestaJSON(respuesta);
+        if(!respuesta.ok)throw new Error(datos.mensaje||'No se pudieron actualizar las horas para el formato.');
+        const mes=Number(mesFiltro?.value||new Date().getMonth()+1),anio=Number(anioFiltro?.value||new Date().getFullYear());
+        await window.EstadiaFormatos.descargarAsistencia({mes:`${anio}-${String(mes).padStart(2,'0')}`,
+            nombre:datosMiembro.nombreCompleto||datosMiembro.nombre||'Colaborador',
+            datos:{universidad:'Universidad Politécnica de Tecámac',piso:'3'},registros:Array.isArray(datos.registros)?datos.registros:[]});
+    } catch(e) { alert(e.message||'No se pudo generar el formato.'); }
 }
 
 function construirFilasAsistenciaPersonal(mes, anio, nombre) {
