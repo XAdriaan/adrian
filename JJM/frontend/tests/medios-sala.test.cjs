@@ -1,7 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 function entorno(getUserMedia){
  const elems={},el=id=>elems[id]||(elems[id]={dataset:{},disabled:false,hidden:false,setAttribute(n,v){this[n]=v},querySelector:()=>null});
- const ctx=vm.createContext({window:{apiUrl:v=>v,location:{search:'?general=1'}},document:{getElementById:el,addEventListener(){}},navigator:{mediaDevices:{getUserMedia}},URLSearchParams,console});
+ const ctx=vm.createContext({window:{apiUrl:v=>v,location:{search:'?general=1'}},document:{getElementById:el,addEventListener(){}},navigator:{mediaDevices:{getUserMedia}},URLSearchParams,setTimeout,clearTimeout,console});
  vm.runInContext(fs.readFileSync(path.join(__dirname,'../js/reunion.js'),'utf8'),ctx);
  ctx.sala={activa:true,generacion:1,medios:{audio:null,video:null},actualizarVistaLocal(){},async cambiar(tipo,pista){this.medios[tipo]=pista}};
  vm.runInContext('rtc=sala',ctx);
@@ -22,6 +22,18 @@ test('una autorización tardía no activa la cámara después de salir y volver 
  const operacion=e.run("activarMedio('video',btnCamara)");e.ctx.sala.generacion=2;
  resolver({getTracks:()=>[pista],getVideoTracks:()=>[pista]});await operacion;
  assert.equal(pista.readyState,'ended');assert.equal(e.ctx.sala.medios.video,null);assert.equal(e.el('btnCamara')['aria-pressed'],'false');
+});
+test('la cámara deja de cargar si el permiso no responde y detiene una autorización posterior al plazo',async()=>{
+ let resolver,reloj;const pista=track('video'),e=entorno(()=>new Promise(r=>resolver=r));
+ e.ctx.setTimeout=(fn,ms)=>{assert.equal(ms,20000);reloj=fn;return 1};e.ctx.clearTimeout=()=>{};
+ const operacion=e.run("activarMedio('video',btnCamara)");assert.equal(e.el('btnCamara').disabled,true);reloj();await operacion;
+ assert.equal(e.el('btnCamara').disabled,false);assert.match(e.el('avisoMedios').textContent,/espera.*terminó/);assert.equal(e.ctx.sala.medios.video,null);
+ resolver({getTracks:()=>[pista],getVideoTracks:()=>[pista]});await new Promise(r=>setImmediate(r));assert.equal(pista.readyState,'ended');
+});
+test('la cámara utiliza el dispositivo elegido y muestra su estado al recibir una señal',async()=>{
+ let solicitud;const pista=track('video'),e=entorno(async opciones=>{solicitud=opciones;return{getVideoTracks:()=>[pista],getTracks:()=>[pista]}});
+ e.el('selectorCamara').value='camara-usb';await e.run("activarMedio('video',btnCamara)");
+ assert.equal(solicitud.video.deviceId.exact,'camara-usb');assert.equal(e.el('btnCamara')['aria-pressed'],'true');assert.equal(e.el('btnCamara').disabled,false);
 });
 test('compartir pantalla está disponible para el participante y al detener recupera su cámara',async()=>{
  const e=entorno(),camara=track('video'),pantalla=track('video');

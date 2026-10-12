@@ -58,7 +58,7 @@ public class AsistenciaAutomaticaService {
     public static boolean esAlumno(Usuario u) {
         if (u == null || u.getRol() == null || u.getRol().getNombre() == null
                 || !"Activo".equalsIgnoreCase(u.getEstado())) return false;
-        return Set.of("colaborador", "alumno", "estudiante")
+        return Set.of("colaborador", "alumno", "alumna", "estudiante", "estudiante pmo")
                 .contains(u.getRol().getNombre().trim().toLowerCase(Locale.ROOT));
     }
 
@@ -90,12 +90,20 @@ public class AsistenciaAutomaticaService {
         String aviso = "";
         if (senal && aplicable && enHorario && jornada == null) {
             // Una jornada manual abierta debe resolverse antes de empezar otra: no se duplican tiempos.
-            if (!registros.buscarJornadasPendientesAbiertas(miembro.getId()).isEmpty()) {
+            List<RegistroHoras> abiertas = registros.buscarJornadasPendientesAbiertas(miembro.getId()).stream()
+                    .filter(r -> r.getFecha() == null || !r.getFecha().isBefore(fecha)).toList();
+            RegistroHoras reutilizable = abiertas.size() == 1 ? abiertas.getFirst() : null;
+            boolean continuarManual = reutilizable != null && fecha.equals(reutilizable.getFecha())
+                    && "Jornada".equalsIgnoreCase(reutilizable.getTipoRegistro())
+                    && reutilizable.getIdProyecto() == null && reutilizable.getIdTarea() == null
+                    && (reutilizable.getHorasTrabajadas() == null || reutilizable.getHorasTrabajadas().signum() == 0)
+                    && "Pendiente".equalsIgnoreCase(reutilizable.getEstadoValidacion());
+            if (!abiertas.isEmpty() && !continuarManual) {
                 aviso = "Tienes una jornada manual abierta. Pide al administrador que la revise para activar el registro automático.";
             } else {
-                RegistroHoras registro = new RegistroHoras();
+                RegistroHoras registro = continuarManual ? reutilizable : new RegistroHoras();
                 registro.setIdMiembro(miembro.getId()); registro.setFecha(fecha);
-                registro.setHoraEntrada(ahora.atZone(ZONA).toLocalTime().withNano(0));
+                if (!continuarManual) registro.setHoraEntrada(ahora.atZone(ZONA).toLocalTime().withNano(0));
                 registro.setHorasTrabajadas(BigDecimal.ZERO); registro.setTipoRegistro("Jornada");
                 registro.setIncidente("normal"); registro.setDescripcion(DESCRIPCION);
                 registro.setEstadoValidacion("Pendiente");
@@ -104,6 +112,7 @@ public class AsistenciaAutomaticaService {
                 jornada.setIdRegistro(registro.getId()); jornada.setUltimaSenal(ahora.getEpochSecond());
                 jornada.setLiquidado(ahora.getEpochSecond()); jornadas.save(jornada);
                 renovarConexion(jornada, pagina, ahora, false);
+                if (continuarManual) aviso = "Tu jornada abierta continúa con asistencia automática desde esta conexión.";
             }
         } else if (senal && aplicable && enHorario && jornada != null && !jornada.isFinalizada()) {
             // Tras una suspensión larga se reanuda desde ahora; el hueco no se acredita.
@@ -119,6 +128,8 @@ public class AsistenciaAutomaticaService {
         salida.put("estado", "correcto"); salida.put("aplicable", aplicable);
         salida.put("fecha", fecha.toString()); salida.put("zonaHoraria", ZONA.getId());
         salida.put("horario", "Lunes a viernes, 07:00 a 17:00"); salida.put("metaHoras", 10);
+        salida.put("servidorEpoch", ahora.getEpochSecond());
+        salida.put("vigenciaSegundos", jornada == null ? 0 : Math.max(0, jornada.getUltimaSenal() + VIGENCIA_SENAL - ahora.getEpochSecond()));
         salida.put("enHorario", enHorario); salida.put("segundos", jornada == null ? 0 : jornada.getTotalSegundos());
         salida.put("segundosHastaCierre", Math.max(0,Duration.between(ahora,fin(fecha)).toSeconds()));
         salida.put("horas", jornada == null ? BigDecimal.ZERO : horas(jornada.getTotalSegundos()));
@@ -126,7 +137,9 @@ public class AsistenciaAutomaticaService {
         salida.put("idMiembro", miembro == null ? null : miembro.getId());
         salida.put("contando", aplicable && enHorario && jornada != null && !jornada.isFinalizada()
                 && ahora.getEpochSecond() < jornada.getUltimaSenal() + VIGENCIA_SENAL);
-        salida.put("mensaje", !aviso.isEmpty() ? aviso : !aplicable ? "La asistencia automática corresponde a alumnos activos."
+        salida.put("mensaje", !aviso.isEmpty() ? aviso : !aplicable ? esAlumno(alumno)
+                ? "Tu cuenta necesita un miembro de equipo activo para registrar horas. Solicita la revisión de administración."
+                : "Tu conexión queda registrada. Las horas de estadía corresponden a alumnos activos."
                 : !esDiaHabil(fecha) ? "La asistencia se registra de lunes a viernes."
                 : !enHorario ? "El horario de asistencia es de 07:00 a 17:00."
                 : "Las horas avanzan mientras tengas abierta la plataforma.");
@@ -156,6 +169,7 @@ public class AsistenciaAutomaticaService {
         long hasta = Math.min(Math.min(ahora.getEpochSecond(), fin(jornada.getFecha()).getEpochSecond()),
                 jornada.getUltimaSenal() + VIGENCIA_SENAL);
         long incremento = esDiaHabil(jornada.getFecha()) ? Math.max(0, hasta - desde) : 0;
+        if (incremento == 0 && ahora.isBefore(fin(jornada.getFecha()))) return;
         jornada.setTotalSegundos(Math.min(36000, jornada.getTotalSegundos() + incremento));
         jornada.setLiquidado(Math.max(jornada.getLiquidado(), hasta));
         RegistroHoras registro = registros.findById(jornada.getIdRegistro()).orElseThrow(

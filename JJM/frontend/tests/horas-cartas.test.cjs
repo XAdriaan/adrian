@@ -2,27 +2,38 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const codigo=nombre=>fs.readFileSync(path.join(__dirname,'../js/'+nombre),'utf8');
 const tick=()=>new Promise(r=>setImmediate(r));
 const json=(d,status=200)=>new Response(JSON.stringify(d),{status,headers:{'Content-Type':'application/json'}});
-function presencia(rol='Colaborador',fetch=async()=>json({aplicable:true,contando:true,segundos:60,segundosHastaCierre:10})){
-    let token='token';const eventos={},intervalos=[],llamadas=[];
+function presencia(rol='Colaborador',fetch=async()=>json({conectado:true,asistencia:{aplicable:true,contando:true,segundos:60,segundosHastaCierre:10}})){
+    let token='token',ahora=Date.now();const eventos={},intervalos=[],llamadas=[];
     const window={crypto:{randomUUID:()=> 'pagina-prueba'},apiUrl:p=>'https://oficina.test'+p,obtenerTokenSesionPMO:()=>token,
         addEventListener:(n,f)=>eventos[n]=f,dispatchEvent(){},fetch:async(url,init)=>{llamadas.push({url,init});return fetch(url,init);}};
-    vm.runInNewContext(codigo('asistencia-automatica.js'),{window,Event,AbortController,Date,Math,setTimeout,clearTimeout,
+    class Reloj extends Date { static now(){return ahora;} }
+    vm.runInNewContext(codigo('asistencia-automatica.js'),{window,Event,AbortController,Date:Reloj,Math,setTimeout,clearTimeout,
         setInterval:(fn,ms)=>intervalos.push({fn,ms}),localStorage:{getItem:()=>JSON.stringify({rol})}});
-    return {window,eventos,intervalos,llamadas,cerrarSesion:()=>token=''};
+    return {window,eventos,intervalos,llamadas,avanzar:segundos=>ahora+=segundos*1000,cerrarSesion:()=>token=''};
 }
 test('presencia envía identidad de pestaña, nunca horas del navegador, y pausa al cerrar',async()=>{
     const e=presencia();await tick();assert.equal(e.llamadas.length,1);
-    assert.deepEqual(JSON.parse(e.llamadas[0].init.body),{pagina:'pagina-prueba'});
+    assert.deepEqual(JSON.parse(e.llamadas[0].init.body),{pagina:'pagina-prueba',ruta:'/'});
     assert.equal(e.llamadas[0].init.headers.Authorization,'Bearer token');
     e.eventos.pagehide();await tick();assert.ok(e.llamadas[1].url.endsWith('/salida'));assert.equal(e.llamadas[1].init.keepalive,true);
     e.intervalos[0].fn();await tick();assert.equal(e.llamadas.length,2);
     e.eventos.pageshow();await tick();assert.equal(e.llamadas.length,3);
 });
-test('profesores y directivos no generan presencia y los errores no se muestran como horas guardadas',async()=>{
-    for(const rol of ['Administrador','Directivo escolar','Asesor Académico']){const e=presencia(rol);await tick();assert.equal(e.llamadas.length,0);}
+test('profesores y directivos registran conexión sin identificarse como alumnos y no hay reintento cada segundo',async()=>{
+    for(const rol of ['Administrador','Directivo escolar','Asesor Académico']){const e=presencia(rol);await tick();assert.equal(e.llamadas.length,1);assert.equal(e.window.asistenciaAutomaticaPMO.esAlumno(),false);}
     const e=presencia('Colaborador',async()=>json({mensaje:'sin servicio'},503));await tick();
-    assert.equal(e.window.asistenciaAutomaticaPMO.estado().error,true);assert.equal(e.window.asistenciaAutomaticaPMO.segundosVisibles(),null);
+    assert.equal(e.window.asistenciaAutomaticaPMO.estado().error,true);assert.equal(e.window.asistenciaAutomaticaPMO.segundosVisibles(),0);
     e.intervalos[1].fn();await tick();assert.equal(e.llamadas.length,1,'no reintenta cada segundo');
+});
+test('el reloj muestra horas minutos y segundos y avanza sin hacer una solicitud cada segundo',async()=>{
+    const e=presencia('Colaborador',async()=>json({conectado:true,asistencia:{aplicable:true,contando:true,segundos:3599,segundosHastaCierre:3600,vigenciaSegundos:90}}));await tick();
+    assert.equal(e.window.asistenciaAutomaticaPMO.formato(e.window.asistenciaAutomaticaPMO.segundosVisibles()),'00:59:59');
+    e.avanzar(2);e.intervalos[1].fn();await tick();assert.equal(e.window.asistenciaAutomaticaPMO.formato(e.window.asistenciaAutomaticaPMO.segundosVisibles()),'01:00:01');assert.equal(e.llamadas.length,1);
+    e.avanzar(1000);assert.equal(e.window.asistenciaAutomaticaPMO.segundosVisibles(),3689);
+});
+test('fuera del horario y tras desconectarse el contador no anuncia tiempo confirmado nuevo',async()=>{
+    const e=presencia('Colaborador',async()=>json({conectado:true,asistencia:{aplicable:true,contando:false,segundos:90}}));await tick();e.avanzar(60);assert.equal(e.window.asistenciaAutomaticaPMO.segundosVisibles(),90);
+    e.eventos.offline();e.avanzar(60);assert.equal(e.window.asistenciaAutomaticaPMO.segundosVisibles(),90);assert.equal(e.window.asistenciaAutomaticaPMO.estado().error,true);
 });
 function cartas(){
     const documentos=[],escrituras=[];

@@ -63,12 +63,35 @@ function avisoMediosSala(texto = '') {
 }
 function errorMediosSala(e, tipo) {
     const nombre = tipo === 'audio' ? 'micrófono' : tipo === 'video' ? 'cámara' : 'pantalla';
+    const dispositivo = (tipo === 'audio' ? 'el ' : 'la ') + nombre;
     if (e.name === 'NotAllowedError' || e.name === 'SecurityError') return tipo === 'pantalla'
         ? 'No se compartió la pantalla. Vuelve a pulsar Compartir pantalla y elige una pestaña, ventana o pantalla.'
-        : `El permiso del ${nombre} está bloqueado. Abre el candado junto a la dirección, permite el ${nombre} y pulsa el botón otra vez.`;
+        : `El permiso para usar ${dispositivo} está bloqueado. Abre el candado junto a la dirección, permite ${dispositivo} y pulsa el botón otra vez.`;
     if (e.name === 'NotFoundError') return `No se encontró ${nombre}. Conecta el dispositivo y vuelve a intentarlo.`;
-    if (e.name === 'NotReadableError' || e.name === 'AbortError') return `No se pudo abrir el ${nombre}. Cierra otras aplicaciones que lo estén usando y revisa los permisos de Windows.`;
+    if (e.name === 'TimeoutError') return `La espera para activar ${dispositivo} terminó. Revisa el aviso de permiso junto a la dirección y pulsa el botón otra vez. Si ya diste permiso, cierra otras aplicaciones que usen el dispositivo.`;
+    if (e.name === 'NotReadableError' || e.name === 'AbortError') return `No se pudo abrir ${dispositivo}. Cierra otras aplicaciones que usen el dispositivo y revisa los permisos de Windows.`;
     return e.message || `No se pudo activar ${nombre}.`;
+}
+function solicitarDispositivo(constraints) {
+    let vencido=false,temporizador;
+    const peticion=navigator.mediaDevices.getUserMedia(constraints).then(flujo=>{
+        if(vencido){flujo.getTracks().forEach(t=>t.stop());throw Object.assign(new Error('Permiso recibido después de terminar la espera.'),{name:'TimeoutError'});}
+        return flujo;
+    });
+    const limite=new Promise((_,rechazar)=>{temporizador=setTimeout(()=>{vencido=true;rechazar(Object.assign(new Error('La espera del dispositivo terminó.'),{name:'TimeoutError'}));},20000);});
+    return Promise.race([peticion,limite]).finally(()=>clearTimeout(temporizador));
+}
+async function actualizarCamarasDisponibles() {
+    const selector=document.getElementById('selectorCamara');
+    if(!selector?.replaceChildren || !navigator.mediaDevices?.enumerateDevices)return;
+    try {
+        const camaras=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');
+        const elegida=camaraPropia?.getSettings?.().deviceId || selector.value;
+        selector.replaceChildren();
+        const predeterminada=document.createElement('option');predeterminada.value='';predeterminada.textContent='Cámara predeterminada';selector.append(predeterminada);
+        camaras.forEach((d,i)=>{const opcion=document.createElement('option');opcion.value=d.deviceId;opcion.textContent=d.label||`Cámara ${i+1}`;selector.append(opcion);});
+        if(camaras.some(d=>d.deviceId===elegida))selector.value=elegida;
+    }catch(_){}
 }
 const esSalaGeneral = obtenerParametroURL("general") === "1";
 const idProyecto = esSalaGeneral ? null : obtenerParametroURL("id");
@@ -131,6 +154,14 @@ function configurarEventos() {
     });
     btnMicrofono.addEventListener('click',()=>activarMedio('audio',btnMicrofono));
     btnCamara.addEventListener('click',()=>activarMedio('video',btnCamara));
+    const selectorCamara=document.getElementById('selectorCamara');
+    selectorCamara?.addEventListener('change',async()=>{
+        if(!rtc?.activa||mediosPendientes.has('video')||pantallaCompartida)return;
+        if(camaraPropia){camaraPropia.stop();camaraPropia=null;rtc.medios.video=null;rtc.actualizarVistaLocal();}
+        await activarMedio('video',btnCamara);
+    });
+    navigator.mediaDevices?.addEventListener?.('devicechange',actualizarCamarasDisponibles);
+    actualizarCamarasDisponibles();
     btnPantalla.addEventListener('click',compartirPantalla);
     document.getElementById('btnEscuchar').addEventListener('click',()=>jitsiContainer.querySelectorAll('video').forEach(v=>v.play().catch(()=>{})));
     btnReconectar.addEventListener('click',async()=>{await rtc.salir(); restablecerControles(); btnEntrarSala.click();});
@@ -154,14 +185,17 @@ async function activarMedio(tipo, boton) {
         else {
             if (!navigator.mediaDevices?.getUserMedia) throw new Error('El navegador necesita HTTPS y permiso para usar cámara y micrófono.');
             let flujo;
-            try { flujo=await navigator.mediaDevices.getUserMedia(tipo==='audio'?{audio:{echoCancellation:true,noiseSuppression:true},video:false}:{video:{width:{ideal:640},height:{ideal:360}},audio:false}); }
-            catch(e) { if (tipo!=='video'||e.name!=='OverconstrainedError') throw e; flujo=await navigator.mediaDevices.getUserMedia({video:true,audio:false}); }
+            const dispositivo=document.getElementById('selectorCamara')?.value;
+            const video={width:{ideal:640},height:{ideal:360},...(dispositivo?{deviceId:{exact:dispositivo}}:{})};
+            try { flujo=await solicitarDispositivo(tipo==='audio'?{audio:{echoCancellation:true,noiseSuppression:true},video:false}:{video,audio:false}); }
+            catch(e) { if (tipo!=='video'||dispositivo||!['OverconstrainedError','NotFoundError'].includes(e.name)) throw e; flujo=await solicitarDispositivo({video:true,audio:false}); }
             if (!sala.activa || sala.generacion!==epoca) { flujo.getTracks().forEach(t=>t.stop()); return; }
             const pista=tipo==='audio'?flujo.getAudioTracks()[0]:flujo.getVideoTracks()[0];
             if(!pista){flujo.getTracks().forEach(t=>t.stop());throw new Error('El dispositivo no entregó una señal. Vuelve a intentarlo.');}
             if(tipo==='video') camaraPropia=pista;
             pista.addEventListener('ended',actualizarMediosSala,{once:true});
             await sala.cambiar(tipo,pista);
+            if(tipo==='video')actualizarCamarasDisponibles();
         }
     } catch(e) { if(sala.activa&&sala.generacion===epoca)avisoMediosSala(errorMediosSala(e,tipo)); }
     finally { mediosPendientes.delete(tipo); actualizarMediosSala(); }

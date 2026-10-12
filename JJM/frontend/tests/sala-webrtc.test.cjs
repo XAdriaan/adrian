@@ -12,7 +12,7 @@ function entorno(fetch=async()=>new Response('{}')) {
  vm.runInContext(fs.readFileSync(path.join(__dirname,'../js/sala-webrtc.js'),'utf8'),ctx);
  let cerradas=0;const estado={textContent:''};const sala=new window.PMOSalaWebRTC({sala:'general',contenedor:{querySelector:()=>null},estado,participantes:{},alCerrar:()=>cerradas++});
  sala.tarjeta=()=>({div:{remove(){}},video:{},avatar:{},conexion:{}});sala.config={iceServers:[]};sala.id='b';sala.activa=true;sala.generacion=1;
- return{sala,estado,PC,cerradas:()=>cerradas};
+ return{sala,estado,PC,ctx,cerradas:()=>cerradas};
 }
 test('quien responde transmite sobre los canales ofrecidos sin dejar video en un solo sentido',async()=>{
  const {sala}=entorno();const emitidas=[];sala.enviar=async(...v)=>emitidas.push(v);sala.medios.audio={kind:'audio'};sala.medios.video={kind:'video'};
@@ -48,4 +48,18 @@ test('un participante desconectado no bloquea la cámara ni el envío al resto d
  const pista={kind:'video',readyState:'live',enabled:true};
  await sala.cambiar('video',pista);assert.equal(recibida,pista);assert.equal(sala.medios.video,pista);assert.equal(preview,1);
  assert.match(estado.textContent,/dispositivo está activo.*Reconectar/);
+});
+
+test('la vista local mantiene el mismo flujo al actualizar controles sin cambiar pistas',()=>{
+ const {sala}=entorno();const pista={kind:'video',readyState:'live',enabled:true};const stream={getTracks:()=>[pista]};let cambios=0,reproducciones=0;
+ const local={muted:false,paused:false,hidden:false,play(){reproducciones++;return Promise.resolve();},get srcObject(){return stream;},set srcObject(v){cambios++;}};
+ sala.videoLocal=local;sala.avatarLocal={};sala.medios.video=pista;
+ sala.actualizarVistaLocal();sala.actualizarVistaLocal();assert.equal(cambios,0);assert.equal(reproducciones,0);assert.equal(local.hidden,false);assert.equal(local.muted,true);assert.equal(local.playsInline,true);
+});
+
+test('un cambio de pista que nunca responde no deja pendientes los controles de cámara',async()=>{
+ const {sala,estado,ctx}=entorno();sala.actualizarVistaLocal=()=>{};ctx.setTimeout=fn=>{queueMicrotask(fn);return 1;};ctx.clearTimeout=()=>{};
+ sala.peers.set('sin-respuesta',{videoSender:{replaceTrack:()=>new Promise(()=>{})}});
+ const pista={kind:'video',readyState:'live',enabled:true};await sala.cambiar('video',pista);
+ assert.equal(sala.medios.video,pista);assert.match(estado.textContent,/dispositivo está activo/);
 });

@@ -1556,7 +1556,7 @@ function actualizarContadorAutomatico() {
     const otrasHoras = registrosHoras.filter(r => Number(r.idMiembro) === Number(estado.idMiembro)
             && Number(r.id) !== Number(estado.idRegistro))
         .reduce((total, r) => total + Number(r.horasTrabajadas || 0), 0);
-    if (horasHoy) horasHoy.textContent = (segundos / 3600).toFixed(2) + "h / 10h";
+    if (horasHoy) horasHoy.textContent = seguimiento.formato(segundos) + " / 10:00:00";
     if (horasTotales) horasTotales.textContent = (otrasHoras + segundos / 3600).toFixed(2) + "h";
     if (textoJornada && !estado.error && estado.contando) {
         const h = Math.floor(segundos / 3600), m = Math.floor(segundos % 3600 / 60), s = Math.floor(segundos % 60);

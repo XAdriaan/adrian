@@ -32,7 +32,8 @@ public class AccesoEmpresaFilter extends OncePerRequestFilter {
         if (path.startsWith("/api/") && id != null && id.matches("[0-9]{1,10}")) {
             Usuario usuario = usuarios.findById(Integer.valueOf(id)).orElse(null);
             if (EmpresaService.esEmpresa(usuario) && (!"Activo".equalsIgnoreCase(usuario.getEstado())
-                    || !(path.startsWith("/api/empresas/") || path.startsWith("/api/auth/")))) {
+                    || !(path.startsWith("/api/empresas/") || path.startsWith("/api/auth/")
+                         || path.equals("/api/presencia/pulso") || path.equals("/api/presencia/salida")))) {
                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                 response.setCharacterEncoding("UTF-8"); response.setContentType("application/json");
                 response.getWriter().write("{\"estado\":\"error\",\"mensaje\":\"Utiliza el portal empresarial para consultar tus proyectos.\"}");

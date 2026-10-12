@@ -121,20 +121,31 @@
         async cambiar(tipo, pista) {
             this.medios[tipo] = pista;
             this.actualizarVistaLocal();
-            const resultados = await Promise.allSettled([...this.peers.values()].map(p =>
-                (tipo === 'audio' ? p.audio : p.videoSender)?.replaceTrack(pista)));
+            const resultados = await Promise.allSettled([...this.peers.values()].map(async p => {
+                let tiempo;
+                try {
+                    await Promise.race([(tipo === 'audio' ? p.audio : p.videoSender)?.replaceTrack(pista),
+                        new Promise((_,rechazar)=>{tiempo=setTimeout(()=>rechazar(new Error('El participante no respondió al cambio de dispositivo.')),4000);})]);
+                } finally { clearTimeout(tiempo); }
+            }));
             if (resultados.some(r => r.status === 'rejected')) this.estado.textContent =
                 'Tu dispositivo está activo. Un participante perdió la conexión; puede pulsar Reconectar.';
         }
         actualizarVistaLocal() {
             const local = this.videoLocal;
             if (!local) return;
-            local.srcObject = new MediaStream(Object.values(this.medios).filter(t => t?.readyState === 'live'));
+            const pistas=Object.values(this.medios).filter(t=>t?.readyState==='live');
+            const anteriores=local.srcObject?.getTracks?.() || [];
+            const cambio=pistas.length!==anteriores.length || pistas.some(t=>!anteriores.includes(t));
+            if(cambio)local.srcObject=pistas.length?new MediaStream(pistas):null;
             local.muted = true;
+            local.autoplay = true; local.playsInline = true;
             const visible = this.medios.video?.readyState === 'live' && this.medios.video.enabled;
             local.hidden = !visible;
             if (this.avatarLocal) this.avatarLocal.hidden = !!visible;
-            if (visible) local.play().catch(() => {});
+            if (visible && (cambio || local.paused)) local.play().catch(() => {
+                this.estado.textContent='La cámara está disponible. Pulsa Activar audio para iniciar la reproducción, o vuelve a seleccionar tu cámara.';
+            });
         }
         async salir(keepalive = false) {
             ++this.generacion; this.activa = false; clearTimeout(this.timer);

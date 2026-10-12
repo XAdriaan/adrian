@@ -124,7 +124,11 @@
     // Todas las páginas usan esta configuración: la presencia sigue al navegar.
     if (typeof document !== "undefined" && document.createElement && document.head) {
         const asistencia = document.createElement("script");
-        asistencia.src = "js/asistencia-automatica.js?v=20261009-v14";
+        asistencia.src = "js/asistencia-automatica.js?v=20261012-v16";
         document.head.appendChild(asistencia);
+        const estiloAsistencia = document.createElement("link");
+        estiloAsistencia.rel = "stylesheet";
+        estiloAsistencia.href = "css/asistencia.css?v=20261012-v16";
+        document.head.appendChild(estiloAsistencia);
     }
 })();

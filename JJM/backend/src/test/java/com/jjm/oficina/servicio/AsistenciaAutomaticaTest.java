@@ -94,6 +94,20 @@ class AsistenciaAutomaticaTest {
         assertNull(resultado.get("idRegistro")); assertTrue(resultado.get("mensaje").toString().contains("manual"));
         verify(registros,never()).saveAndFlush(any());
     }
+    @Test void unaJornadaManualVaciaDeHoyContinuaAutomaticaSinDuplicarseNiAbonarAntes() {
+        hora("2026-10-12T09:00:00");RegistroHoras r=new RegistroHoras();r.setId(7);r.setFecha(LocalDate.of(2026,10,12));r.setTipoRegistro("Jornada");r.setEstadoValidacion("Pendiente");r.setHorasTrabajadas(java.math.BigDecimal.ZERO);r.setHoraEntrada(LocalTime.of(7,0));historial.put(7,r);
+        when(registros.buscarJornadasPendientesAbiertas(11)).thenReturn(List.of(r));doReturn(r).when(registros).saveAndFlush(r);
+        assertEquals(7,senal("pagina_1").get("idRegistro"));assertEquals(0,segundos());
+        hora("2026-10-12T09:01:01");assertEquals(61L,senal("pagina_1").get("segundos"));assertEquals(1,historial.size());assertEquals(LocalTime.of(7,0),r.getHoraEntrada());
+    }
+    @Test void pendientesDeOtroDiaNoBloqueanLaAsistenciaActual() {
+        hora("2026-10-12T09:00:00");RegistroHoras r=new RegistroHoras();r.setFecha(LocalDate.of(2026,10,9));when(registros.buscarJornadasPendientesAbiertas(11)).thenReturn(List.of(r));
+        assertNotNull(senal("pagina_1").get("idRegistro"));
+    }
+    @Test void unaJornadaManualConHorasGuardadasNoSeReescribeAutomaticamente() {
+        hora("2026-10-12T09:00:00");RegistroHoras r=new RegistroHoras();r.setFecha(LocalDate.of(2026,10,12));r.setTipoRegistro("Jornada");r.setEstadoValidacion("Pendiente");r.setHorasTrabajadas(java.math.BigDecimal.ONE);
+        when(registros.buscarJornadasPendientesAbiertas(11)).thenReturn(List.of(r));assertNull(senal("pagina_1").get("idRegistro"));assertEquals(java.math.BigDecimal.ONE,r.getHorasTrabajadas());verify(registros,never()).saveAndFlush(any());
+    }
     static class RelojMutable extends Clock {
         Instant actual;
         public ZoneId getZone(){return ZoneOffset.UTC;}

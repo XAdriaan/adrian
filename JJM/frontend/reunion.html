@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="css/sala-v7.css?v=20261005-v10">
 <link rel="stylesheet" href="css/ardia-global.css?v=20261005-v10">
 <link rel="stylesheet" href="css/elegancia-v9.css?v=20261005-v10">
-<link rel="stylesheet" href="css/sala-v10.css?v=20261005-v10">
+<link rel="stylesheet" href="css/sala-v10.css?v=20261012-v16">
 </head>
 <body>
 <div class="meeting-app">
@@ -30,7 +30,7 @@
         </div>
     </header>
 
-    <div class="meeting-device-strip"><span id="estadoDispositivos">Micrófono apagado · Cámara apagada</span><span>JJM Oficina de Proyectos</span></div>
+    <div class="meeting-device-strip"><span id="estadoDispositivos">Micrófono apagado · Cámara apagada</span><label class="meeting-camera-select" for="selectorCamara">Cámara<select id="selectorCamara"><option value="">Cámara predeterminada</option></select></label></div>
     <p class="meeting-device-alert" id="avisoMedios" role="alert" hidden></p>
     <main class="meeting-main">
         <section class="meeting-stage" aria-label="Videollamada de proyecto">
@@ -94,9 +94,9 @@
 </div>
 
 <script src="js/api-config.js?v=20261005-v10"></script>
-<script src="js/sala-webrtc.js?v=20261005-v10"></script>
+<script src="js/sala-webrtc.js?v=20261012-v16"></script>
 <script src="js/grabaciones.js?v=20261005-v10"></script>
-<script src="js/reunion.js?v=20261005-v10"></script>
+<script src="js/reunion.js?v=20261012-v16"></script>
 <script src="js/ardia-global.js?v=20261005-v10"></script>
 </body>
 </html>
