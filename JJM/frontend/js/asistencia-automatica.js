@@ -30,7 +30,7 @@
         const s=segundosVisibles(), contando=!!datos?.contando && !datos?.error && Date.now()-recibido < Number(datos?.vigenciaSegundos ?? 90)*1000;
         const reloj=document.getElementById('pmoAsistenciaReloj'); reloj.textContent=formato(s); reloj.parentElement.hidden=!esAlumno();
         document.getElementById('pmoAsistenciaProgreso').value=s||0;
-        document.getElementById('pmoAsistenciaTitulo').textContent=datos?.error ? 'Conexión pendiente de confirmar' : esAlumno() ? contando ? 'Asistencia en curso · Meta diaria: 10 horas' : 'Asistencia pausada' : conectado ? 'Conectado a la Oficina de Proyectos' : 'Confirmando conexión…';
+        document.getElementById('pmoAsistenciaTitulo').textContent=datos?.error ? 'Conexión pendiente de confirmar' : esAlumno() ? s>=36000 ? 'Meta del día completada · 10 horas registradas' : contando ? 'Asistencia en curso · Meta diaria: 10 horas' : 'Asistencia pausada' : conectado ? 'Conectado a la Oficina de Proyectos' : 'Confirmando conexión…';
         document.getElementById('pmoAsistenciaMensaje').textContent=datos?.mensaje || 'Tu conexión se registra automáticamente. Horario escolar: lunes a viernes de 07:00 a 17:00.';
         document.getElementById('pmoAsistenciaEnlace').hidden=!puedeSupervisar(); barra.dataset.contando=String(contando);
         const titulo=document.getElementById('tituloJornada'), texto=document.getElementById('textoJornada');

@@ -66,12 +66,18 @@ public class PresenciaPlataformaService {
                    p.ultima_senal_epoch AS ultimaSenal, p.ruta, p.conexiones,
                    j.id_registro AS idRegistro, j.total_segundos AS segundos,
                    j.liquidado_epoch AS liquidado, j.ultima_senal_epoch AS senalJornada, j.finalizada,
-                   (SELECT MIN(h.hora_entrada) FROM registros_horas h
-                    INNER JOIN miembros_equipo m ON m.id_miembro=h.id_miembro
-                    WHERE m.id_usuario=u.id_usuario AND h.fecha=?) AS entrada
+                   resumen.entrada, COALESCE(resumen.horas,0) AS horasRegistradas,
+                   COALESCE(observado.horas_trabajadas,0) AS horasAutomaticasRegistradas
             FROM usuarios u LEFT JOIN roles r ON r.id_rol=u.id_rol
             LEFT JOIN presencias_plataforma p ON p.id_usuario=u.id_usuario
             LEFT JOIN jornadas_automaticas j ON j.id_usuario=u.id_usuario AND j.fecha=?
+            LEFT JOIN registros_horas observado ON observado.id_registro=j.id_registro
+            LEFT JOIN (
+                SELECT m.id_usuario,MIN(h.hora_entrada) AS entrada,SUM(h.horas_trabajadas) AS horas
+                FROM registros_horas h INNER JOIN miembros_equipo m ON m.id_miembro=h.id_miembro
+                WHERE h.fecha=? AND COALESCE(h.estado_validacion,'Pendiente')<>'Rechazado'
+                GROUP BY m.id_usuario
+            ) resumen ON resumen.id_usuario=u.id_usuario
             ORDER BY u.nombre,u.apellido_paterno,u.id_usuario
             """,dia,dia);
         List<Map<String,Object>> personas = filas.stream().map(fila -> {
@@ -85,11 +91,15 @@ public class PresenciaPlataformaService {
                     && fila.get("idRegistro") != null && !Boolean.TRUE.equals(fila.get("finalizada")) && numero(fila.get("finalizada")) == 0
                     && numero(fila.get("senalJornada")) + AsistenciaAutomaticaService.VIGENCIA_SENAL > ahora.getEpochSecond();
             long segundos = numero(fila.get("segundos"));
+            long otrosSegundos=Math.max(0,decimal(fila.get("horasRegistradas")).subtract(decimal(fila.get("horasAutomaticasRegistradas"))).multiply(java.math.BigDecimal.valueOf(3600)).longValue());
+            if(segundos+otrosSegundos>=36000)contando=false;
             if (contando) segundos += Math.max(0, Math.min(ahora.getEpochSecond(),
                     numero(fila.get("senalJornada"))+AsistenciaAutomaticaService.VIGENCIA_SENAL)-numero(fila.get("liquidado")));
             dato.put("idUsuario",fila.get("idUsuario")); dato.put("nombre",fila.get("nombre")); dato.put("rol",rol);
             dato.put("estado",fila.get("estado")); dato.put("alumno",alumno); dato.put("conectado",conectado); dato.put("contando",contando);
-            dato.put("segundos",Math.min(36000,Math.max(0,segundos))); dato.put("entrada",fila.get("entrada"));
+            dato.put("segundos",Math.min(36000,Math.max(0,segundos+otrosSegundos))); dato.put("entrada",fila.get("entrada"));
+            dato.put("asistenciaRegistrada",fila.get("idRegistro")!=null || otrosSegundos>0);
+            dato.put("incluyeOtrosRegistros",otrosSegundos>0);
             dato.put("vigenciaSegundos",Math.max(0,numero(fila.get("senalJornada"))+AsistenciaAutomaticaService.VIGENCIA_SENAL-ahora.getEpochSecond()));
             dato.put("segundosHastaCierre",Math.max(0,Duration.between(ahora,AsistenciaAutomaticaService.fin(dia)).toSeconds()));
             long ultima = numero(fila.get("ultimaSenal"));
@@ -118,6 +128,7 @@ public class PresenciaPlataformaService {
         return resultado;
     }
     private static long numero(Object dato) { return dato instanceof Number n ? n.longValue() : 0; }
+    private static java.math.BigDecimal decimal(Object dato) { return dato instanceof Number n ? new java.math.BigDecimal(n.toString()) : java.math.BigDecimal.ZERO; }
     private static String texto(Object dato) { return Objects.toString(dato,""); }
     private static String normalizar(String texto) { return Normalizer.normalize(texto,Normalizer.Form.NFD).replaceAll("\\p{M}","").trim().toLowerCase(Locale.ROOT); }
 }

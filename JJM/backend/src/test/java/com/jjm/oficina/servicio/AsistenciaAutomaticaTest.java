@@ -22,6 +22,7 @@ class AsistenciaAutomaticaTest {
     private final RelojMutable reloj = new RelojMutable();
     private AsistenciaAutomaticaService servicio;
     private Usuario alumno;
+    private final JdbcTemplate jdbc = mock(JdbcTemplate.class);
     @BeforeEach void preparar() {
         alumno = new Usuario(); alumno.setId(10); alumno.setEstado("Activo");
         Rol rol = new Rol(); rol.setNombre("Colaborador"); alumno.setRol(rol);
@@ -37,7 +38,7 @@ class AsistenciaAutomaticaTest {
         when(registros.save(any())).thenAnswer(i -> i.getArgument(0));
         PlatformTransactionManager gestor = mock(PlatformTransactionManager.class);
         when(gestor.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
-        servicio = new AsistenciaAutomaticaService(usuarios,miembros,registros,jornadas,mock(JdbcTemplate.class),gestor,reloj);
+        servicio = new AsistenciaAutomaticaService(usuarios,miembros,registros,jornadas,jdbc,gestor,reloj);
     }
     void hora(String local) { reloj.actual = LocalDateTime.parse(local).atZone(AsistenciaAutomaticaService.ZONA).toInstant(); }
     Map<String,Object> senal(String pagina) { return servicio.actualizar(10,true,pagina,false); }
@@ -113,5 +114,13 @@ class AsistenciaAutomaticaTest {
         public ZoneId getZone(){return ZoneOffset.UTC;}
         public Clock withZone(ZoneId zona){return this;}
         public Instant instant(){return actual;}
+    }
+    @Test void lasDiezHorasReconocidasHoySeMuestranSinCrearOtraJornada() {
+        hora("2026-10-12T10:00:00");when(jdbc.queryForObject(anyString(),eq(java.math.BigDecimal.class),any(Object[].class))).thenReturn(java.math.BigDecimal.TEN);
+        Map<String,Object> resultado=senal("pagina_1");assertEquals(36000L,resultado.get("segundos"));assertEquals(false,resultado.get("contando"));assertNull(resultado.get("idRegistro"));verify(registros,never()).saveAndFlush(any());
+    }
+    @Test void elSaldoAcumuladoDelServidorIncluyeElReconocimientoHistorico() {
+        hora("2026-10-12T10:00:00");when(jdbc.queryForObject(anyString(),eq(java.math.BigDecimal.class),eq(11))).thenReturn(new java.math.BigDecimal("300.00"));
+        assertEquals(new java.math.BigDecimal("300.00"),senal("pagina_1").get("horasAcumuladas"));
     }
 }

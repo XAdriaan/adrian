@@ -4,6 +4,8 @@ import com.jjm.oficina.modelo.RegistroHoras;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
@@ -49,4 +51,7 @@ public interface RegistroHorasRepository
     List<RegistroHoras> buscarJornadasPendientesAbiertas(
             @Param("idMiembro") Integer idMiembro
     );
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM RegistroHoras r WHERE r.idMiembro=:miembro AND r.fecha BETWEEN :desde AND :hasta")
+    List<RegistroHoras> buscarParaRegularizacion(@Param("miembro")Integer miembro,@Param("desde")LocalDate desde,@Param("hasta")LocalDate hasta);
 }

@@ -1554,10 +1554,14 @@ function actualizarContadorAutomatico() {
     const segundos = seguimiento.segundosVisibles();
     if (!estado || segundos == null) return;
     const otrasHoras = registrosHoras.filter(r => Number(r.idMiembro) === Number(estado.idMiembro)
-            && Number(r.id) !== Number(estado.idRegistro))
+            && String(r.fecha||'').slice(0,10) !== estado.fecha)
         .reduce((total, r) => total + Number(r.horasTrabajadas || 0), 0);
+    const registradasHoy = registrosHoras.filter(r => Number(r.idMiembro) === Number(estado.idMiembro)
+            && String(r.fecha||'').slice(0,10) === estado.fecha).reduce((total,r)=>total+Number(r.horasTrabajadas||0),0);
     if (horasHoy) horasHoy.textContent = seguimiento.formato(segundos) + " / 10:00:00";
-    if (horasTotales) horasTotales.textContent = (otrasHoras + segundos / 3600).toFixed(2) + "h";
+    const acumuladas = estado.horasAcumuladas == null ? otrasHoras + Math.max(registradasHoy,segundos / 3600)
+        : Number(estado.horasAcumuladas) + Math.max(0,segundos - Number(estado.segundos||0))/3600;
+    if (horasTotales) horasTotales.textContent = acumuladas.toFixed(2) + "h";
     if (textoJornada && !estado.error && estado.contando) {
         const h = Math.floor(segundos / 3600), m = Math.floor(segundos % 3600 / 60), s = Math.floor(segundos % 60);
         textoJornada.textContent = `Asistencia automática: ${[h,m,s].map(n => String(n).padStart(2,"0")).join(":")} de 10:00:00. Lunes a viernes, 07:00 a 17:00.`;

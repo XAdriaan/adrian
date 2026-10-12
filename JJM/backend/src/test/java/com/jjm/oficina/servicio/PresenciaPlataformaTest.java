@@ -79,4 +79,9 @@ class PresenciaPlataformaTest {
         when(jdbc.queryForList(contains("FROM usuarios u"),eq(fecha),eq(fecha))).thenReturn(List.of(fila));
         Map<String,Object> dato=primerAlumno(servicio.monitor(1,fecha));assertEquals(true,dato.get("contando"));assertEquals(1L,dato.get("segundosHastaCierre"));assertEquals(5L,dato.get("vigenciaSegundos"));
     }
+    @Test void horasReconocidasConDecimalesCompletanLaMetaSinPerderUnSegundoPorRedondeo() {
+        LocalDate fecha=LocalDate.of(2026,10,12);Map<String,Object> fila=fila();fila.put("horasRegistradas",new java.math.BigDecimal("10.00"));fila.put("horasAutomaticasRegistradas",new java.math.BigDecimal("0.27"));fila.put("segundos",972L);
+        when(jdbc.queryForList(contains("FROM usuarios u"),eq(fecha),eq(fecha))).thenReturn(List.of(fila));
+        Map<String,Object> dato=primerAlumno(servicio.monitor(1,null));assertEquals(36000L,dato.get("segundos"));assertEquals(false,dato.get("contando"));assertEquals(true,dato.get("asistenciaRegistrada"));
+    }
 }

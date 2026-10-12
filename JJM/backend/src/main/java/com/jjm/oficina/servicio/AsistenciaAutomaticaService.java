@@ -86,9 +86,11 @@ public class AsistenciaAutomaticaService {
             if (!aplicable && !pendiente.isFinalizada()) { pendiente.setFinalizada(true); cerrarRegistro(pendiente, ahora); jornadas.save(pendiente); }
         }
         JornadaAutomatica jornada = jornadas.findByIdUsuarioAndFecha(idUsuario, fecha).orElse(null);
+        long otrosSegundos = miembro == null ? 0 : segundosOtros(miembro.getId(),fecha,jornada==null?null:jornada.getIdRegistro());
+        boolean metaCumplida = otrosSegundos + (jornada==null?0:jornada.getTotalSegundos()) >= 36000;
         boolean enHorario = esDiaHabil(fecha) && !ahora.isBefore(inicio(fecha)) && ahora.isBefore(fin(fecha));
         String aviso = "";
-        if (senal && aplicable && enHorario && jornada == null) {
+        if (senal && aplicable && enHorario && jornada == null && !metaCumplida) {
             // Una jornada manual abierta debe resolverse antes de empezar otra: no se duplican tiempos.
             List<RegistroHoras> abiertas = registros.buscarJornadasPendientesAbiertas(miembro.getId()).stream()
                     .filter(r -> r.getFecha() == null || !r.getFecha().isBefore(fecha)).toList();
@@ -114,7 +116,7 @@ public class AsistenciaAutomaticaService {
                 renovarConexion(jornada, pagina, ahora, false);
                 if (continuarManual) aviso = "Tu jornada abierta continúa con asistencia automática desde esta conexión.";
             }
-        } else if (senal && aplicable && enHorario && jornada != null && !jornada.isFinalizada()) {
+        } else if (senal && aplicable && enHorario && jornada != null && !jornada.isFinalizada() && !metaCumplida) {
             // Tras una suspensión larga se reanuda desde ahora; el hueco no se acredita.
             jornada.setUltimaSenal(Math.max(jornada.getUltimaSenal(), ahora.getEpochSecond()));
             jornada.setLiquidado(Math.max(jornada.getLiquidado(), ahora.getEpochSecond()));
@@ -130,14 +132,22 @@ public class AsistenciaAutomaticaService {
         salida.put("horario", "Lunes a viernes, 07:00 a 17:00"); salida.put("metaHoras", 10);
         salida.put("servidorEpoch", ahora.getEpochSecond());
         salida.put("vigenciaSegundos", jornada == null ? 0 : Math.max(0, jornada.getUltimaSenal() + VIGENCIA_SENAL - ahora.getEpochSecond()));
-        salida.put("enHorario", enHorario); salida.put("segundos", jornada == null ? 0 : jornada.getTotalSegundos());
+        salida.put("enHorario", enHorario); salida.put("segundos", Math.min(36000,otrosSegundos+(jornada==null?0:jornada.getTotalSegundos())));
+        salida.put("segundosConexion",jornada==null?0:jornada.getTotalSegundos());
+        salida.put("segundosOtrosRegistros",otrosSegundos);
+        BigDecimal acumuladas=miembro==null?BigDecimal.ZERO:jdbc.queryForObject("""
+                SELECT COALESCE(SUM(horas_trabajadas),0) FROM registros_horas
+                WHERE id_miembro=? AND COALESCE(estado_validacion,'Pendiente')<>'Rechazado'
+                """,BigDecimal.class,miembro.getId());
+        salida.put("horasAcumuladas",acumuladas==null?BigDecimal.ZERO:acumuladas);
         salida.put("segundosHastaCierre", Math.max(0,Duration.between(ahora,fin(fecha)).toSeconds()));
-        salida.put("horas", jornada == null ? BigDecimal.ZERO : horas(jornada.getTotalSegundos()));
+        salida.put("horas", horas(((Number)salida.get("segundos")).longValue()));
         salida.put("idRegistro", jornada == null ? null : jornada.getIdRegistro());
         salida.put("idMiembro", miembro == null ? null : miembro.getId());
-        salida.put("contando", aplicable && enHorario && jornada != null && !jornada.isFinalizada()
+        salida.put("contando", !metaCumplida && aplicable && enHorario && jornada != null && !jornada.isFinalizada()
                 && ahora.getEpochSecond() < jornada.getUltimaSenal() + VIGENCIA_SENAL);
-        salida.put("mensaje", !aviso.isEmpty() ? aviso : !aplicable ? esAlumno(alumno)
+        salida.put("mensaje", metaCumplida ? "Las 10 horas de hoy ya están registradas. El total incluye las horas reconocidas por administración."
+                : !aviso.isEmpty() ? aviso : !aplicable ? esAlumno(alumno)
                 ? "Tu cuenta necesita un miembro de equipo activo para registrar horas. Solicita la revisión de administración."
                 : "Tu conexión queda registrada. Las horas de estadía corresponden a alumnos activos."
                 : !esDiaHabil(fecha) ? "La asistencia se registra de lunes a viernes."
@@ -169,11 +179,13 @@ public class AsistenciaAutomaticaService {
         long hasta = Math.min(Math.min(ahora.getEpochSecond(), fin(jornada.getFecha()).getEpochSecond()),
                 jornada.getUltimaSenal() + VIGENCIA_SENAL);
         long incremento = esDiaHabil(jornada.getFecha()) ? Math.max(0, hasta - desde) : 0;
+        RegistroHoras registro = registros.findById(jornada.getIdRegistro()).orElseThrow(
+                () -> new IllegalStateException("No se encontró el registro de la asistencia automática."));
+        long limite = Math.max(0,36000-segundosOtros(registro.getIdMiembro(),jornada.getFecha(),registro.getId()));
+        incremento = Math.min(incremento,Math.max(0,limite-jornada.getTotalSegundos()));
         if (incremento == 0 && ahora.isBefore(fin(jornada.getFecha()))) return;
         jornada.setTotalSegundos(Math.min(36000, jornada.getTotalSegundos() + incremento));
         jornada.setLiquidado(Math.max(jornada.getLiquidado(), hasta));
-        RegistroHoras registro = registros.findById(jornada.getIdRegistro()).orElseThrow(
-                () -> new IllegalStateException("No se encontró el registro de la asistencia automática."));
         registro.setHorasTrabajadas(horas(jornada.getTotalSegundos()));
         if (!ahora.isBefore(fin(jornada.getFecha()))) {
             jornada.setFinalizada(true);
@@ -186,6 +198,14 @@ public class AsistenciaAutomaticaService {
         registros.findById(jornada.getIdRegistro()).ifPresent(r -> {
             r.setHoraSalida(ahora.atZone(ZONA).toLocalTime().withNano(0)); registros.save(r);
         });
+    }
+    private long segundosOtros(Integer miembro,LocalDate fecha,Integer automatico) {
+        BigDecimal suma=jdbc.queryForObject("""
+            SELECT COALESCE(SUM(horas_trabajadas),0) FROM registros_horas
+            WHERE id_miembro=? AND fecha=? AND COALESCE(estado_validacion,'Pendiente')<>'Rechazado'
+              AND (? IS NULL OR id_registro<>?)
+            """,BigDecimal.class,miembro,fecha,automatico,automatico);
+        return suma==null?0:Math.max(0,suma.multiply(BigDecimal.valueOf(3600)).longValue());
     }
 
     @Scheduled(fixedDelay = 30000)
