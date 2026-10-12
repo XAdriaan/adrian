@@ -12,7 +12,8 @@ public class ConfiguracionWebSeguridad {
     @Bean
     public SecurityFilterChain filtroSeguridad(
             HttpSecurity http,
-            AutenticacionTokenFilter autenticacionTokenFilter
+            AutenticacionTokenFilter autenticacionTokenFilter,
+            AccesoEmpresaFilter accesoEmpresaFilter
     ) throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())
@@ -25,6 +26,7 @@ public class ConfiguracionWebSeguridad {
                         autenticacionTokenFilter,
                         UsernamePasswordAuthenticationFilter.class
                 )
+                .addFilterAfter(accesoEmpresaFilter, AutenticacionTokenFilter.class)
                 .build();
     }
 }

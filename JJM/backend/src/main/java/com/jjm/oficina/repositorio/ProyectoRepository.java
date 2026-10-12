@@ -4,11 +4,14 @@ import com.jjm.oficina.modelo.Proyecto;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional; 
+import java.util.List;
 
 public interface ProyectoRepository extends JpaRepository<Proyecto, Integer>{ 
     
     boolean existsByCodigo(String codigo);
 
     Optional<Proyecto> findByCodigo(String codigo); 
+
+    List<Proyecto> findByIdOrganizacionOrderByFechaCreacionDesc(Integer idOrganizacion);
 
 }

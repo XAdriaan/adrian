@@ -127,6 +127,18 @@ test('login distingue credenciales rechazadas de fallos del servidor', async () 
     assert.equal(e.navegaciones.length, 0);
 });
 
+test('login empresarial abre su portal sin solicitar un expediente de alumno', async () => {
+    const llamadas = [];
+    const e = prepararLogin(async input => {
+        llamadas.push(String(input));
+        return json({ usuario: { id: 42, rol: 'Empresa' }, token: 'token-empresa' });
+    });
+    await e.submit();
+    assert.equal(llamadas.length, 1);
+    assert.deepEqual(e.navegaciones, ['empresa.html']);
+    assert.equal(e.storage.get('sesionTokenPMO'), 'token-empresa');
+});
+
 test('login no anuncia éxito cuando el servidor rechaza la nueva sesión', async () => {
     const e = prepararLogin(async input => String(input).endsWith('/login')
         ? json({ usuario: { id: 7 }, token: 'token-valido' })

@@ -82,7 +82,8 @@ loginForm.addEventListener("submit", async function (event) {
 
         const rolLogin = String(datos.usuario.rol?.nombre || datos.usuario.rol || "").trim().toLowerCase();
         const esDirectivoLogin = ["directivo escolar", "directivo"].includes(rolLogin);
-        const expedienteCompleto = esDirectivoLogin || await datosAcademicosCompletos(datos.usuario);
+        const esEmpresaLogin = rolLogin === "empresa";
+        const expedienteCompleto = esEmpresaLogin || esDirectivoLogin || await datosAcademicosCompletos(datos.usuario);
         if (localStorage.getItem("sesionTokenPMO") !== datos.token) {
             mostrarError("El servidor no confirmó tu sesión. Inicia sesión nuevamente.");
             return;
@@ -94,7 +95,7 @@ loginForm.addEventListener("submit", async function (event) {
         // el Dashboard/menú mostrará el acceso para completarlos sin romper
         // el inicio de sesión ni generar ciclos de redirección.
         setTimeout(function () {
-            window.location.replace(esDirectivoLogin ? "supervision-escolar.html"
+            window.location.replace(esEmpresaLogin ? "empresa.html" : esDirectivoLogin ? "supervision-escolar.html"
                 : (expedienteCompleto ? "dashboard.html" : "dashboard.html?completarDatos=1"));
         }, 350);
 

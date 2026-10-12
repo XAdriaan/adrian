@@ -107,6 +107,11 @@
             const datos = await respuesta.json();
             if (datos?.usuario && window.obtenerTokenSesionPMO() === token) {
                 localStorage.setItem("usuarioActivo", JSON.stringify(datos.usuario));
+                const rol = String(datos.usuario.rol?.nombre || datos.usuario.rol || "").trim().toLowerCase();
+                const pagina = window.location.pathname.split("/").pop();
+                if (rol === "empresa" && !["", "index.html", "login.html", "register.html", "registro-empresa.html", "empresa.html"].includes(pagina)) {
+                    window.location.replace("empresa.html");
+                }
                 return datos.usuario;
             }
         } catch (error) {

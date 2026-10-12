@@ -46,6 +46,7 @@ public class AutenticacionTokenFilter extends OncePerRequestFilter {
         return path.equals("/api/salud")
                 || path.equals("/api/auth/login")
                 || path.equals("/api/auth/registro")
+                || path.equals("/api/auth/registro-empresa")
                 || path.startsWith("/api/auth/recuperacion/");
     }
 

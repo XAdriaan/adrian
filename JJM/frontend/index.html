@@ -3,10 +3,64 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Oficina de Proyectos</title>
-  <meta http-equiv="refresh" content="0; url=login.html">
+  <meta name="theme-color" content="#10213d">
+  <meta name="description" content="Planeación, seguimiento, colaboración y evidencia para empresas, equipos y estadías profesionales.">
+  <title>JJM Oficina de Proyectos | Tus proyectos, bajo control</title>
+  <link rel="stylesheet" href="css/portal-publico.css?v=20261009-v15">
+  <script src="js/portal-publico.js?v=20261009-v15" defer></script>
 </head>
 <body>
-  <p>Abriendo Oficina de Proyectos… <a href="login.html">Continuar</a></p>
+<a class="skip-link" href="#contenido">Ir al contenido</a>
+<header class="public-header">
+  <a class="brand" href="index.html"><img src="img/LOGO-J2M.png" alt="JJM Tecnologías Innovadoras"><span>Oficina de<br><strong>Proyectos</strong></span></a>
+  <button class="menu-toggle" aria-expanded="false" aria-controls="public-nav">Menú</button>
+  <nav id="public-nav" aria-label="Navegación principal"><a href="#servicios">Servicios</a><a href="#soluciones">Soluciones</a><a href="#metodologia">Cómo trabajamos</a><a class="login-link" href="login.html">Iniciar sesión ↗</a></nav>
+</header>
+<main id="contenido">
+  <section class="hero section-wrap">
+    <div class="hero-copy"><p class="eyebrow"><span class="dot"></span> EMPRESAS · EQUIPOS · ESTADÍAS</p>
+      <h1>Tus proyectos avanzan.<br><span>Tú tienes el control.</span></h1>
+      <p class="hero-intro">De la primera idea al cierre: reúne objetivos, tareas y evidencias en un solo lugar. La Oficina de Proyectos JJM conecta a tu empresa con el equipo que los hace posibles.</p>
+      <div class="hero-actions"><a class="button primary" href="registro-empresa.html">Registrar mi empresa ↗</a><a class="button secondary" href="#servicios">Conocer los servicios</a></div>
+      <p class="hero-note">¿Ya formas parte del equipo? <a href="login.html">Entra a tu espacio de trabajo.</a></p>
+    </div>
+    <div class="project-preview" aria-label="Ejemplo ilustrativo de seguimiento de un proyecto">
+      <div class="preview-top"><span><span class="dot"></span> SEGUIMIENTO DE PROYECTOS</span><span class="demo-tag">Ejemplo</span></div>
+      <div class="preview-body"><p class="eyebrow">DE LA IDEA A LA EVIDENCIA</p><h2>Tu siguiente proyecto</h2><p class="preview-sub">Un objetivo claro. Un equipo conectado.</p>
+        <div class="preview-steps"><span class="step done">01<br><strong>Propuesta</strong></span><span class="step done">02<br><strong>Planeación</strong></span><span class="step current">03<br><strong>Ejecución</strong></span><span class="step">04<br><strong>Cierre</strong></span></div>
+        <div class="preview-row"><span class="check">✓</span><span><strong>Lo que se espera</strong><small>Alcance y objetivos compartidos</small></span><span class="tiny-label">Definido</span></div>
+        <div class="preview-row"><span class="check">↗</span><span><strong>Lo que está avanzando</strong><small>Tareas, responsables y fechas</small></span><span class="tiny-label active">En curso</span></div>
+        <div class="preview-row"><span class="check">▤</span><span><strong>Lo que se entrega</strong><small>Documentación y evidencia del cierre</small></span><span class="tiny-label">Por revisar</span></div>
+      </div><div class="preview-bottom">Visibilidad para tu empresa. Coordinación para tu equipo.</div>
+    </div>
+  </section>
+  <div class="benefit-strip"><div class="section-wrap"><span><strong>01</strong> Menos información dispersa</span><span><strong>02</strong> Avances que puedes consultar</span><span><strong>03</strong> Evidencia para tomar decisiones</span></div></div>
+  <section class="section-wrap section-space" id="servicios">
+    <div class="section-heading"><div><p class="eyebrow">UNA OFICINA, DIFERENTES NECESIDADES</p><h2>¿Qué necesitas hacer avanzar?</h2></div><p>Elige el servicio que se ajusta a tu proyecto. Registra tu empresa y comparte el objetivo para que la Oficina de Proyectos lo revise.</p></div>
+    <div class="service-filters" aria-label="Filtrar servicios"><button class="selected" data-filter="todos" aria-pressed="true">Todos los servicios</button><button data-filter="empresa" aria-pressed="false">Para empresas</button><button data-filter="estadia" aria-pressed="false">Para estadías</button></div>
+    <div class="service-grid">
+      <article class="service-card" data-category="empresa"><span class="service-number">01 / PLANEAR</span><h3>Planeación del proyecto</h3><p>Define el objetivo, organiza el alcance y establece fechas y prioridades antes de comenzar.</p><a href="registro-empresa.html?servicio=planeacion">Quiero planear un proyecto ↗</a></article>
+      <article class="service-card" data-category="empresa"><span class="service-number">02 / DAR SEGUIMIENTO</span><h3>Seguimiento y control</h3><p>Consulta el estado del proyecto, sus tareas y los avances registrados por el equipo de trabajo.</p><a href="registro-empresa.html?servicio=seguimiento">Quiero consultar mis avances ↗</a></article>
+      <article class="service-card" data-category="empresa"><span class="service-number">03 / DESARROLLAR</span><h3>Soluciones tecnológicas</h3><p>Presenta una necesidad de software o mejora de procesos y coordina su desarrollo como un proyecto.</p><a href="registro-empresa.html?servicio=soluciones">Quiero proponer una solución ↗</a></article>
+      <article class="service-card" data-category="estadia"><span class="service-number">04 / ACOMPAÑAR</span><h3>Estadías profesionales</h3><p>Conecta proyectos con el seguimiento de los alumnos, sus datos académicos, horas y documentos.</p><a href="register.html#registro">Crear mi cuenta de alumno ↗</a></article>
+      <article class="service-card" data-category="estadia"><span class="service-number">05 / COLABORAR</span><h3>Equipos y formación</h3><p>Organiza tareas, comparte el seguimiento y reúne las evidencias de cursos y actividades del equipo.</p><a href="registro-empresa.html?servicio=formacion">Solicitar acompañamiento ↗</a></article>
+      <article class="service-card" data-category="empresa estadia"><span class="service-number">06 / CERRAR</span><h3>Documentación y cierre</h3><p>Revisa entregables y documentos para respaldar el cierre del proyecto y la liberación de cartas de estadía.</p><a href="registro-empresa.html?servicio=cierre">Preparar el cierre ↗</a></article>
+    </div><p class="filter-message" aria-live="polite">6 servicios disponibles.</p>
+  </section>
+  <section class="solutions" id="soluciones"><div class="section-wrap section-space"><p class="eyebrow">HERRAMIENTAS PARA TRABAJAR CON CLARIDAD</p><h2>La información que necesitas.<br>En el momento que la necesitas.</h2>
+    <div class="solution-grid"><article><span class="solution-icon">↗</span><h3>Portal para empresas</h3><p>Registra tus proyectos y consulta su estado, avance y tareas desde tu propia cuenta empresarial.</p></article><article><span class="solution-icon">▤</span><h3>Expedientes digitales</h3><p>Reúne los datos académicos, cartas y documentos de los alumnos por periodo de estadía.</p></article><article><span class="solution-icon">◷</span><h3>Seguimiento del equipo</h3><p>Relaciona proyectos, tareas y horas para acompañar el trabajo de alumnos y colaboradores.</p></article></div>
+  </div></section>
+  <section class="section-wrap section-space methodology" id="metodologia"><div><p class="eyebrow">DEL OBJETIVO AL RESULTADO</p><h2>Un camino claro<br>para cada proyecto.</h2><p>La propuesta de gestión toma como referencia PMBOK® 8 y se adapta al contexto y a las necesidades de cada proyecto.</p><p><a class="method-source" href="https://www.pmi.org/standards/pmbok" target="_blank" rel="noopener noreferrer">Consultar la referencia de PMI ↗</a></p><div class="domain-list" aria-label="Dominios de gestión"><span>Gobernanza</span><span>Alcance</span><span>Cronograma</span><span>Finanzas</span><span>Interesados</span><span>Recursos</span><span>Riesgos</span></div></div>
+    <ol class="process"><li><span>01</span><div><h3>Cuéntanos qué necesitas</h3><p>Registra tu empresa y el objetivo del proyecto.</p></div></li><li><span>02</span><div><h3>Acordamos el trabajo</h3><p>La Oficina de Proyectos revisa la propuesta, el alcance y las fechas.</p></div></li><li><span>03</span><div><h3>Avanzamos con visibilidad</h3><p>Tu empresa consulta los avances que registra el equipo.</p></div></li><li><span>04</span><div><h3>Cerramos con evidencia</h3><p>Se revisan los resultados y los documentos del proyecto.</p></div></li></ol>
+  </section>
+  <section class="section-wrap section-space faq"><p class="eyebrow">ANTES DE COMENZAR</p><h2>Resolvamos tus dudas.</h2>
+    <details><summary>¿Cómo solicita una empresa un servicio?</summary><p>Crea una cuenta empresarial e inicia sesión. En tu portal podrás registrar el objetivo, el servicio que necesitas y las fechas propuestas. El proyecto queda en revisión por la Oficina de Proyectos.</p></details>
+    <details><summary>¿Cómo consulto el avance de mi proyecto?</summary><p>Entra a tu cuenta empresarial. El portal consulta periódicamente los avances y las tareas guardadas por el equipo, y también permite actualizar la vista manualmente.</p></details>
+    <details><summary>¿Por dónde entran los alumnos y asesores?</summary><p>Utilizan el botón Iniciar sesión con su cuenta actual. Los alumnos que todavía no tienen una cuenta pueden crearla en el registro de alumnos.</p></details>
+    <details><summary>¿Registrar un proyecto confirma su contratación?</summary><p>El registro presenta tu solicitud. El alcance, los tiempos y las condiciones se acuerdan después de la revisión de la Oficina de Proyectos.</p></details>
+  </section>
+  <section class="section-wrap closing"><div><p class="eyebrow">EL SIGUIENTE PASO EMPIEZA AQUÍ</p><h2>Dale dirección a tu próximo proyecto.</h2><p>Registra tu empresa y comparte lo que necesitas resolver.</p></div><a class="button primary" href="registro-empresa.html">Comenzar mi proyecto ↗</a></section>
+</main>
+<footer class="public-footer section-wrap"><span>JJM Tecnologías Innovadoras, S. A. de C. V.</span><nav aria-label="Enlaces del pie"><a href="login.html">Acceso al sistema</a><a href="register.html#registro">Registro de alumnos</a><a href="registro-empresa.html">Registro de empresas</a></nav><small>Oficina de Proyectos · 2026</small></footer>
 </body>
 </html>
