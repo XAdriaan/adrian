@@ -113,4 +113,18 @@ class CatalogoAsignacionesTest {
         var filas = (List<Map<String,Object>>) servicio.obtenerAsignaciones().get("proyectos");
         assertEquals("Asignado", filas.get(7).get("estado"));
     }
+    @Test void cuentaRegistradaDespuesDelDespliegueReparaSuAsignacionAlEntrar() {
+        MiembroEquipo propia=alumno(40,"Jonathan Adrián Flores Morales");
+        when(miembros.findByUsuarioId(140)).thenReturn(Optional.of(propia));
+        servicio.sincronizarCuenta(140);servicio.sincronizarCuenta(140);
+        assertEquals(1,enlaces.size());assertEquals(4,enlaces.getFirst().getIdProyecto());
+        assertEquals(40,actividades.get(4).getFirst().getIdMiembroAsignado());
+        assertEquals("En progreso",actividades.get(4).getFirst().getEstado());
+    }
+    @Test void unaCuentaConNombreParcialNoSeVinculaSinConfirmacion() {
+        MiembroEquipo propia=alumno(8,"Emily Jojany Flores");
+        when(miembros.findByUsuarioId(108)).thenReturn(Optional.of(propia));
+        servicio.sincronizarCuenta(108);assertTrue(enlaces.isEmpty());
+    }
+
 }

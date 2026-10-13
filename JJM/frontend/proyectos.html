@@ -12,7 +12,7 @@
 <link rel="stylesheet" href="css/projectsphere.css?v=20261005-v10">
 <link rel="stylesheet" href="css/ardia-global.css?v=20261005-v10">
 <link rel="stylesheet" href="css/elegancia-v9.css?v=20261005-v10">
-</head>
+<link rel="stylesheet" href="css/canales-proyectos.css?v=20"></head>
 <body>
 
 <div class="dashboard-container">
@@ -53,7 +53,7 @@
                 <p>Gestión integral del portafolio de proyectos.</p>
             </div>
 
-            <div class="project-toolbar-actions">
+            <div class="project-toolbar-actions"><a class="btn-secondary" href="canales-proyectos.html">Canales de proyectos</a>
                 <button class="btn-secondary" id="btnNuevaCarpeta" type="button">+ Nueva carpeta</button>
                 <button class="btn-secondary" id="btnImportarProyecto" type="button">Importar proyecto</button>
                 <input id="archivoImportarProyecto" type="file" accept="application/json,.json" hidden>
@@ -86,6 +86,7 @@
             </select>
         </section>
 
+        <div class="proyectos-canales-layout"><aside class="canales-listado"><h2>Canales de proyectos</h2><input id="buscarCanalProyecto" type="search" aria-label="Buscar canal" placeholder="Buscar canal…"><nav id="canalesEnProyectos" aria-label="Proyectos como canales"></nav></aside><div>
         <section class="folders-panel">
             <div class="folders-panel-head"><div><h2>Carpetas de proyectos</h2><p>Organiza los proyectos por área, cliente, periodo o cualquier criterio que necesites.</p></div><span id="contadorCarpetas">0 carpetas</span></div>
             <div id="contenedorCarpetas" class="folders-grid"></div>
@@ -98,6 +99,7 @@
             </div>
         </section>
 
+        </div></div>
     </main>
 
 </div>
@@ -223,7 +225,7 @@
 
 <script src="js/api-config.js?v=20261005-v10"></script>
 <script src="js/permisos-globales.js?v=20261005-v10"></script>
-<script src="js/proyectos.js"></script>
+<script src="js/proyectos.js?v=20"></script><script src="js/proyectos-canales.js?v=20"></script>
 <script src="js/ardia-global.js?v=20261005-v10"></script>
 </body>
 </html>

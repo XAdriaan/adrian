@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="css/ardia-global.css?v=20261005-v10">
 <link rel="stylesheet" href="css/elegancia-v9.css?v=20261005-v10">
 <link rel="stylesheet" href="css/sala-v10.css?v=20261012-v16">
+<link rel="stylesheet" href="css/sala-v20.css?v=20261013-v20">
 </head>
 <body>
 <div class="meeting-app">
@@ -26,7 +27,8 @@
         <div class="meeting-actions">
             <span class="meeting-pill" id="meetingTimer">00:00:00</span>
             <span class="meeting-pill" id="contadorParticipantes">0 participantes</span>
-            <button type="button" class="meeting-btn secondary" id="btnVolverProyecto">Volver al proyecto</button>
+            <button type="button" class="meeting-btn secondary" id="btnVolverProyecto">Navegar por la Oficina</button>
+            <button type="button" class="meeting-btn" id="btnRestaurarSala" hidden>Ampliar llamada</button>
         </div>
     </header>
 
@@ -34,7 +36,14 @@
     <p class="meeting-device-alert" id="avisoMedios" role="alert" hidden></p>
     <main class="meeting-main">
         <section class="meeting-stage" aria-label="Videollamada de proyecto">
-            <div id="jitsiContainer" class="jitsi-container rtc-grid"></div>
+            <div class="sala-distribucion">
+                <section class="sala-alumnos" aria-label="Participantes"><h2>Participantes</h2><div id="jitsiContainer" class="jitsi-container rtc-grid"></div></section>
+                <section class="sala-presentacion" aria-label="Presentación y participante destacado">
+                    <div class="sala-presentacion-titulo"><strong id="tituloPresentacion">Vista principal</strong><button id="btnVistaGaleria" type="button" class="meeting-btn secondary" aria-pressed="false">Galería</button></div>
+                    <div id="escenarioPrincipal"><video id="videoPrincipal" autoplay playsinline muted></video><div id="avatarPrincipal" class="sala-avatar-principal">JJM</div><p id="nombrePrincipal">La reunión aparecerá aquí</p></div>
+                    <div id="reaccionesSala" aria-live="polite"></div>
+                </section>
+            </div>
 
             <div class="meeting-loading" id="meetingLoading">
                 <div class="meeting-spinner" aria-hidden="true"></div>
@@ -45,6 +54,13 @@
 
 
         </section>
+
+        <aside class="sala-chat" id="panelChatSala" hidden aria-label="Chat de la reunión">
+            <header><h2>Chat de la reunión</h2><button id="btnCerrarChat" class="meeting-btn secondary" type="button" aria-label="Cerrar chat">✕</button></header>
+            <p class="sala-ayuda">Últimos 100 mensajes de esta sala. Se conservan mientras la sala está activa.</p>
+            <div id="mensajesSala" role="log" aria-label="Mensajes" aria-live="polite"></div>
+            <form id="formChatSala"><label for="textoChatSala">Mensaje</label><textarea id="textoChatSala" maxlength="2000" rows="3" placeholder="Escribe para todos…" required></textarea><button class="meeting-btn" id="btnEnviarChat" type="submit">Enviar</button></form>
+        </aside>
 
         <aside class="recordings-panel" id="panelGrabaciones" hidden>
             <div class="recordings-head">
@@ -63,7 +79,7 @@
             </div>
 
             <div class="recording-help">
-                <strong>Tu conexión</strong><p>La sala usa tu cuenta de JJM. Activa cámara y micrófono desde la barra de controles de la llamada.</p><button id="btnEscuchar" type="button" class="meeting-btn">Activar audio</button><button id="btnReconectar" type="button" class="meeting-btn secondary">Reconectar</button></div>
+                <strong>Tu conexión</strong><p>La sala usa tu cuenta de JJM. Activa cámara y micrófono desde la barra de controles de la llamada.</p><button id="btnReconectar" type="button" class="meeting-btn secondary">Reconectar</button></div>
 
             <div data-grabaciones-sala="" data-grabaciones-auto="false"><button type="button" class="meeting-btn secondary" id="actualizarGrabaciones">↻ Actualizar videos</button><p id="avisoGrabaciones" role="status" hidden></p><div id="grabacionesServidor" aria-live="polite"></div></div>
 <div id="listaGrabaciones" class="recordings-list">
@@ -79,6 +95,12 @@
             <button id="btnPantalla" class="call-control" type="button" aria-pressed="false" disabled>Compartir pantalla</button>
         </div>
         <div class="meeting-controls-tools">
+            <button id="btnEscuchar" type="button" class="meeting-btn secondary">Activar audio</button>
+            <button type="button" class="meeting-btn secondary" id="btnManoSala" aria-pressed="false">✋ Levantar la mano</button>
+            <button type="button" class="meeting-btn secondary" id="btnChatSala" aria-expanded="false" aria-controls="panelChatSala">Chat <span id="chatNoLeidos"></span></button>
+            <button type="button" class="meeting-btn secondary" id="btnReaccionesSala" aria-expanded="false" aria-controls="opcionesReacciones">Reacciones</button>
+            <button type="button" class="meeting-btn secondary" id="btnFondosSala" aria-expanded="false" aria-controls="opcionesFondos">Fondos</button>
+            <button type="button" class="meeting-btn secondary" id="btnCapturasSala" aria-expanded="false" aria-controls="opcionesCapturas">📷 Fotos y capturas</button>
             <button type="button" class="meeting-btn record" id="btnGrabar">● Grabar</button>
             <button type="button" class="meeting-btn warning" id="btnDetenerGrabacion" hidden>■ Detener grabación</button>
             <button type="button" class="meeting-btn secondary" id="btnPanelGrabaciones" aria-expanded="false" aria-controls="panelGrabaciones">Grabaciones</button>
@@ -86,17 +108,24 @@
             <button type="button" class="meeting-btn hangup" id="btnColgarReunion">Salir de la llamada</button>
             <button type="button" class="meeting-btn danger" id="btnFinalizarReunion" hidden>Finalizar para todos</button>
         </div>
+        <button id="btnSalirMini" type="button" class="meeting-btn hangup" hidden>Colgar</button>
     </nav>
     <footer class="meeting-footer">
         <span id="estadoReunion">Comprobando reunión...</span>
         <span class="meeting-provider">Sala protegida · JJM Oficina de Proyectos</span>
     </footer>
 </div>
+<div id="opcionesReacciones" class="sala-opciones" hidden><h2>Reaccionar</h2><div class="sala-emojis"><button data-reaccion="👍" aria-label="Me gusta">👍</button><button data-reaccion="👏" aria-label="Aplausos">👏</button><button data-reaccion="❤️" aria-label="Corazón">❤️</button><button data-reaccion="😂" aria-label="Risa">😂</button><button data-reaccion="🎉" aria-label="Celebrar">🎉</button><button data-reaccion="🤔" aria-label="Pensando">🤔</button></div></div>
+<div id="opcionesFondos" class="sala-opciones" hidden><h2>Fondo de tu cámara</h2><label for="fondoSala">Selecciona un fondo</label><select id="fondoSala"><option value="ninguno">Sin efecto</option><option value="desenfoque">Desenfocar fondo</option><option value="oficina">Oficina JJM</option><option value="azul">Azul</option><option value="bosque">Verde</option><option value="personalizado">Imagen propia</option></select><label for="imagenFondoSala">Imagen propia (JPG, PNG o WebP, hasta 5 MB)</label><input id="imagenFondoSala" type="file" accept="image/jpeg,image/png,image/webp"><p id="estadoFondoSala" role="status">Activa tu cámara para aplicar el efecto.</p></div>
+<div id="opcionesCapturas" class="sala-opciones" hidden><h2>Fotos y capturas</h2><p>La imagen se descarga en tu equipo. Al capturar la reunión se avisa a todos los participantes.</p><button id="btnFotoCamara" class="meeting-btn" type="button">Tomar foto con mi cámara</button><button id="btnFotoReunion" class="meeting-btn secondary" type="button">Capturar reunión y presentación</button><p id="estadoCapturaSala" role="status"></p></div>
+<iframe id="oficinaDuranteLlamada" title="Oficina de Proyectos durante la llamada" hidden></iframe>
 
 <script src="js/api-config.js?v=20261005-v10"></script>
-<script src="js/sala-webrtc.js?v=20261012-v16"></script>
+<script src="js/sala-webrtc.js?v=20261013-v20"></script>
+<script src="js/sala-fondos.js?v=20261013-v20"></script>
+<script src="js/sala-experiencia.js?v=20261013-v20"></script>
 <script src="js/grabaciones.js?v=20261005-v10"></script>
-<script src="js/reunion.js?v=20261012-v16"></script>
+<script src="js/reunion.js?v=20261013-v20"></script>
 <script src="js/ardia-global.js?v=20261005-v10"></script>
 </body>
 </html>

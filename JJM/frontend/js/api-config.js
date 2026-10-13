@@ -122,7 +122,23 @@
         return null;
     }
     // Todas las páginas usan esta configuración: la presencia sigue al navegar.
+    // La Oficina se abre dentro de la llamada: no reemplazar el documento que conserva sus medios.
+    window.abrirSalaPMO=function(url){
+        if(window.PMOLlamadaActiva?.()){window.PMORestaurarLlamada?.();return;}
+        if(window.parent!==window){window.parent.postMessage({tipo:'pmo:volver-llamada'},window.location.origin);return;}
+        window.location.href=url;
+    };
+    if (window.parent !== window && typeof document !== 'undefined' && document.addEventListener) {
+        document.addEventListener('click',function(evento){
+            const enlace=evento.target.closest?.('a[href]');if(!enlace)return;
+            let destino;try{destino=new URL(enlace.href,window.location.href);}catch(_){return;}
+            if(destino.origin===window.location.origin && destino.pathname.endsWith('/reunion.html')){
+                evento.preventDefault();window.parent.postMessage({tipo:'pmo:volver-llamada'},window.location.origin);
+            }
+        },true);
+    }
     if (typeof document !== "undefined" && document.createElement && document.head) {
+        window.PMOArdiaVozPromesa=new Promise(resolve=>{const v=document.createElement('script');v.src='js/ardia-voz.js?v=20261013-v20';v.onload=()=>resolve(true);v.onerror=()=>resolve(false);document.head.appendChild(v);});
         const asistencia = document.createElement("script");
         asistencia.src = "js/asistencia-automatica.js?v=20261012-v18";
         document.head.appendChild(asistencia);
@@ -133,5 +149,6 @@
         const automatizaciones = document.createElement("script");
         automatizaciones.src = "js/automatizaciones-global.js?v=20261012-v19";
         document.head.appendChild(automatizaciones);
+        const avisosReuniones=document.createElement('script');avisosReuniones.src='js/reuniones-avisos.js?v=20261013-v20';document.head.appendChild(avisosReuniones);
     }
 })();

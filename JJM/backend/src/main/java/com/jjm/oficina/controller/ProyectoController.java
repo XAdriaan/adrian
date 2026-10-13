@@ -15,6 +15,7 @@ import com.jjm.oficina.repositorio.ProyectoRepository;
 import com.jjm.oficina.repositorio.UsuarioRepository;
 import com.jjm.oficina.servicio.BitacoraService;
 import com.jjm.oficina.servicio.CatalogoProyectosSepDic2026Service;
+import com.jjm.oficina.servicio.SeparacionProyectosService;
 
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
@@ -36,6 +37,7 @@ import java.util.Set;
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 public class ProyectoController {
 
+    private final SeparacionProyectosService separacion;
     private final ProyectoRepository proyectoRepository;
     private final OrganizacionRepository organizacionRepository;
     private final MiembroEquipoRepository miembroEquipoRepository;
@@ -100,8 +102,10 @@ public class ProyectoController {
             FaseProyectoRepository faseProyectoRepository,
             UsuarioRepository usuarioRepository,
             BitacoraService bitacoraService,
-            CatalogoProyectosSepDic2026Service catalogoProyectosSepDic2026Service
+            CatalogoProyectosSepDic2026Service catalogoProyectosSepDic2026Service,
+            SeparacionProyectosService separacion
     ) {
+        this.separacion=separacion;
         this.proyectoRepository = proyectoRepository;
         this.organizacionRepository = organizacionRepository;
         this.miembroEquipoRepository = miembroEquipoRepository;
@@ -133,6 +137,7 @@ public class ProyectoController {
                     .body(respuesta);
         }
 
+        separacion.sincronizarParaUsuario(usuario.getId());
         List<Proyecto> proyectos;
 
         if (esAdministrador(usuario)) {
@@ -167,6 +172,7 @@ public class ProyectoController {
             respuesta.put("tipoAcceso", "proyectos_asignados");
         }
 
+        proyectos=SeparacionProyectosService.visibles(proyectos);
         respuesta.put("estado", "correcto");
         respuesta.put("total", proyectos.size());
 
@@ -833,6 +839,8 @@ public class ProyectoController {
         Map<String, Object> respuesta = new LinkedHashMap<>();
 
         respuesta.put("id", proyecto.getId());
+        respuesta.put("historialIntegradoId",separacion.origenDe(proyecto));
+        respuesta.put("etiquetaCorta",catalogoProyectosSepDic2026Service.obtenerEtiquetaCorta(proyecto));
         respuesta.put("idOrganizacion", proyecto.getIdOrganizacion());
         respuesta.put("idResponsable", proyecto.getIdResponsable());
 

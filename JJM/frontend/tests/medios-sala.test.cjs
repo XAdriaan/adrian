@@ -3,7 +3,7 @@ function entorno(getUserMedia){
  const elems={},el=id=>elems[id]||(elems[id]={dataset:{},disabled:false,hidden:false,setAttribute(n,v){this[n]=v},querySelector:()=>null});
  const ctx=vm.createContext({window:{apiUrl:v=>v,location:{search:'?general=1'}},document:{getElementById:el,addEventListener(){}},navigator:{mediaDevices:{getUserMedia}},URLSearchParams,setTimeout,clearTimeout,console});
  vm.runInContext(fs.readFileSync(path.join(__dirname,'../js/reunion.js'),'utf8'),ctx);
- ctx.sala={activa:true,generacion:1,medios:{audio:null,video:null},actualizarVistaLocal(){},async cambiar(tipo,pista){this.medios[tipo]=pista}};
+ ctx.sala={activa:true,generacion:1,medios:{audio:null,video:null,pantalla:null},estadoLocal:{},actualizarVistaLocal(){},async publicarEstado(c){Object.assign(this.estadoLocal,c);},async cambiar(tipo,pista){this.medios[tipo]=pista}};
  vm.runInContext('rtc=sala',ctx);
  return{ctx,el,run:s=>vm.runInContext(s,ctx)};
 }
@@ -35,12 +35,16 @@ test('la cámara utiliza el dispositivo elegido y muestra su estado al recibir u
  e.el('selectorCamara').value='camara-usb';await e.run("activarMedio('video',btnCamara)");
  assert.equal(solicitud.video.deviceId.exact,'camara-usb');assert.equal(e.el('btnCamara')['aria-pressed'],'true');assert.equal(e.el('btnCamara').disabled,false);
 });
-test('compartir pantalla está disponible para el participante y al detener recupera su cámara',async()=>{
+test('compartir pantalla mantiene la cámara y al detener libera únicamente la presentación',async()=>{
  const e=entorno(),camara=track('video'),pantalla=track('video');
  e.ctx.camara=camara;e.run('camaraPropia=camara;rtc.medios.video=camara');
  e.ctx.navigator.mediaDevices.getDisplayMedia=async()=>({getVideoTracks:()=>[pantalla],getTracks:()=>[pantalla]});
- await e.run('compartirPantalla()');assert.equal(e.ctx.sala.medios.video,pantalla);assert.equal(e.el('btnPantalla')['aria-pressed'],'true');assert.equal(e.el('btnCamara').disabled,true);
+ await e.run('compartirPantalla()');assert.equal(e.ctx.sala.medios.pantalla,pantalla);assert.equal(e.ctx.sala.medios.video,camara);assert.equal(e.el('btnPantalla')['aria-pressed'],'true');assert.equal(e.el('btnCamara').disabled,false);
  await e.run('compartirPantalla()');assert.equal(pantalla.readyState,'ended');assert.equal(e.ctx.sala.medios.video,camara);assert.equal(e.el('btnPantalla')['aria-pressed'],'false');assert.equal(e.el('btnCamara').disabled,false);
+});
+test('un segundo presentador recibe un aviso y su captura se detiene sin apagar la cámara',async()=>{
+ const e=entorno(),camara=track('video'),pantalla=track('video');e.ctx.camara=camara;e.run('camaraPropia=camara;rtc.medios.video=camara');e.ctx.sala.publicarEstado=async()=>{throw new Error('Otra persona está presentando.');};
+ e.ctx.navigator.mediaDevices.getDisplayMedia=async()=>({getVideoTracks:()=>[pantalla],getTracks:()=>[pantalla]});await e.run('compartirPantalla()');assert.equal(pantalla.readyState,'ended');assert.equal(camara.readyState,'live');assert.equal(e.ctx.sala.medios.pantalla,null);assert.match(e.el('avisoMedios').textContent,/Otra persona/);
 });
 
 test('silenciar el micrófono también silencia su copia de grabación sin detener la pista de la sala',async()=>{

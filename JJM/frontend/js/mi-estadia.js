@@ -1,5 +1,5 @@
 const API_MI_ESTADIA = window.apiUrl('/api/seguimiento-estadia/mi-seguimiento');
-const estadia = { seguimiento: {}, datos: {}, registros: [], archivos: [], asistenciaLista: false, consultaAsistencia: 0 };
+const estadia = { seguimiento: {}, datos: {}, registros: [], archivos: [], calendario:[], asistenciaLista: false, consultaAsistencia: 0 };
 const elEstadia = id => document.getElementById(id);
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -13,10 +13,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.addEventListener('hashchange', mostrarSeccionEstadia);
     mostrarSeccionEstadia();
     elEstadia('mesAsistencia').addEventListener('change', cargarAsistencia);
+    elEstadia('proyectoAsistencia')?.addEventListener('change',cargarAsistencia);
     elEstadia('actualizarEstadia').addEventListener('click', actualizarEstadia);
     elEstadia('descargarAsistencia').addEventListener('click', descargarAsistencia);
     elEstadia('formFoEst03').addEventListener('submit', subirFoEst03);
     await actualizarEstadia();
+    try{const r=await obtenerEstadiaJSON(window.apiUrl('/api/proyectos'));elEstadia('proyectoAsistencia').innerHTML='<option value="">Calendario general</option>'+(r.proyectos||[]).map(p=>`<option value="${Number(p.id)}">${escapeEstadia(p.nombre)}</option>`).join('');}catch(_){}
 });
 
 function mostrarSeccionEstadia() {
@@ -90,8 +92,11 @@ async function cargarAsistencia() {
     try {
         const [anio, mes] = periodo.split('-');
         const d = await obtenerEstadiaJSON(window.apiUrl(`/api/registros-horas/mi-asistencia?anio=${anio}&mes=${mes}`));
+        const proyecto=elEstadia('proyectoAsistencia')?.value;
+        const calendario=proyecto?await obtenerEstadiaJSON(window.apiUrl(`/api/canales/proyectos/${Number(proyecto)}/calendario?mes=${periodo}`)):{dias:[]};
         if (consulta !== estadia.consultaAsistencia) return;
         estadia.registros = (Array.isArray(d.registros) ? d.registros : []).filter(r => String(r.fecha || '').startsWith(periodo));
+        estadia.calendario=calendario.dias||[];
         estadia.asistenciaLista = true;
         elEstadia('mensajeAsistencia').hidden = true;
         estadia.horasAprobadasCorte=Number(d.horasAprobadasCorte||0);
@@ -100,18 +105,18 @@ async function cargarAsistencia() {
         if (consulta !== estadia.consultaAsistencia) return;
         estadia.registros = [];
         elEstadia('resumenAsistencia').innerHTML = '';
-        elEstadia('tablaAsistenciaBody').innerHTML = '<tr><td colspan="6">No se pudo actualizar la asistencia.</td></tr>';
+        elEstadia('tablaAsistenciaBody').innerHTML = '<tr><td colspan="7">No se pudo actualizar la asistencia.</td></tr>';
         mensajeEstadia('mensajeAsistencia', e.message, 'error');
     } finally { if (consulta === estadia.consultaAsistencia) elEstadia('descargarAsistencia').disabled = !estadia.asistenciaLista; }
 }
 
 function renderizarAsistencia() {
-    const registros = window.EstadiaFormatos.agruparRegistros(estadia.registros);
-    const dias = new Set(registros.map(r => String(r.fecha).slice(0,10))).size;
+    const registros = window.EstadiaFormatos.filasAsistencia({mes:elEstadia('mesAsistencia').value,registros:estadia.registros,datos:estadia.datos,calendario:estadia.calendario});
+    const dias = new Set(estadia.registros.filter(r=>String(r.fecha).slice(0,7)===elEstadia('mesAsistencia').value).map(r => String(r.fecha).slice(0,10))).size;
     const horas = registros.reduce((s,r) => s + numeroEstadia(r.horasTrabajadas), 0);
     const resumen = window.EstadiaFormatos.resumenAsistencia({mes:elEstadia('mesAsistencia').value,registros:estadia.registros,horasAprobadasCorte:estadia.horasAprobadasCorte});
     elEstadia('resumenAsistencia').innerHTML = `<div class="metric"><small>Días registrados</small><strong>${dias}</strong></div><div class="metric"><small>Horas del mes</small><strong>${resumen.horasMes.toFixed(2)} h</strong></div><div class="metric"><small>Aprobadas del mes</small><strong>${resumen.aprobadasMes.toFixed(2)} h</strong></div>${resumen.tieneRegularizacion?`<div class="metric"><small>Aprobadas del 01/09 al 12/10/2026</small><strong>${resumen.aprobadasCorte.toFixed(2)} h</strong></div><p>Regularización administrativa: horario reconocido de 07:00 a 17:00. Las conexiones reales se conservan en Control de horas.</p>`:''}`;
-    elEstadia('tablaAsistenciaBody').innerHTML = registros.length ? registros.map(r => `<tr><td>${escapeEstadia(fechaEstadia(r.fecha))}</td><td>${escapeEstadia(horaEstadia(r.horaEntrada))}</td><td>${escapeEstadia(horaEstadia(r.horaSalida))}</td><td>${numeroEstadia(r.horasTrabajadas).toFixed(2)} h</td><td>${escapeEstadia(incidenteEstadia(r.incidente))}</td><td><span class="pmo-status ${r.estadoValidacion === 'Aprobado' ? 'active' : 'pending'}">${escapeEstadia(r.estadoValidacion || 'Pendiente')}</span></td></tr>`).join('') : '<tr><td colspan="6">Todavía no hay pases de lista para este mes. Puedes descargar el formato para completar sus firmas.</td></tr>';
+    elEstadia('tablaAsistenciaBody').innerHTML = registros.length ? registros.map(r => `<tr><td>${escapeEstadia(fechaEstadia(r.fecha))}</td><td>${r.laboral?'Laboral':'No laboral'}</td><td>${escapeEstadia(horaEstadia(r.horaEntrada))}</td><td>${escapeEstadia(horaEstadia(r.horaSalida))}</td><td>${r.horasTrabajadas==null?'—':numeroEstadia(r.horasTrabajadas).toFixed(2)+' h'}</td><td>${escapeEstadia(r.motivoDia||incidenteEstadia(r.incidente))}</td><td><span class="pmo-status ${r.estadoValidacion === 'Aprobado' ? 'active' : 'pending'}">${escapeEstadia(r.estadoValidacion || 'Sin registro')}</span></td></tr>`).join('') : '<tr><td colspan="7">Este mes no contiene días de tu periodo de estadía.</td></tr>';
 }
 
 async function descargarAsistencia() {
@@ -122,6 +127,7 @@ async function descargarAsistencia() {
         if(!estadia.asistenciaLista)throw new Error('Actualiza la asistencia antes de descargar el formato.');
         await window.EstadiaFormatos.descargarAsistencia({ mes: elEstadia('mesAsistencia').value,
             horasAprobadasCorte:estadia.horasAprobadasCorte,
+            calendario:estadia.calendario,
             registros: estadia.registros, datos: { ...estadia.datos, asesorEmpresarial: estadia.seguimiento.asesorNombre || estadia.datos.asesorEmpresarial },
             nombre: estadia.datos.nombreCompleto || nombreEstadia(usuarioEstadia()) });
     } catch (e) { mensajeEstadia('mensajeAsistencia', e.message || 'No se pudo generar el PDF.', 'error'); }

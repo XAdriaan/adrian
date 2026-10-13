@@ -22,6 +22,7 @@ const btnPantalla = document.getElementById("btnPantalla");
 let proyectoActual = null, reunionActual = null, rtc = null, temporizador = null;
 let saliendo = false, conectadoSala = false, grabando = false;
 let usuarioActivo = null, tokenSesion = null, pantallaCompartida = null, camaraPropia = null;
+let experienciaSala=null,fondosSala=null;
 let grabacionRecorder = null, grabacionChunks = [], grabacionPantallaStream = null;
 let grabacionMicrofonoStream = null, grabacionAudioContext = null, grabacionStreamFinal = null;
 let grabacionDeteniendose = false, grabacionFinalizada = Promise.resolve();
@@ -44,18 +45,22 @@ function actualizarMediosSala() {
     const video = !!(rtc?.activa && camaraPropia?.readyState === 'live' && camaraPropia.enabled);
     const pantalla = !!(rtc?.activa && pantallaCompartida?.getVideoTracks().some(t=>t.readyState==='live'));
     pintarControlSala(btnMicrofono, 'audio', audio, mediosPendientes.has('audio') ? 'Permiso de micrófono…' : audio ? 'Micrófono activo' : 'Micrófono apagado');
-    pintarControlSala(btnCamara, 'video', video && !pantalla, mediosPendientes.has('video') ? 'Permiso de cámara…' : pantalla ? 'Cámara en pausa' : video ? 'Cámara encendida' : 'Cámara apagada');
+    pintarControlSala(btnCamara, 'video', video, mediosPendientes.has('video') ? 'Permiso de cámara…' : video ? 'Cámara encendida' : 'Cámara apagada');
     pintarControlSala(btnPantalla, 'pantalla', pantalla, mediosPendientes.has('pantalla') ? 'Elige qué compartir…' : pantalla ? 'Dejar de compartir' : 'Compartir pantalla');
     btnMicrofono.disabled = !rtc?.activa || mediosPendientes.has('audio');
-    btnCamara.disabled = !rtc?.activa || pantalla || mediosPendientes.has('video');
-    if (pantalla) btnCamara.setAttribute('aria-label', 'Cámara en pausa mientras compartes pantalla');
+    btnCamara.disabled = !rtc?.activa || mediosPendientes.has('video');
     btnPantalla.disabled = !rtc?.activa || mediosPendientes.has('pantalla') || mediosPendientes.has('video');
     const estado = document.getElementById('estadoDispositivos');
     if (estado) estado.textContent = `${audio ? 'Micrófono activo' : 'Micrófono apagado'} · ${pantalla ? 'Compartiendo pantalla' : video ? 'Cámara encendida' : 'Cámara apagada'}`;
     grabacionMicrofonoStream?.getAudioTracks().forEach(t=>t.enabled=audio);
     rtc?.actualizarVistaLocal();
     const tarjeta=jitsiContainer.querySelector('[data-propia]');
-    if(tarjeta) tarjeta.dataset.pantalla=String(pantalla);
+    if(tarjeta){tarjeta.dataset.audio=String(audio);tarjeta.dataset.mano=String(!!rtc?.estadoLocal.mano);}
+    experienciaSala?.actualizar();
+}
+async function publicarMediosSala(){
+    if(!rtc?.activa || !rtc.publicarEstado)return;
+    await rtc.publicarEstado({audio:!!(rtc.medios.audio?.readyState==='live'&&rtc.medios.audio.enabled),video:!!(camaraPropia?.readyState==='live'&&camaraPropia.enabled),pantalla:!!pantallaCompartida});
 }
 function avisoMediosSala(texto = '') {
     const aviso = document.getElementById('avisoMedios');
@@ -108,10 +113,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         idReunion = reunionActual.id;
         if (!esSalaGeneral) actualizarReunionEnURL(idReunion);
         document.getElementById("tituloSala").textContent = esSalaGeneral ? "Sala general" : "Reunión de proyecto";
-        btnVolverProyecto.textContent = esSalaGeneral ? "Volver a videollamadas" : "Volver al proyecto";
+        btnVolverProyecto.textContent = "Minimizar y navegar";
         btnFinalizarReunion.hidden = !reunionActual.puedeFinalizar;
         rtc = new window.PMOSalaWebRTC({sala:esSalaGeneral?'general':String(idReunion),contenedor:jitsiContainer,
-            estado:estadoReunion,participantes:contadorParticipantes,alCerrar:restablecerControles});
+            estado:estadoReunion,participantes:contadorParticipantes,alCerrar:restablecerControles,
+            alActualizar:()=>experienciaSala?.actualizar(),alInteraccion:e=>experienciaSala?.interaccion(e)});
+        experienciaSala=new window.PMOExperienciaSala({rtc});
+        window.PMOLlamadaActiva=()=>!!rtc?.activa;
+        window.PMORestaurarLlamada=()=>{experienciaSala.restaurar();estadoReunion.textContent='Tu llamada sigue activa. Sal de ella antes de entrar a otra sala.';};
+        fondosSala=new window.PMOFondosSala({alCambiar:async pista=>{if(rtc?.activa){await rtc.cambiar('video',pista);actualizarMediosSala();}},alError:e=>{avisoMediosSala(e.message);document.getElementById('fondoSala').value='ninguno';}});
         meetingLoadingMessage.textContent = (esSalaGeneral ? "Todos los usuarios con sesión pueden entrar." : "Acceso exclusivo para administración y miembros asignados al proyecto.")
             + " Entras con cámara y micrófono apagados. Después actívalos desde la barra de controles.";
         btnEntrarSala.hidden = false; estadoReunion.textContent = "Sala lista. Pulsa Entrar a la sala.";
@@ -136,6 +146,10 @@ async function cargarProyecto() {
     proyectoActual = d.proyecto; nombreProyectoReunion.textContent = proyectoActual.nombre || "Proyecto";
 }
 function restablecerControles() {
+    experienciaSala?.restaurar();meetingLoading?.classList.remove('hidden');
+    if(meetingLoadingMessage)meetingLoadingMessage.textContent='La llamada se cerró. Pulsa Entrar a la sala para volver a intentarlo.';
+    const mano=document.getElementById('btnManoSala');if(mano){mano.setAttribute('aria-pressed','false');mano.textContent='✋ Levantar la mano';}
+    fondosSala?.detener();
     camaraPropia?.stop(); camaraPropia=null;
     pantallaCompartida?.getTracks().forEach(t=>t.stop()); pantallaCompartida=null;
     conectadoSala = false; btnEntrarSala.hidden = false; btnEntrarSala.disabled = false;
@@ -144,9 +158,11 @@ function restablecerControles() {
 }
 function configurarEventos() {
     btnEntrarSala.addEventListener('click', async () => {
+        experienciaSala?.activarAudio().catch(()=>{});
         btnEntrarSala.disabled = true;
         try { await rtc.entrar(); if (!rtc.activa) return; conectadoSala=true; ocultarCarga(); btnEntrarSala.hidden=true;
             actualizarMediosSala(); actualizarBotonesGrabacion();
+            experienciaSala?.activarAudio().catch(()=>{});
             if (!esSalaGeneral) { const r = await fetch(`${API_REUNIONES}/${idReunion}/unirse`,{method:'POST'});
                 if (!r.ok) { const d=await r.json().catch(()=>({})); throw new Error(d.mensaje || 'No se pudo confirmar la entrada al proyecto.'); } }
         } catch(e) { await rtc.salir(); restablecerControles(); estadoReunion.textContent=e.message; }
@@ -156,32 +172,38 @@ function configurarEventos() {
     btnCamara.addEventListener('click',()=>activarMedio('video',btnCamara));
     const selectorCamara=document.getElementById('selectorCamara');
     selectorCamara?.addEventListener('change',async()=>{
-        if(!rtc?.activa||mediosPendientes.has('video')||pantallaCompartida)return;
+        if(!rtc?.activa||mediosPendientes.has('video'))return;
+        fondosSala?.detener();
         if(camaraPropia){camaraPropia.stop();camaraPropia=null;rtc.medios.video=null;rtc.actualizarVistaLocal();}
         await activarMedio('video',btnCamara);
     });
     navigator.mediaDevices?.addEventListener?.('devicechange',actualizarCamarasDisponibles);
     actualizarCamarasDisponibles();
     btnPantalla.addEventListener('click',compartirPantalla);
-    document.getElementById('btnEscuchar').addEventListener('click',()=>jitsiContainer.querySelectorAll('video').forEach(v=>v.play().catch(()=>{})));
+    document.getElementById('btnEscuchar').addEventListener('click',()=>{jitsiContainer.querySelectorAll('video').forEach(v=>v.play().catch(()=>{}));experienciaSala?.activarAudio().catch(()=>{});});
+    document.getElementById('fondoSala').addEventListener('change',aplicarFondoSala);
+    document.getElementById('imagenFondoSala').addEventListener('change',async e=>{
+        try{await fondosSala.cargarImagen(e.target.files[0]);document.getElementById('fondoSala').value='personalizado';await aplicarFondoSala();}catch(error){document.getElementById('estadoFondoSala').textContent=error.message;}
+    });
     btnReconectar.addEventListener('click',async()=>{await rtc.salir(); restablecerControles(); btnEntrarSala.click();});
     btnCopiarEnlace.addEventListener('click',copiarInvitacion); btnColgarReunion.addEventListener('click',colgarVideollamada);
     btnVolverProyecto.addEventListener('click',volverAlProyecto); btnFinalizarReunion.addEventListener('click',finalizarReunion);
     btnGrabar.addEventListener('click',iniciarGrabacionLocal); btnDetenerGrabacion.addEventListener('click',detenerGrabacionLocal);
     document.getElementById('btnPanelGrabaciones').addEventListener('click', () => {
         const panel=document.querySelector('.recordings-panel'), b=document.getElementById('btnPanelGrabaciones');
+        experienciaSala?.chat(false);
         panel.hidden=!panel.hidden; b.setAttribute('aria-expanded',String(!panel.hidden));
         document.querySelector('.meeting-main').classList.toggle('con-panel',!panel.hidden);
     });
     window.addEventListener('pagehide',()=>{registrarSalida({keepalive:true});liberarJitsi();});
 }
 async function activarMedio(tipo, boton) {
-    if (!rtc?.activa || mediosPendientes.has(tipo) || (tipo==='video'&&pantallaCompartida)) return;
+    if (!rtc?.activa || mediosPendientes.has(tipo)) return;
     const sala=rtc, epoca=rtc.generacion;
     mediosPendientes.add(tipo); avisoMediosSala(); actualizarMediosSala();
     try {
-        const actual=rtc.medios[tipo];
-        if (actual && actual.readyState==='live') { actual.enabled=!actual.enabled; }
+        const actual=tipo==='video'?camaraPropia:rtc.medios[tipo];
+        if (actual && actual.readyState==='live') { actual.enabled=!actual.enabled;if(tipo==='video'&&rtc.medios.video)rtc.medios.video.enabled=actual.enabled; }
         else {
             if (!navigator.mediaDevices?.getUserMedia) throw new Error('El navegador necesita HTTPS y permiso para usar cámara y micrófono.');
             let flujo;
@@ -193,27 +215,46 @@ async function activarMedio(tipo, boton) {
             const pista=tipo==='audio'?flujo.getAudioTracks()[0]:flujo.getVideoTracks()[0];
             if(!pista){flujo.getTracks().forEach(t=>t.stop());throw new Error('El dispositivo no entregó una señal. Vuelve a intentarlo.');}
             if(tipo==='video') camaraPropia=pista;
-            pista.addEventListener('ended',actualizarMediosSala,{once:true});
-            await sala.cambiar(tipo,pista);
+            pista.addEventListener('ended',()=>{
+                actualizarMediosSala();publicarMediosSala().catch(()=>{});
+                if(tipo==='audio'&&pista.enabled&&sala.activa&&sala.generacion===epoca)setTimeout(()=>{
+                    if(sala.activa&&sala.generacion===epoca&&sala.medios.audio===pista){estadoReunion.textContent='Recuperando el micrófono…';activarMedio('audio',btnMicrofono);}
+                },700);
+            },{once:true});
+            if(tipo==='video' && fondosSala){
+                try{await fondosSala.iniciar(pista,document.getElementById('fondoSala').value);}catch(e){avisoMediosSala(e.message);await sala.cambiar('video',pista);}
+            }else await sala.cambiar(tipo,pista);
             if(tipo==='video')actualizarCamarasDisponibles();
         }
+        await publicarMediosSala();experienciaSala?.activarAudio().catch(()=>{});
     } catch(e) { if(sala.activa&&sala.generacion===epoca)avisoMediosSala(errorMediosSala(e,tipo)); }
     finally { mediosPendientes.delete(tipo); actualizarMediosSala(); }
+}
+async function aplicarFondoSala(){
+    const selector=document.getElementById('fondoSala'),aviso=document.getElementById('estadoFondoSala');
+    if(!camaraPropia || camaraPropia.readyState!=='live'){aviso.textContent='Activa tu cámara para aplicar el fondo seleccionado.';return;}
+    if(selector.disabled)return;selector.disabled=true;
+    try{if(selector.value==='personalizado'&&!fondosSala.imagen)throw new Error('Selecciona primero una imagen propia.');aviso.textContent='Preparando fondo…';await fondosSala.iniciar(camaraPropia,selector.value);aviso.textContent=selector.value==='ninguno'?'Cámara sin efecto.':'Fondo activo; los demás participantes verán este efecto.';}
+    catch(e){fondosSala.detener();selector.value='ninguno';if(rtc?.activa)await rtc.cambiar('video',camaraPropia);aviso.textContent=e.message;}
+    finally{selector.disabled=false;}
 }
 async function compartirPantalla() {
     if (!rtc?.activa || mediosPendientes.has('pantalla') || mediosPendientes.has('video')) return;
     if (pantallaCompartida) { const anterior=pantallaCompartida; pantallaCompartida=null; anterior.getTracks().forEach(t=>t.stop());
-        await rtc.cambiar('video',camaraPropia?.readyState==='live'?camaraPropia:null); actualizarMediosSala(); return; }
+        await rtc.cambiar('pantalla',null);await publicarMediosSala(); actualizarMediosSala(); return; }
     const sala=rtc, epoca=rtc.generacion; mediosPendientes.add('pantalla'); avisoMediosSala(); actualizarMediosSala();
     try {
         if (!navigator.mediaDevices?.getDisplayMedia) throw new Error('Compartir pantalla requiere un navegador de escritorio compatible y HTTPS.');
         const flujo=await navigator.mediaDevices.getDisplayMedia({video:true,audio:false});
         if(!sala.activa||sala.generacion!==epoca){flujo.getTracks().forEach(t=>t.stop());return;}
-        pantallaCompartida=flujo; const pista=flujo.getVideoTracks()[0];
+        const pista=flujo.getVideoTracks()[0];
+        try{await sala.publicarEstado({pantalla:true});}catch(e){flujo.getTracks().forEach(t=>t.stop());throw e;}
+        if(!sala.activa||sala.generacion!==epoca){flujo.getTracks().forEach(t=>t.stop());return;}
+        pantallaCompartida=flujo;
         pista.addEventListener('ended',async()=>{if(pantallaCompartida!==flujo)return;pantallaCompartida=null;
-            if(sala.activa&&sala.generacion===epoca)await sala.cambiar('video',camaraPropia?.readyState==='live'?camaraPropia:null);
+            if(sala.activa&&sala.generacion===epoca){await sala.cambiar('pantalla',null);await publicarMediosSala().catch(()=>{});}
             actualizarMediosSala();},{once:true});
-        await sala.cambiar('video',pista);
+        await sala.cambiar('pantalla',pista);
     } catch(e) { if(sala.activa&&sala.generacion===epoca)avisoMediosSala(errorMediosSala(e,'pantalla')); }
     finally { mediosPendientes.delete('pantalla'); actualizarMediosSala(); }
 }
@@ -499,6 +540,7 @@ async function finalizarReunion() {
 }
 
 async function volverAlProyecto() {
+    if(rtc?.activa){experienciaSala?.minimizar(idProyecto?`detalle-proyecto.html?id=${encodeURIComponent(idProyecto)}`:'dashboard.html');return;}
     if (!confirm("¿Deseas salir de la reunión y volver al proyecto?")) return;
     if (grabando) await detenerGrabacionLocal();
     saliendo = true;
@@ -525,6 +567,7 @@ function volverAlProyectoSinConfirmar() {
 }
 
 function liberarJitsi() {
+    fondosSala?.cerrar();experienciaSala?.cerrar();
     rtc?.salir(true); pantallaCompartida?.getTracks().forEach(t => t.stop());
     camaraPropia?.stop(); camaraPropia=null;
     if (grabando && grabacionRecorder?.state !== "inactive") { try { grabacionRecorder.stop(); } catch (_) {} }

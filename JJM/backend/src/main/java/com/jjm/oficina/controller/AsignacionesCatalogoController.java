@@ -15,14 +15,17 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/asignaciones-catalogo")
 public class AsignacionesCatalogoController {
+    private final com.jjm.oficina.servicio.SeparacionProyectosService separacion;
     private final UsuarioRepository usuarios;
     private final PermisosService permisos;
     private final CatalogoProyectosSepDic2026Service catalogo;
 
     public AsignacionesCatalogoController(UsuarioRepository usuarios, PermisosService permisos,
-            CatalogoProyectosSepDic2026Service catalogo) {
-        this.usuarios = usuarios; this.permisos = permisos; this.catalogo = catalogo;
+            CatalogoProyectosSepDic2026Service catalogo, com.jjm.oficina.servicio.SeparacionProyectosService separacion) {
+        this.separacion=separacion;this.usuarios = usuarios; this.permisos = permisos; this.catalogo = catalogo;
     }
+
+    private Map<String,Object> respuesta(){Map<String,Object> r=new java.util.LinkedHashMap<>(catalogo.obtenerAsignaciones());r.put("proyectosSeparados",separacion.resumen());return r;}
 
     public record AlumnoRequest(@NotNull @Positive Integer idMiembro) {}
 
@@ -37,15 +40,15 @@ public class AsignacionesCatalogoController {
 
     @GetMapping
     public ResponseEntity<Map<String, Object>> consultar(@RequestHeader(value="X-Usuario-Id", required=false) Integer id) {
-        return administrador(id) ? ResponseEntity.ok(catalogo.obtenerAsignaciones()) : denegado();
+        return administrador(id) ? ResponseEntity.ok(respuesta()) : denegado();
     }
 
     @PostMapping("/sincronizar")
     @Transactional
     public ResponseEntity<Map<String, Object>> sincronizar(@RequestHeader(value="X-Usuario-Id", required=false) Integer id) {
         if (!administrador(id)) return denegado();
-        catalogo.sincronizarCatalogo();
-        return ResponseEntity.ok(catalogo.obtenerAsignaciones());
+        catalogo.sincronizarCatalogo();separacion.sincronizar();
+        return ResponseEntity.ok(respuesta());
     }
 
     @PostMapping("/{codigo}/alumno")
@@ -54,8 +57,8 @@ public class AsignacionesCatalogoController {
             @PathVariable String codigo, @Valid @RequestBody AlumnoRequest solicitud) {
         if (!administrador(id)) return denegado();
         try {
-            catalogo.asignarAlumnoConfirmado(codigo, solicitud.idMiembro());
-            return ResponseEntity.ok(catalogo.obtenerAsignaciones());
+            catalogo.asignarAlumnoConfirmado(codigo, solicitud.idMiembro());separacion.sincronizar();
+            return ResponseEntity.ok(respuesta());
         } catch (IllegalArgumentException error) {
             return ResponseEntity.badRequest().body(Map.of("estado", "error", "mensaje", error.getMessage()));
         }

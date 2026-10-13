@@ -20,6 +20,7 @@
         {nombre:'Alumnos y proyectos',url:'asignaciones.html',claves:'alumnos proyectos asignaciones catalogo',admin:true}
     ];
     let panel, mensajes, input, accesos, boton, enviar, reconocer, widget, estado, usuario, token;
+    let vozIA=null;
     let leyendo = false, ocupado = false, ultimaRespuesta = '', gesto = false, escuchando = false, destruido = false;
     const consultas = new Set();
     function vigente() {
@@ -29,13 +30,16 @@
     }
     function destruir() {
         if(destruido)return;destruido=true;consultas.forEach(c=>c.abort());consultas.clear();
-        window.speechSynthesis?.cancel();reconocer?.abort();widget?.remove();
+        vozIA?.detener();window.speechSynthesis?.cancel();reconocer?.abort();widget?.remove();
         document.removeEventListener('keydown',teclado);window.removeEventListener('storage',cambioSesion);
         window.removeEventListener('pmo:sesion-cerrada',destruir);delete window.PMOArdia;
     }
     function cambioSesion(e){if(e.key===null||e.key==='sesionTokenPMO')vigente();}
     function hablar(texto) {
-        if(!vigente()||!leyendo||!gesto||panel.hidden||!window.speechSynthesis||!window.SpeechSynthesisUtterance)return;
+        if(!vigente()||!leyendo||!gesto||panel.hidden)return;
+        if(vozIA){vozIA.hablar(texto);return;}
+        if(window.PMOArdiaVozPromesa){estado.textContent='La conexión de voz con IA está cargando. Si tarda, actualiza la página.';return;}
+        if(!window.speechSynthesis||!window.SpeechSynthesisUtterance)return;
         try {
         window.speechSynthesis.cancel();const voz=new window.SpeechSynthesisUtterance(texto.slice(0,2000));voz.lang='es-MX';
         const voces=window.speechSynthesis.getVoices();voz.voice=voces.find(v=>/^es-MX$/i.test(v.lang))||voces.find(v=>/^es/i.test(v.lang))||null;
@@ -99,6 +103,7 @@
             partes.push(ds[1].status==='fulfilled'?(ds[1].value.seguimiento?.foEst03?'• Tu FO-EST-03 está registrado.':'• Tu FO-EST-03 está pendiente de registrar.'):'• No pude consultar tu expediente.');
             enlaces([rutas[8],rutas[5],rutas[2]]);return partes.join('\n');
         }
+        if (/reporte diario|entregas|plazo|pendiente.*reporte/.test(n)){const d=await obtener('/api/automatizaciones/mis-recordatorios');const pendientes=(d.recordatorios||[]).filter(r=>String(r.clave||'').startsWith('diario-'));enlaces([{nombre:'Canales y reporte diario',url:'canales-proyectos.html#diario'},{nombre:'Automatizaciones y seguimiento',url:'automatizaciones.html'}]);return pendientes.length?'Tienes '+pendientes.length+' alertas de entregas: '+pendientes.slice(0,3).map(r=>r.titulo+': '+r.descripcion).join('; '):'No tienes alertas pendientes de reportes diarios. Entrega tu actividad, resultado y evidencia en el canal del proyecto, de lunes a viernes antes de las 17:00. El reporte queda sujeto a revisión.';}
         if (/graba/.test(n)) {enlaces([{nombre:'Grabaciones',url:'videollamadas.html#grabaciones'},rutas[7]]);return 'Las grabaciones están en Videollamadas → Grabaciones, ordenadas por fecha. Dentro de una sala pulsa Grabar y selecciona esta pestaña con audio. Al detener se guarda el video para verlo después.';}
         if (/compartir.*pantalla|pantalla.*compartir/.test(n)) {enlaces([rutas[6],rutas[7]]);return 'Cualquier participante autorizado puede compartir pantalla. Entra a la sala, pulsa Compartir pantalla y elige una pestaña, ventana o pantalla. El botón cambia a Dejar de compartir mientras está activa. Al detener vuelve tu cámara.';}
         if (/microfono|camara|no.*(oye|escucha|ve)/.test(n)) {enlaces([rutas[7]]);return 'Dentro de la sala los botones indican Micrófono activo o apagado y Cámara encendida o apagada. Pulsa el que quieras activar y permite el acceso en el navegador. Si el permiso está bloqueado, abre el candado junto a la dirección y revisa Cámara y Micrófono. Si Windows dice que está ocupado, cierra otras aplicaciones de llamadas.';}
@@ -130,7 +135,7 @@
         finally {if(vigente()){ocupado=false;enviar.disabled=false;panel.setAttribute('aria-busy','false');if(!leyendo)estado.textContent='Lista para ayudarte';if(!panel.hidden)input.focus({preventScroll:true});}}
     }
     function abrir(desdeUsuario=true) {if(!vigente())return;panel.hidden=false;boton.setAttribute('aria-expanded','true');if(desdeUsuario){gesto=true;hablar(ultimaRespuesta);}input.focus({preventScroll:true});}
-    function cerrar() {panel.hidden=true;boton.setAttribute('aria-expanded','false');window.speechSynthesis?.cancel?.();reconocer?.abort();widget.classList.remove('hablando');boton.focus();}
+    function cerrar() {panel.hidden=true;boton.setAttribute('aria-expanded','false');vozIA?.detener();window.speechSynthesis?.cancel?.();reconocer?.abort();widget.classList.remove('hablando');boton.focus();}
     function teclado(e){if(!vigente())return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();abrir();}else if(e.key==='Escape'&&!panel.hidden)cerrar();}
     function montar() {
         if(!document.querySelector('link[href^="css/ardia-global.css"]')){const css=document.createElement('link');css.rel='stylesheet';css.href='css/ardia-global.css?v=20261005-v10';document.head.append(css);}
@@ -147,14 +152,15 @@
         for(const [titulo,pregunta]of [['Mi día','Mi resumen de hoy'],['Mi proyecto','Mi proyecto y mis tareas'],['Mis horas','Mis horas de este mes'],['Pase de lista','Mi pase de lista'],['FO-EST-03','Mi FO-EST-03'],['Mis salas','Mis salas de videollamadas'],['Compartir pantalla','Cómo compartir pantalla'],['Cámara y micrófono','Cómo activar cámara y micrófono'],['Grabaciones','Dónde veo las grabaciones']]){const b=document.createElement('button');b.type='button';b.textContent=titulo;b.addEventListener('click',()=>preguntar(pregunta));preguntas.append(b);}
         sugerencias.append(preguntas);mensajes.after(sugerencias);
         document.addEventListener('keydown',teclado);window.addEventListener('storage',cambioSesion);window.addEventListener('pmo:sesion-cerrada',destruir);window.addEventListener('pagehide',destruir,{once:true});
-        const voz=document.getElementById('ardia-voz');voz.disabled=!window.speechSynthesis||!window.SpeechSynthesisUtterance;
+        const voz=document.getElementById('ardia-voz');voz.disabled=!!window.PMOArdiaVozPromesa||!window.speechSynthesis||!window.SpeechSynthesisUtterance;
         leyendo=localStorage.getItem(`ardia-voz-${usuario.id}`)==='1';
         const actualizarVoz=()=>{voz.setAttribute('aria-pressed',String(leyendo));voz.textContent=leyendo?'Silenciar voz':'Activar voz';};actualizarVoz();
-        voz.addEventListener('click',()=>{if(!vigente())return;gesto=true;leyendo=!leyendo;localStorage.setItem(`ardia-voz-${usuario.id}`,leyendo?'1':'0');actualizarVoz();if(leyendo)hablar(ultimaRespuesta);else window.speechSynthesis?.cancel();});
+        voz.addEventListener('click',()=>{if(!vigente())return;gesto=true;leyendo=!leyendo;localStorage.setItem(`ardia-voz-${usuario.id}`,leyendo?'1':'0');actualizarVoz();if(leyendo)hablar(ultimaRespuesta);else {vozIA?.detener();window.speechSynthesis?.cancel();}});
         const repetir=document.createElement('button');repetir.type='button';repetir.textContent='Escuchar respuesta';repetir.disabled=voz.disabled;voz.after(repetir);
         repetir.addEventListener('click',()=>{if(!vigente())return;gesto=true;leyendo=true;actualizarVoz();hablar(ultimaRespuesta);});
         const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-        if(SR){const mic=document.getElementById('ardia-mic');mic.hidden=false;mic.textContent='Hablar';mic.setAttribute('aria-pressed','false');reconocer=new SR();reconocer.lang='es-MX';reconocer.continuous=false;reconocer.interimResults=false;reconocer.onresult=e=>{if(vigente()&&!panel.hidden)preguntar(e.results[0][0].transcript);};reconocer.onend=()=>{escuchando=false;mic.textContent='Hablar';mic.setAttribute('aria-pressed','false');};reconocer.onerror=e=>{if(e.error!=='aborted')mensaje('No se pudo usar el micrófono. Revisa el permiso del navegador o escribe tu pregunta.');};mic.addEventListener('click',()=>{if(!vigente()||ocupado)return;if(escuchando){reconocer.stop();return;}gesto=true;window.speechSynthesis?.cancel();try{reconocer.start();escuchando=true;mic.textContent='Dejar de escuchar';mic.setAttribute('aria-pressed','true');estado.textContent='Te escucho…';}catch(_){estado.textContent='Espera un momento y pulsa Hablar otra vez.';}});}
+        if(window.PMOArdiaVozPromesa)window.PMOArdiaVozPromesa.then(()=>{if(!vigente())return;if(!window.PMOVozArdia){estado.textContent='No se pudo cargar la conexión de voz. Actualiza la página o sigue por texto.';return;}reconocer?.abort();reconocer=null;const mic=document.getElementById('ardia-mic');vozIA=new window.PMOVozArdia({vigente,estado:t=>{if(!vigente())return;estado.textContent=t;mic.textContent=vozIA.escuchando?'Terminar':'Hablar';mic.setAttribute('aria-pressed',String(vozIA.escuchando));widget.classList.toggle('hablando',t.includes('está hablando'));},alTexto:t=>{if(!panel.hidden&&vigente()){leyendo=true;actualizarVoz();preguntar(t);}}});voz.disabled=repetir.disabled=false;mic.hidden=false;mic.textContent='Hablar';mic.onclick=()=>{if(vigente()&&!ocupado){gesto=true;window.speechSynthesis?.cancel();vozIA.escuchar();}};const nota=document.createElement('small');nota.textContent='Voz generada por IA. Al usar la voz, el audio o el texto se envía a OpenAI. Pulsa Hablar para activar el micrófono.';nota.style.display='block';nota.style.padding='8px 14px';panel.append(nota);});
+        if(SR&&!window.PMOArdiaVozPromesa){const mic=document.getElementById('ardia-mic');mic.hidden=false;mic.textContent='Hablar';mic.setAttribute('aria-pressed','false');reconocer=new SR();reconocer.lang='es-MX';reconocer.continuous=false;reconocer.interimResults=false;reconocer.onresult=e=>{if(vigente()&&!panel.hidden)preguntar(e.results[0][0].transcript);};reconocer.onend=()=>{escuchando=false;mic.textContent='Hablar';mic.setAttribute('aria-pressed','false');};reconocer.onerror=e=>{if(e.error!=='aborted')mensaje('No se pudo usar el micrófono. Revisa el permiso del navegador o escribe tu pregunta.');};mic.addEventListener('click',()=>{if(vozIA)return;if(!vigente()||ocupado)return;if(escuchando){reconocer.stop();return;}gesto=true;window.speechSynthesis?.cancel();try{reconocer.start();escuchando=true;mic.textContent='Dejar de escuchar';mic.setAttribute('aria-pressed','true');estado.textContent='Te escucho…';}catch(_){estado.textContent='Espera un momento y pulsa Hablar otra vez.';}});}
         mensaje(`Hola, ${usuario.nombreCompleto||usuario.nombre||'bienvenido'}. Soy Ard.IA. Ya estás dentro de JJM. Puedo consultar tus horas, tu seguimiento y tus salas, o llevarte al apartado que necesitas. Pulsa Escuchar respuesta para oírme.`);enlaces(buscar(''));estado.textContent='Lista para ayudarte';
         window.PMOArdia={abrir,cerrar,preguntar};
         if(sessionStorage.getItem('ardia-bienvenida')===String(usuario.id)){sessionStorage.removeItem('ardia-bienvenida');abrir(false);}

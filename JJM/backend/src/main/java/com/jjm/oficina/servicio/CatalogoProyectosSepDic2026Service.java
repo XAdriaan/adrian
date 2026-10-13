@@ -44,6 +44,7 @@ import java.util.stream.Collectors;
  * existentes y no elimina asignaciones creadas manualmente.
  */
 @Service
+@org.springframework.core.annotation.Order(10)
 public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
 
     private static final Logger LOGGER = Logger.getLogger(
@@ -250,6 +251,21 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
             Proyecto guardado = nuevo ? proyectoRepository.save(proyecto) : proyecto;
             MiembroEquipo alumno = sincronizarAlumno(guardado, item);
             sincronizarTareasBase(guardado, item, alumno);
+        }
+    }
+
+    /** Repara la asignación al entrar, incluyendo cuentas registradas después del despliegue. */
+    public synchronized void sincronizarCuenta(Integer idUsuario) {
+        MiembroEquipo propia=miembroEquipoRepository.findByUsuarioId(idUsuario).orElse(null);
+        if(!cuentaActiva(propia))return;
+        for(ProyectoCatalogo item:CATALOGO){
+            if(item.alumnoFuente()==null)continue;
+            Set<String> esperados=tokens(normalizar(item.alumnoFuente()));
+            if(esperados.size()<3||!esperados.equals(tokens(normalizar(propia.getNombreCompleto()))))continue;
+            List<MiembroEquipo> iguales=buscarMiembros(item.alumnoFuente());
+            if(iguales.size()!=1||!iguales.getFirst().getId().equals(propia.getId()))continue;
+            Proyecto p=proyectoRepository.findByCodigo(item.codigo()).orElse(null);
+            if(p!=null){MiembroEquipo alumno=sincronizarAlumno(p,item);sincronizarTareasBase(p,item,alumno);}
         }
     }
 

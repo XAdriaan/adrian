@@ -2208,9 +2208,9 @@ function escaparHTML(valor) {
 function abrirReunion(reunion) {
     if (!reunion || !reunion.id || !proyectoActual) return;
 
-    window.location.href =
+    window.abrirSalaPMO(
         "reunion.html?id=" + encodeURIComponent(proyectoActual.id) +
-        "&reunion=" + encodeURIComponent(reunion.id);
+        "&reunion=" + encodeURIComponent(reunion.id));
 }
 
 function renderizarReunionesProyecto() {

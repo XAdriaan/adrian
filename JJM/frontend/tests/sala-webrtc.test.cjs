@@ -3,23 +3,44 @@ function entorno(fetch=async()=>new Response('{}')) {
  class PC {
   constructor(){this.trans=[];this.signalingState='stable';this.candidatos=[];}
   addTransceiver(kind){const t={receiver:{track:{kind}},sender:{replaceTrack:async track=>t.pista=track},direction:'sendrecv'};this.trans.push(t);return t;}
-  async createOffer(){return{type:'offer',sdp:'oferta'};}async createAnswer(){return{type:'answer',sdp:'respuesta'};}
+  async createOffer(opciones){this.opcionesOferta=opciones;return{type:'offer',sdp:'oferta'};}async createAnswer(){return{type:'answer',sdp:'respuesta'};}
   async setLocalDescription(d){this.localDescription={...d,toJSON:()=>d};}
-  async setRemoteDescription(d){this.remoteDescription=d;if(!this.trans.length){this.addTransceiver('audio');this.addTransceiver('video');}}
+  async setRemoteDescription(d){this.remoteDescription=d;if(!this.trans.length){this.addTransceiver('audio');this.addTransceiver('video');this.addTransceiver('video');}}
   getTransceivers(){return this.trans;}async addIceCandidate(d){this.candidatos.push(d);}close(){this.cerrado=true;}
  }
- const window={apiUrl:p=>p,RTCPeerConnection:PC};const ctx=vm.createContext({window,RTCPeerConnection:PC,MediaStream:class{getTracks(){return[];}},fetch,setTimeout:()=>1,clearTimeout(){},Response,console});
+ const window={apiUrl:p=>p,RTCPeerConnection:PC};const document={createElement:()=>({play:()=>Promise.resolve()})};const ctx=vm.createContext({window,document,AbortController,RTCPeerConnection:PC,MediaStream:class{constructor(tracks=[]){this.tracks=tracks;}getTracks(){return this.tracks;}addTrack(t){this.tracks.push(t);}},fetch,setTimeout:()=>1,clearTimeout(){},Response,console});
  vm.runInContext(fs.readFileSync(path.join(__dirname,'../js/sala-webrtc.js'),'utf8'),ctx);
  let cerradas=0;const estado={textContent:''};const sala=new window.PMOSalaWebRTC({sala:'general',contenedor:{querySelector:()=>null},estado,participantes:{},alCerrar:()=>cerradas++});
  sala.tarjeta=()=>({div:{remove(){}},video:{},avatar:{},conexion:{}});sala.config={iceServers:[]};sala.id='b';sala.activa=true;sala.generacion=1;
  return{sala,estado,PC,ctx,cerradas:()=>cerradas};
 }
 test('quien responde transmite sobre los canales ofrecidos sin dejar video en un solo sentido',async()=>{
- const {sala}=entorno();const emitidas=[];sala.enviar=async(...v)=>emitidas.push(v);sala.medios.audio={kind:'audio'};sala.medios.video={kind:'video'};
+ const {sala}=entorno();const emitidas=[];sala.enviar=async(...v)=>emitidas.push(v);sala.medios.audio={kind:'audio'};sala.medios.video={kind:'video'};sala.medios.pantalla={kind:'video'};
  await sala.sincronizar([{id:'a',nombre:'Otro'},{id:'b',nombre:'Tú'}]);const p=sala.peers.get('a');assert.equal(p.pc.trans.length,0);
  await sala.recibir({origen:'a',tipo:'offer',datos:{type:'offer',sdp:'oferta'}});
- assert.equal(p.pc.trans.length,2);assert.equal(p.pc.trans[0].pista,sala.medios.audio);assert.equal(p.pc.trans[1].pista,sala.medios.video);
+ assert.equal(p.pc.trans.length,3);assert.equal(p.pc.trans[0].pista,sala.medios.audio);assert.equal(p.pc.trans[1].pista,sala.medios.video);assert.equal(p.pc.trans[2].pista,sala.medios.pantalla);
  assert.equal(emitidas[0][1],'answer');
+});
+test('compartir pantalla utiliza otro canal y mantiene cámara y audio del participante',async()=>{
+ const {sala}=entorno();sala.id='a';sala.enviar=async()=>{};await sala.sincronizar([{id:'a'},{id:'b'}]);const p=sala.peers.get('b');sala.actualizarVistaLocal=()=>{};
+ const camara={kind:'video'},pantalla={kind:'video'},audio={kind:'audio'};await sala.cambiar('video',camara);await sala.cambiar('audio',audio);await sala.cambiar('pantalla',pantalla);
+ assert.equal(p.pc.trans[0].pista,audio);assert.equal(p.pc.trans[1].pista,camara);assert.equal(p.pc.trans[2].pista,pantalla);
+ await sala.cambiar('pantalla',null);assert.equal(p.pc.trans[1].pista,camara);assert.equal(p.pc.trans[2].pista,null);
+});
+test('ICE se reinicia automáticamente sin cerrar micrófono ni cámara',async()=>{
+ const {sala,ctx}=entorno();sala.id='a';sala.enviar=async()=>{};await sala.sincronizar([{id:'a'},{id:'b'}]);const p=sala.peers.get('b');p.pc.connectionState='failed';let callback;ctx.setTimeout=fn=>{callback=fn;return 1;};
+ sala.programarRecuperacion('b');await callback();assert.equal(p.pc.opcionesOferta.iceRestart,true);assert.equal(sala.activa,true);assert.notEqual(p.pc.cerrado,true);
+});
+test('la pérdida temporal del servicio no expulsa después de cinco intentos',async()=>{
+ const {sala}=entorno(async()=>new Response('{}',{status:503}));for(let i=0;i<7;i++)await sala.ciclo(1);assert.equal(sala.activa,true);assert.equal(sala.fallos,7);
+});
+test('una segunda pestaña no inicia un ciclo que robe la llamada repetidamente',async()=>{
+ const {sala}=entorno(async()=>new Response(JSON.stringify({mensaje:'Tu cuenta está activa en otra pestaña.'}),{status:409}));await sala.ciclo(1);assert.equal(sala.activa,false);
+});
+test('una sesión de sala caducada se recupera conservando sus pistas y su estado',async()=>{
+ const {sala}=entorno();sala.api=async accion=>accion==='entrar'?{conexion:'nueva',participantes:[{id:'nueva'}]}:{};sala.contenedor.replaceChildren=()=>{};sala.actualizarVistaLocal=()=>{};
+ const micro={kind:'audio',enabled:true},camara={kind:'video',enabled:true};sala.medios.audio=micro;sala.medios.video=camara;sala.estadoLocal={audio:true,video:true,pantalla:false,mano:true};
+ await sala.recuperarSesion(1);assert.equal(sala.id,'nueva');assert.equal(sala.medios.audio,micro);assert.equal(sala.medios.video,camara);assert.equal(sala.estadoLocal.mano,true);
 });
 test('guarda candidatos tempranos y los aplica al recibir la descripción remota',async()=>{
  const {sala}=entorno();sala.enviar=async()=>{};await sala.sincronizar([{id:'a'},{id:'b'}]);const p=sala.peers.get('a');

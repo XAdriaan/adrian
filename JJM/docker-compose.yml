@@ -14,6 +14,11 @@ services:
       PMO_TURN_URLS: ${PMO_TURN_URLS:-}
       PMO_TURN_USERNAME: ${PMO_TURN_USERNAME:-}
       PMO_TURN_CREDENTIAL: ${PMO_TURN_CREDENTIAL:-}
+      PMO_OPENAI_API_KEY: ${PMO_OPENAI_API_KEY:-}
+      PMO_VOICE_MODEL: ${PMO_VOICE_MODEL:-gpt-audio-1.5}
+      PMO_TRANSCRIBE_MODEL: ${PMO_TRANSCRIBE_MODEL:-gpt-transcribe}
+      PMO_VOICE_NAME: ${PMO_VOICE_NAME:-alloy}
+      PMO_VOICE_DAILY_LIMIT: ${PMO_VOICE_DAILY_LIMIT:-60}
       PMO_RECORDINGS_DIR: /app/grabaciones
       TZ: America/Mexico_City
       JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=75.0 -Dfile.encoding=UTF-8}

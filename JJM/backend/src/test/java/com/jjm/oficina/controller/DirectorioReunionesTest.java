@@ -145,4 +145,22 @@ class DirectorioReunionesTest {
                 .andExpect(status().isOk());
         verify(jdbc).queryForList(contains("sala AS sala"),any(Object[].class));
     }
+    @Test void crearSalaNuevaNotificaAsignadosYReutilizarlaNoRepiteAvisos() throws Exception {
+        usuario.getRol().setNombre("Administrador");when(proyectos.findById(2)).thenReturn(Optional.of(proyecto(2,50,"Proyecto")));
+        Map<String,Object> reunion=Map.of("id",9L,"idProyecto",2,"estado","Activa","idCreador",7);
+        when(jdbc.queryForList(contains("LOWER(estado)"),any(Object[].class))).thenReturn(List.of(),List.of(reunion),List.of(reunion));
+        for(int i=0;i<2;i++)mvc.perform(post("/api/proyectos/2/reuniones").header("Authorization","Bearer sesion-prueba")).andExpect(status().isCreated());
+        verify(jdbc,times(1)).update(contains("INSERT IGNORE INTO pmo_reuniones_avisos"),eq(9L),eq(2),eq(7));
+        verify(jdbc).update(contains("JOIN miembros_equipo"),eq(9L),eq(2),eq(7));
+    }
+    @Test void avisosRequierenSesionYConsultaPropiaConAsignacionVigente() throws Exception {
+        mvc.perform(get("/api/reuniones/mis-avisos").header("X-Usuario-Id","7")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/reuniones/mis-avisos").header("Authorization","Bearer sesion-prueba").header("X-Usuario-Id","999")).andExpect(status().isOk());
+        verify(jdbc).queryForList(contains("a.id_usuario=? AND a.leido=FALSE AND EXISTS"),eq(7),eq(7));verify(usuarios,never()).findById(999);
+    }
+    @Test void marcarAvisoComoLeidoSoloAfectaAlUsuarioDeLaSesion() throws Exception {
+        when(jdbc.update(contains("UPDATE pmo_reuniones_avisos"),eq(12L),eq(7))).thenReturn(0);
+        mvc.perform(post("/api/reuniones/avisos/12/leido").header("Authorization","Bearer sesion-prueba")).andExpect(status().isNotFound());
+        verify(jdbc).update(contains("id_aviso=? AND id_usuario=?"),eq(12L),eq(7));
+    }
 }

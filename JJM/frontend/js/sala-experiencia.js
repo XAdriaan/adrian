@@ -1,0 +1,146 @@
+(() => {
+    'use strict';
+    const el=id=>document.getElementById(id);
+    function elegirHablante(niveles,anterior,ahora,cambio){
+        const activos=niveles.filter(p=>p.nivel>.025).sort((a,b)=>b.nivel-a.nivel);
+        if(!activos.length)return anterior;
+        const actual=activos.find(p=>p.id===anterior),primero=activos[0];
+        if(primero.id===anterior)return anterior;
+        if(ahora-cambio<1200 || (actual && primero.nivel<actual.nivel*1.5))return anterior;
+        return primero.id;
+    }
+    class ExperienciaSala {
+        constructor({rtc,alFotoCamara}){
+            this.rtc=rtc;this.alFotoCamara=alFotoCamara;this.analizadores=new Map();this.mensajes=new Set();this.noLeidos=0;this.cambio=0;this.galeria=false;this.minimizada=false;
+            this.video=el('videoPrincipal');this.avatar=el('avatarPrincipal');
+            this.enlazar();this.vigilar();
+        }
+        error(e){this.rtc.estado.textContent=e.message || 'No se pudo completar la acción.';}
+        enlazar(){
+            el('btnChatSala').addEventListener('click',()=>this.chat());el('btnCerrarChat').addEventListener('click',()=>this.chat(false));
+            for(const [boton,panel] of [['btnReaccionesSala','opcionesReacciones'],['btnFondosSala','opcionesFondos'],['btnCapturasSala','opcionesCapturas']])el(boton).addEventListener('click',()=>{
+                const abrir=el(panel).hidden;this.cerrarOpciones();el(panel).hidden=!abrir;el(boton).setAttribute('aria-expanded',String(abrir));
+            });
+            document.querySelectorAll('[data-reaccion]').forEach(b=>b.addEventListener('click',async()=>{
+                if(b.disabled)return;b.disabled=true;try{await this.rtc.interaccion('reaccion',{emoji:b.dataset.reaccion});this.cerrarOpciones();}catch(e){this.error(e);}finally{b.disabled=false;}
+            }));
+            el('btnManoSala').addEventListener('click',async()=>{
+                const b=el('btnManoSala');b.disabled=true;
+                try{await this.rtc.publicarEstado({mano:!this.rtc.estadoLocal.mano});b.setAttribute('aria-pressed',String(this.rtc.estadoLocal.mano));b.textContent=this.rtc.estadoLocal.mano?'✋ Bajar la mano':'✋ Levantar la mano';}catch(e){this.error(e);}finally{b.disabled=false;}
+            });
+            el('formChatSala').addEventListener('submit',async e=>{
+                e.preventDefault();const boton=el('btnEnviarChat'),campo=el('textoChatSala'),texto=campo.value.trim();if(!texto||boton.disabled)return;
+                boton.disabled=true;try{const r=await this.rtc.interaccion('chat',{texto});this.mensaje(r.datos,false);campo.value='';}catch(error){this.error(error);}finally{boton.disabled=false;}
+            });
+            el('btnVistaGaleria').addEventListener('click',()=>{this.galeria=!this.galeria;this.actualizar();});
+            el('btnRestaurarSala').addEventListener('click',()=>this.restaurar());
+            el('btnSalirMini').addEventListener('click',()=>el('btnColgarReunion').click());
+            el('btnFotoCamara').addEventListener('click',()=>this.foto('camara'));el('btnFotoReunion').addEventListener('click',()=>this.foto('reunion'));
+            el('oficinaDuranteLlamada').addEventListener('load',()=>{
+                if(!localStorage.getItem('sesionTokenPMO')){this.rtc.salir();window.location.replace('login.html');}
+            });
+            window.addEventListener('message',e=>{
+                const frame=el('oficinaDuranteLlamada');if(e.origin!==location.origin||e.source!==frame.contentWindow||e.data?.tipo!=='pmo:volver-llamada')return;
+                this.restaurar();this.rtc.estado.textContent='Tu llamada sigue activa. Para cambiar de sala, sal de esta llamada primero.';
+            });
+            window.addEventListener('storage',e=>{if(e.key==='sesionTokenPMO'&&!e.newValue){this.rtc.salir();window.location.replace('login.html');}});
+            document.addEventListener('keydown',e=>{if(e.key==='Escape')this.cerrarOpciones();});
+        }
+        cerrarOpciones(){for(const [b,p] of [['btnReaccionesSala','opcionesReacciones'],['btnFondosSala','opcionesFondos'],['btnCapturasSala','opcionesCapturas']]){el(p).hidden=true;el(b).setAttribute('aria-expanded','false');}}
+        chat(abrir=el('panelChatSala').hidden){
+            el('panelChatSala').hidden=!abrir;el('btnChatSala').setAttribute('aria-expanded',String(abrir));document.querySelector('.meeting-main').classList.toggle('con-chat',abrir);
+            if(abrir){el('panelGrabaciones').hidden=true;document.querySelector('.meeting-main').classList.remove('con-panel');el('btnPanelGrabaciones').setAttribute('aria-expanded','false');this.noLeidos=0;el('chatNoLeidos').textContent='';el('textoChatSala').focus();}
+        }
+        mensaje(dato,contar=true){
+            if(!dato || this.mensajes.has(dato.id))return;this.mensajes.add(dato.id);
+            const item=document.createElement('article');item.className='sala-mensaje';const nombre=document.createElement('strong'),texto=document.createElement('p'),hora=document.createElement('time');
+            nombre.textContent=dato.nombre || 'Participante';texto.textContent=String(dato.texto||'');hora.textContent=new Date(dato.fecha).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});item.append(nombre,texto,hora);
+            const lista=el('mensajesSala'),abajo=lista.scrollHeight-lista.scrollTop-lista.clientHeight<80;lista.append(item);while(lista.children.length>100)lista.firstElementChild.remove();if(abajo)lista.scrollTop=lista.scrollHeight;
+            if(contar&&el('panelChatSala').hidden&&dato.origen!==this.rtc.id){el('chatNoLeidos').textContent=String(++this.noLeidos);}
+        }
+        interaccion(e){
+            if(e.tipo==='historial'){for(const dato of e.datos)this.mensaje(dato,false);return;}
+            if(e.tipo==='chat'){this.mensaje(e.datos);return;}
+            const capa=el('reaccionesSala'),aviso=document.createElement('div');aviso.className='sala-reaccion';
+            if(e.tipo==='reaccion'){const emoji=document.createElement('b');emoji.textContent=e.datos.emoji;aviso.append(emoji,document.createTextNode(e.datos.nombre));}
+            else if(e.tipo==='captura')aviso.textContent=`📷 ${e.datos.nombre} tomó una captura de la reunión.`;else return;
+            capa.append(aviso);while(capa.children.length>5)capa.firstElementChild.remove();setTimeout(()=>aviso.remove(),5500);
+        }
+        async activarAudio(){
+            const Audio=window.AudioContext || window.webkitAudioContext;
+            if(Audio&&!this.audio)this.audio=new Audio();await this.audio?.resume().catch(()=>{});this.actualizarAnalizadores();
+        }
+        actualizarAnalizadores(){
+            if(!this.audio||this.audio.state!=='running')return;
+            const pistas=new Map();if(this.rtc.medios.audio?.readyState==='live')pistas.set(this.rtc.id,this.rtc.medios.audio);
+            for(const [id,p] of this.rtc.peers){const t=p.stream.getAudioTracks?.()[0];if(t?.readyState==='live')pistas.set(id,t);}
+            for(const [id,a] of this.analizadores)if(pistas.get(id)!==a.pista){a.fuente.disconnect();a.analizador.disconnect();this.analizadores.delete(id);}
+            for(const [id,pista] of pistas)if(!this.analizadores.has(id)){
+                const fuente=this.audio.createMediaStreamSource(new MediaStream([pista])),analizador=this.audio.createAnalyser();analizador.fftSize=512;fuente.connect(analizador);this.analizadores.set(id,{pista,fuente,analizador,datos:new Float32Array(512)});
+            }
+        }
+        vigilar(){
+            this.timer=setInterval(()=>{
+                if(!this.rtc.activa){for(const a of this.analizadores.values())a.fuente.disconnect();this.analizadores.clear();return;}
+                this.actualizarAnalizadores();const niveles=[];
+                for(const [id,a] of this.analizadores){
+                    const persona=id===this.rtc.id?this.rtc.estadoLocal:this.rtc.peers.get(id)?.persona;
+                    if(!persona?.audio||!a.pista.enabled)continue;a.analizador.getFloatTimeDomainData(a.datos);const nivel=Math.sqrt(a.datos.reduce((s,v)=>s+v*v,0)/a.datos.length);niveles.push({id,nivel});
+                }
+                const elegido=elegirHablante(niveles,this.hablante,Date.now(),this.cambio);
+                if(elegido!==this.hablante){this.hablante=elegido;this.cambio=Date.now();}
+                for(const p of this.rtc.lista){const div=p.id===this.rtc.id?document.querySelector('[data-propia]'):this.rtc.peers.get(p.id)?.div;if(div)div.dataset.hablando=String(niveles.some(n=>n.id===p.id&&n.nivel>.025));}
+                this.actualizar();
+            },250);
+            this.reproduccion=setInterval(()=>{if(!this.rtc.activa)return;for(const p of this.rtc.peers.values())if(p.video.paused&&p.stream.getAudioTracks?.().some(t=>t.readyState==='live'))p.video.play().catch(()=>{});if(this.audio?.state==='suspended')this.audio.resume().catch(()=>{});},5000);
+        }
+        actualizar(){
+            const lista=this.rtc.lista,propia={id:this.rtc.id,nombre:'Tú',...this.rtc.estadoLocal};
+            const presenta=lista.find(p=>p.pantalla),destacada=presenta || lista.find(p=>p.id===this.hablante) || lista.find(p=>p.id!==this.rtc.id&&p.video) || lista.find(p=>p.video) || propia;
+            const peer=this.rtc.peers.get(destacada.id);let fuente;
+            if(presenta)fuente=presenta.id===this.rtc.id?(this.rtc.medios.pantalla?new MediaStream([this.rtc.medios.pantalla]):null):peer?.pantallaVideo.srcObject;
+            else fuente=destacada.id===this.rtc.id?this.rtc.videoLocal?.srcObject:peer?.video.srcObject;
+            // Mantener el mismo objeto evita reiniciar el video cada 250 ms.
+            const pistas=fuente?.getVideoTracks?.() || [];const actuales=this.video.srcObject?.getVideoTracks?.() || [];
+            if(pistas.length!==actuales.length || pistas.some(t=>!actuales.includes(t))){this.video.srcObject=fuente || null;this.video.play().catch(()=>{});}
+            const visible=!!(pistas.some(t=>t.readyState==='live') && (presenta || destacada.video));this.video.hidden=!visible;this.avatar.hidden=visible;this.avatar.textContent=String(destacada.nombre||'JJM').slice(0,1).toUpperCase();
+            el('nombrePrincipal').textContent=`${destacada.nombre||'Participante'}${presenta?' · Compartiendo pantalla':destacada.id===this.hablante?' · Hablando':''}`;
+            el('tituloPresentacion').textContent=presenta?'Pantalla compartida':this.hablante?'Participante que habla':'Vista principal';
+            const galeria=this.galeria&&!presenta;document.body.classList.toggle('sala-galeria',galeria);el('btnVistaGaleria').setAttribute('aria-pressed',String(galeria));
+            el('btnVistaGaleria').textContent=galeria?'Ver participante':'Galería';el('btnVistaGaleria').disabled=!!presenta;
+        }
+        minimizar(url){
+            if(!this.rtc.activa){this.error(new Error('Entra a la sala para mantenerla abierta mientras navegas.'));return;}
+            const frame=el('oficinaDuranteLlamada');this.cerrarOpciones();this.chat(false);
+            if(!frame.getAttribute('src'))frame.src=url||'dashboard.html';frame.hidden=false;this.minimizada=true;document.body.classList.add('sala-minimizada');el('btnRestaurarSala').hidden=false;
+        }
+        restaurar(){el('oficinaDuranteLlamada').hidden=true;this.minimizada=false;document.body.classList.remove('sala-minimizada');el('btnRestaurarSala').hidden=true;this.actualizar();}
+        async foto(tipo){
+            const b=el(tipo==='camara'?'btnFotoCamara':'btnFotoReunion');if(b.disabled)return;b.disabled=true;const aviso=el('estadoCapturaSala');
+            try{
+                if(!this.rtc.activa)throw new Error('Entra a la llamada antes de tomar una foto.');
+                const canvas=document.createElement('canvas');canvas.width=1600;canvas.height=tipo==='reunion'?Math.max(900,Math.ceil(this.rtc.lista.length/2)*80+90):900;const c=canvas.getContext('2d');c.fillStyle='#081225';c.fillRect(0,0,1600,canvas.height);
+                if(tipo==='camara'){
+                    const v=this.rtc.videoLocal;if(!this.rtc.estadoLocal.video||!v?.videoWidth)throw new Error('Activa tu cámara y espera a que aparezca la imagen.');this.pintarVideo(c,v,0,0,1600,900);
+                }else{
+                    await this.rtc.interaccion('captura',{});
+                    c.fillStyle='#e6efff';c.font='bold 24px sans-serif';c.fillText('JJM · Oficina de Proyectos',26,37);c.font='16px sans-serif';c.fillText(new Date().toLocaleString('es-MX'),1180,37);
+                    const personas=this.rtc.lista,columnas=personas.length>5?2:1,filas=Math.max(1,Math.ceil(personas.length/columnas)),alto=Math.min(160,Math.floor((canvas.height-90-(filas-1)*10)/filas)),ancho=columnas===2?210:350;
+                    for(const [i,p] of personas.entries()){
+                        const x=20+(i%columnas)*(ancho+10),y=65+Math.floor(i/columnas)*(alto+10),v=p.id===this.rtc.id?this.rtc.videoLocal:this.rtc.peers.get(p.id)?.video;
+                        this.pintarVideo(c,p.video?v:null,x,y,ancho,alto);c.fillStyle='#081225df';c.fillRect(x,y+alto-25,ancho,25);c.fillStyle='#fff';c.font='13px sans-serif';c.fillText(`${p.mano?'✋ ':''}${p.nombre}`.slice(0,29),x+8,y+alto-8);
+                    }
+                    const izquierda=columnas===2?465:390;this.pintarVideo(c,!this.video.hidden?this.video:null,izquierda,65,1580-izquierda,810);c.fillStyle='#fff';c.font='16px sans-serif';c.fillText(el('nombrePrincipal').textContent,izquierda+15,865);
+                }
+                const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));if(!blob)throw new Error('No se pudo crear la imagen.');
+                const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`JJM_${tipo}_${new Date().toISOString().replace(/[:.]/g,'-')}.png`;a.click();setTimeout(()=>URL.revokeObjectURL(url),15000);aviso.textContent='Imagen descargada.';
+            }catch(e){aviso.textContent=e.message;}finally{b.disabled=false;}
+        }
+        pintarVideo(c,v,x,y,w,h){
+            c.fillStyle='#193453';c.fillRect(x,y,w,h);if(!v?.videoWidth || v.readyState<2){c.fillStyle='#aec9ef';c.font='22px sans-serif';c.fillText('JJM',x+w/2-22,y+h/2);return;}
+            const escala=Math.min(w/v.videoWidth,h/v.videoHeight);c.drawImage(v,x+(w-v.videoWidth*escala)/2,y+(h-v.videoHeight*escala)/2,v.videoWidth*escala,v.videoHeight*escala);
+        }
+        cerrar(){clearInterval(this.timer);clearInterval(this.reproduccion);for(const a of this.analizadores.values())a.fuente.disconnect();this.analizadores.clear();this.audio?.close().catch(()=>{});}
+    }
+    window.PMOExperienciaSala=ExperienciaSala;window.PMOElegirHablante=elegirHablante;
+})();

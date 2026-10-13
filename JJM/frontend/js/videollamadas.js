@@ -37,6 +37,7 @@ function renderSalasVideollamadas() {
     document.getElementById('historialSalas').innerHTML = historial.map(r => `<div class="video-history-row"><div><strong>${escapeSala(r.titulo || r.proyectoNombre)}</strong><small>${escapeSala(r.proyectoNombre)} · ${escapeSala(fechaSala(r.fechaInicio))}</small></div><span class="pmo-status ${String(r.estado).toLowerCase() === 'activa' ? 'active' : ''}">${escapeSala(r.estado || 'Finalizada')}</span></div>`).join('') || '<div class="pmo-empty">Las reuniones que inicies aparecerán aquí.</div>';
 }
 async function abrirSalaVideollamada(id, boton) {
+    if(window.parent && window.parent!==window){window.abrirSalaPMO('reunion.html');return;}
     const sala = salasVideollamadas.find(p => Number(p.id) === id);
     if (!sala) return;
     const texto = boton.textContent; boton.disabled = true; boton.textContent = 'Preparando sala…';
@@ -48,7 +49,7 @@ async function abrirSalaVideollamada(id, boton) {
             if (!r.ok || !d.reunion) throw new Error(d.mensaje || 'No se pudo iniciar la reunión.');
             reunion = d.reunion;
         }
-        location.href = `reunion.html?id=${encodeURIComponent(id)}&reunion=${encodeURIComponent(reunion.id)}`;
+        window.abrirSalaPMO(`reunion.html?id=${encodeURIComponent(id)}&reunion=${encodeURIComponent(reunion.id)}`);
     } catch (e) { mostrarErrorSalas(e.message); boton.disabled = false; boton.textContent = texto; }
 }
 function mostrarErrorSalas(texto){const e=document.getElementById('mensajeSalas');e.hidden=false;e.className='pmo-message error';e.textContent=texto;}

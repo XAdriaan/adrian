@@ -80,6 +80,17 @@ public class ReunionController {
                     KEY idx_participante_usuario (id_usuario)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """);
+        jdbc.execute("""
+                CREATE TABLE IF NOT EXISTS pmo_reuniones_avisos (
+                    id_aviso BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    id_reunion BIGINT NOT NULL,
+                    id_usuario INT NOT NULL,
+                    leido BOOLEAN NOT NULL DEFAULT FALSE,
+                    fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uk_aviso_reunion_usuario (id_reunion,id_usuario),
+                    KEY idx_aviso_usuario (id_usuario,leido)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """);
         // La instalación original usa sala_jitsi y otras claves. Conservamos su esquema y sus datos.
         Set<String> reuniones = columnas("reuniones_proyecto");
         columnaSala = columnaCompatible(reuniones, "sala", "sala_jitsi");
@@ -121,10 +132,10 @@ public class ReunionController {
                     .forEach(m -> asignados.add(m.getIdProyecto()));
         }
         boolean administrador = esAdministrador(usuario);
-        List<Proyecto> proyectos = proyectoRepository.findAll().stream()
+        List<Proyecto> proyectos = com.jjm.oficina.servicio.SeparacionProyectosService.visibles(proyectoRepository.findAll().stream()
                 .filter(p -> administrador || asignados.contains(p.getId()))
                 .sorted(Comparator.comparing(p -> textoSeguro(p.getNombre(), "Proyecto")))
-                .toList();
+                .toList());
         List<Map<String, Object>> reuniones = proyectos.isEmpty() ? List.of() : jdbc.queryForList(
                 seleccionReunion() + "FROM reuniones_proyecto WHERE id_proyecto IN ("
                         + String.join(",", Collections.nCopies(proyectos.size(), "?"))
@@ -197,12 +208,45 @@ public class ReunionController {
                     VALUES (?, ?, ?, 'Activa', ?, ?)
                     """.formatted(columnaSala, columnaCreador), idProyecto, sala, titulo, usuario.getId(), LocalDateTime.now());
             activa = obtenerActiva(idProyecto);
+            if(activa!=null)jdbc.update("""
+                    INSERT IGNORE INTO pmo_reuniones_avisos (id_reunion,id_usuario)
+                    SELECT DISTINCT ?, m.id_usuario
+                    FROM miembros_proyecto mp
+                    JOIN miembros_equipo m ON m.id_miembro=mp.id_miembro
+                    JOIN usuarios u ON u.id_usuario=m.id_usuario
+                    WHERE mp.id_proyecto=? AND u.estado='Activo' AND m.id_usuario<>?
+                    """, activa.get("id"),idProyecto,usuario.getId());
         }
 
         Map<String,Object> respuesta = new LinkedHashMap<>();
         respuesta.put("estado", "correcto");
         respuesta.put("reunion", convertirReunion(activa, usuario, proyecto));
         return ResponseEntity.status(HttpStatus.CREATED).body(respuesta);
+    }
+    @GetMapping("/reuniones/mis-avisos")
+    public ResponseEntity<Map<String,Object>> avisos(@RequestHeader(value="X-Usuario-Id",required=false) Integer idUsuario) {
+        Usuario usuario=obtenerUsuario(idUsuario);
+        if(usuario==null||!"Activo".equalsIgnoreCase(usuario.getEstado()))return error(HttpStatus.UNAUTHORIZED,"Inicia sesión para ver tus reuniones.");
+        List<Map<String,Object>> avisos=jdbc.queryForList("""
+                SELECT a.id_aviso AS id, a.id_reunion AS idReunion, r.id_proyecto AS idProyecto,
+                       p.nombre AS proyecto, r.titulo, a.fecha_creacion AS fecha
+                FROM pmo_reuniones_avisos a
+                JOIN reuniones_proyecto r ON r.id_reunion=a.id_reunion AND r.estado='Activa'
+                JOIN proyectos p ON p.id_proyecto=r.id_proyecto
+                WHERE a.id_usuario=? AND a.leido=FALSE AND EXISTS (
+                    SELECT 1 FROM miembros_equipo m JOIN miembros_proyecto mp ON mp.id_miembro=m.id_miembro
+                    WHERE m.id_usuario=? AND mp.id_proyecto=r.id_proyecto)
+                ORDER BY a.fecha_creacion DESC LIMIT 30
+                """,usuario.getId(),usuario.getId());
+        return ResponseEntity.ok(Map.of("estado","correcto","avisos",avisos));
+    }
+    @PostMapping("/reuniones/avisos/{idAviso}/leido")
+    public ResponseEntity<Map<String,Object>> leerAviso(@PathVariable Long idAviso,
+            @RequestHeader(value="X-Usuario-Id",required=false) Integer idUsuario) {
+        Usuario usuario=obtenerUsuario(idUsuario);
+        if(usuario==null||!"Activo".equalsIgnoreCase(usuario.getEstado()))return error(HttpStatus.UNAUTHORIZED,"Inicia sesión para ver tus reuniones.");
+        int cambios=jdbc.update("UPDATE pmo_reuniones_avisos SET leido=TRUE WHERE id_aviso=? AND id_usuario=?",idAviso,usuario.getId());
+        return cambios>0?ResponseEntity.ok(Map.of("estado","correcto")):error(HttpStatus.NOT_FOUND,"El aviso no pertenece a tu cuenta.");
     }
 
     @GetMapping("/proyectos/{idProyecto}/reuniones/activa")

@@ -18,17 +18,29 @@ public class VideollamadaController {
     private final ReunionController reuniones;
     private final Environment entorno;
     private final Map<String, Sala> salas = new HashMap<>();
-    private static class Sala { final Map<String, Conexion> conexiones = new LinkedHashMap<>(); }
+    private static class Sala {
+        final Map<String, Conexion> conexiones = new LinkedHashMap<>();
+        final Deque<Map<String,Object>> chat = new ArrayDeque<>();
+        long mensaje = 0;
+    }
     private static class Conexion {
         final String id = UUID.randomUUID().toString();
         final int usuario; final String nombre;
         long actividad = System.currentTimeMillis(), secuencia = 0;
+        long ventanaChat = 0, ultimaReaccion = 0;
+        int mensajes = 0;
+        boolean mano = false, audio = false, video = false, pantalla = false;
         final Deque<Map<String,Object>> eventos = new ArrayDeque<>();
         Conexion(Usuario u) { usuario = u.getId(); nombre = u.getNombre() == null ? "Participante" : u.getNombre(); }
-        Map<String,Object> resumen() { return Map.of("id", id, "nombre", nombre); }
+        Map<String,Object> resumen() { return Map.of("id", id, "nombre", nombre, "mano", mano, "audio", audio, "video", video, "pantalla", pantalla); }
     }
     public record Entrada(String conexion) {}
     public record Senal(String conexion, String destino, String tipo, Map<String,Object> datos) {}
+    public record Interaccion(String conexion, String tipo, Map<String,Object> datos) {}
+    private void emitir(Conexion destino, String origen, String tipo, Map<String,Object> datos) {
+        destino.eventos.addLast(Map.of("secuencia", ++destino.secuencia, "origen", origen, "tipo", tipo, "datos", datos));
+        while (destino.eventos.size() > 256) destino.eventos.removeFirst();
+    }
     public VideollamadaController(UsuarioRepository usuarios, ReunionController reuniones, Environment entorno) {
         this.usuarios = usuarios; this.reuniones = reuniones; this.entorno = entorno;
     }
@@ -51,9 +63,15 @@ public class VideollamadaController {
     }
     private Conexion propia(Sala sala, String id, Usuario u) {
         Conexion c = sala == null ? null : sala.conexiones.get(id);
+        if (c == null && sala != null && sala.conexiones.values().stream().anyMatch(p -> p.usuario == u.getId()))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Tu cuenta está activa en otra pestaña. Conserva una sola llamada abierta.");
         if (c == null || c.usuario != u.getId())
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Vuelve a entrar a la sala.");
         c.actividad = System.currentTimeMillis(); return c;
+    }
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String,Object>> errorSala(ResponseStatusException error) {
+        return ResponseEntity.status(error.getStatusCode()).body(Map.of("estado", "error", "mensaje", Objects.toString(error.getReason(), "No se pudo conectar con la sala.")));
     }
     @GetMapping("/configuracion")
     public Map<String,Object> configuracion(@RequestHeader(value="X-Usuario-Id", required=false) Integer id) {
@@ -91,7 +109,7 @@ public class VideollamadaController {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Las señales vencieron. Vuelve a conectar.");
         c.eventos.removeIf(e -> ((Number)e.get("secuencia")).longValue() <= desde);
         return Map.of("estado", "correcto", "participantes", s.conexiones.values().stream().map(Conexion::resumen).toList(),
-                "eventos", List.copyOf(c.eventos), "secuencia", c.secuencia);
+                "eventos", List.copyOf(c.eventos), "secuencia", c.secuencia, "chat", List.copyOf(s.chat));
     }
     @PostMapping("/{sala}/senal")
     public synchronized ResponseEntity<Map<String,Object>> senal(@PathVariable String sala, @RequestBody Senal entrada,
@@ -100,7 +118,7 @@ public class VideollamadaController {
         Conexion destino = s.conexiones.get(entrada.destino());
         if (destino == null || destino == c) throw new ResponseStatusException(HttpStatus.CONFLICT, "El participante salió.");
         autorizar(sala, destino.usuario);
-        if (!Set.of("offer", "answer", "candidate").contains(String.valueOf(entrada.tipo())) || entrada.datos() == null)
+        if (!Set.of("offer", "answer", "candidate", "reiniciar").contains(String.valueOf(entrada.tipo())) || entrada.datos() == null)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Señal inválida.");
         Map<String,Object> datos = new HashMap<>();
         if ("candidate".equals(entrada.tipo())) {
@@ -111,15 +129,60 @@ public class VideollamadaController {
             Object mid = entrada.datos().get("sdpMid"), indice = entrada.datos().get("sdpMLineIndex");
             if (mid instanceof String midTexto && midTexto.length() <= 100) datos.put("sdpMid", mid);
             if (indice instanceof Number n && n.intValue() >= 0 && n.intValue() <= 100) datos.put("sdpMLineIndex", n.intValue());
-        } else {
+        } else if (!"reiniciar".equals(entrada.tipo())) {
             Object sdp = entrada.datos().get("sdp");
             if (!(sdp instanceof String texto) || texto.isBlank() || texto.length() > 100_000)
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Descripción inválida.");
             datos.put("type", entrada.tipo()); datos.put("sdp", sdp);
         }
-        destino.eventos.addLast(Map.of("secuencia", ++destino.secuencia, "origen", c.id, "tipo", entrada.tipo(), "datos", datos));
-        while (destino.eventos.size() > 256) destino.eventos.removeFirst();
+        emitir(destino, c.id, entrada.tipo(), datos);
         return ResponseEntity.ok(Map.of("estado", "correcto"));
+    }
+    @PostMapping("/{sala}/interaccion")
+    public synchronized Map<String,Object> interaccion(@PathVariable String sala, @RequestBody Interaccion entrada,
+            @RequestHeader(value="X-Usuario-Id", required=false) Integer id) {
+        Usuario u = autorizar(sala, id); limpiar(); Sala s = salas.get(sala); Conexion c = propia(s, entrada.conexion(), u);
+        if (entrada.datos() == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Acción inválida.");
+        Map<String,Object> datos = new HashMap<>(); long ahora = System.currentTimeMillis();
+        switch (String.valueOf(entrada.tipo())) {
+            case "estado" -> {
+                for (String clave : List.of("mano", "audio", "video", "pantalla"))
+                    if (!(entrada.datos().get(clave) instanceof Boolean)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Estado inválido.");
+                boolean pantalla = (Boolean) entrada.datos().get("pantalla");
+                if (pantalla && s.conexiones.values().stream().anyMatch(p -> p != c && p.pantalla))
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "Otra persona está presentando. Espera a que deje de compartir.");
+                c.mano = (Boolean) entrada.datos().get("mano"); c.audio = (Boolean) entrada.datos().get("audio");
+                c.video = (Boolean) entrada.datos().get("video"); c.pantalla = pantalla;
+                return Map.of("estado", "correcto", "participante", c.resumen());
+            }
+            case "chat" -> {
+                Object texto = entrada.datos().get("texto");
+                if (!(texto instanceof String mensaje) || mensaje.isBlank() || mensaje.length() > 2000)
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Escribe un mensaje de hasta 2000 caracteres.");
+                if (ahora - c.ventanaChat >= 10_000) { c.ventanaChat = ahora; c.mensajes = 0; }
+                if (c.mensajes >= 10) throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Espera unos segundos antes de enviar otro mensaje.");
+                c.mensajes++;
+                datos.putAll(Map.of("id", ++s.mensaje, "nombre", c.nombre, "texto", mensaje.trim(), "fecha", ahora, "origen", c.id));
+                s.chat.addLast(Map.copyOf(datos)); while (s.chat.size() > 100) s.chat.removeFirst();
+            }
+            case "reaccion" -> {
+                Object emoji = entrada.datos().get("emoji");
+                if (!(emoji instanceof String) || !Set.of("👍", "👏", "❤️", "😂", "🎉", "🤔").contains(emoji))
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Reacción inválida.");
+                if (ahora - c.ultimaReaccion < 1000) throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Espera un momento antes de reaccionar otra vez.");
+                c.ultimaReaccion = ahora; datos.putAll(Map.of("emoji", emoji, "nombre", c.nombre));
+            }
+            case "captura" -> {
+                if (ahora - c.ultimaReaccion < 1000) throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Espera un momento antes de tomar otra captura.");
+                c.ultimaReaccion = ahora; datos.put("nombre", c.nombre);
+            }
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Acción inválida.");
+        }
+        for (Conexion destino : s.conexiones.values()) {
+            try { autorizar(sala, destino.usuario); emitir(destino, c.id, entrada.tipo(), Map.copyOf(datos)); }
+            catch (ResponseStatusException ignorada) { /* El siguiente pulso retira el acceso revocado. */ }
+        }
+        return Map.of("estado", "correcto", "datos", datos);
     }
     @PostMapping("/{sala}/salir")
     public synchronized Map<String,Object> salir(@PathVariable String sala, @RequestBody Entrada entrada,

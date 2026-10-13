@@ -13,6 +13,7 @@ function entorno(archivo,fetch){
    location:{href:'',hash:''},fetch,Response,Blob,TextEncoder,Uint8Array,URL,URLSearchParams,setTimeout(){},setInterval(){return 1;},clearInterval(){},console:{warn(){},error(){}},
    FileReader:class{readAsDataURL(){this.result='data:application/pdf;base64,JVBERg==';this.onload();}}});
  if(archivo==='mi-estadia.js')vm.runInContext(codigo('estadia-formatos.js'),contexto);
+ window.parent=window;window.abrirSalaPMO=url=>contexto.location.href=url;
  vm.runInContext(codigo(archivo),contexto);return {el,window,eventos,contexto,run:s=>vm.runInContext(s,contexto)};
 }
 test('asistencia cambia de mes sin mostrar la respuesta anterior retrasada',async()=>{

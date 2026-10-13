@@ -93,4 +93,45 @@ class VideollamadaTest {
         entorno.setProperty("PMO_TURN_USERNAME","prueba"); entorno.setProperty("PMO_TURN_CREDENTIAL","solo-prueba");
         assertEquals(true,video.configuracion(7).get("relayDisponible"));
     }
+    @Test void chatSeComparteSoloConMiembrosDeLaMismaSalaYUsaNombreDelServidor() {
+        String a=entrar("10",7),b=entrar("10",8),otra=entrar("20",9);
+        video.interaccion("10",new VideollamadaController.Interaccion(a,"chat",Map.of("texto","Hola", "nombre","Otra persona")),7);
+        List<?> historial=(List<?>)video.eventos("10",b,0,8).get("chat");assertEquals(1,historial.size());
+        assertEquals("Persona 7",((Map<?,?>)historial.getFirst()).get("nombre"));
+        assertEquals(0,((List<?>)video.eventos("20",otra,0,9).get("chat")).size());
+    }
+    @Test void chatRechazaConexionAjenaTextoLargoYAbuso() {
+        String a=entrar("general",7);entrar("general",8);
+        assertThrows(ResponseStatusException.class,()->video.interaccion("general",new VideollamadaController.Interaccion(a,"chat",Map.of("texto","robar")),8));
+        assertThrows(ResponseStatusException.class,()->video.interaccion("general",new VideollamadaController.Interaccion(a,"chat",Map.of("texto","x".repeat(2001))),7));
+        for(int i=0;i<10;i++)video.interaccion("general",new VideollamadaController.Interaccion(a,"chat",Map.of("texto","hola")),7);
+        assertEquals(429,assertThrows(ResponseStatusException.class,()->video.interaccion("general",new VideollamadaController.Interaccion(a,"chat",Map.of("texto","otra")),7)).getStatusCode().value());
+    }
+    @Test void manoYPantallaSeSincronizanYNoPermiteDosPresentadores() {
+        String a=entrar("general",7),b=entrar("general",8);
+        Map<String,Object> estado=Map.of("mano",true,"audio",true,"video",true,"pantalla",true);
+        video.interaccion("general",new VideollamadaController.Interaccion(a,"estado",estado),7);
+        List<?> participantes=(List<?>)video.eventos("general",b,0,8).get("participantes");
+        assertEquals(true,((Map<?,?>)participantes.getFirst()).get("mano"));
+        assertEquals(409,assertThrows(ResponseStatusException.class,()->video.interaccion("general",new VideollamadaController.Interaccion(b,"estado",estado),8)).getStatusCode().value());
+        video.salir("general",new VideollamadaController.Entrada(a),7);video.interaccion("general",new VideollamadaController.Interaccion(b,"estado",estado),8);
+    }
+    @Test void rechazaEstadosParcialesYReaccionesArbitrarias() {
+        String a=entrar("general",7);
+        assertThrows(ResponseStatusException.class,()->video.interaccion("general",new VideollamadaController.Interaccion(a,"estado",Map.of("pantalla",true)),7));
+        assertThrows(ResponseStatusException.class,()->video.interaccion("general",new VideollamadaController.Interaccion(a,"reaccion",Map.of("emoji","<script>")),7));
+    }
+    @Test void reaccionYCapturaNotificanSinSubirImagenes() {
+        String a=entrar("general",7),b=entrar("general",8);
+        video.interaccion("general",new VideollamadaController.Interaccion(a,"reaccion",Map.of("emoji","👍")),7);
+        video.interaccion("general",new VideollamadaController.Interaccion(b,"captura",Map.of()),8);
+        List<?> eventos=(List<?>)video.eventos("general",a,0,7).get("eventos");assertEquals(2,eventos.size());
+        assertEquals(Set.of("nombre"),((Map<?,?>)((Map<?,?>)eventos.get(1)).get("datos")).keySet());
+    }
+    @Test void reinicioDeConexionSeEnvíaSoloAlParAutorizado() {
+        String a=entrar("10",7),b=entrar("10",8),otra=entrar("20",9);
+        video.senal("10",new VideollamadaController.Senal(a,b,"reiniciar",Map.of()),7);
+        assertEquals(1,((List<?>)video.eventos("10",b,0,8).get("eventos")).size());
+        assertThrows(ResponseStatusException.class,()->video.senal("10",new VideollamadaController.Senal(a,otra,"reiniciar",Map.of()),7));
+    }
 }

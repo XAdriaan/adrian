@@ -223,7 +223,7 @@ public class AutomatizacionesService {
         for(Map<String,Object> a:alumnos){LocalDate inicio=fecha(a.get("fechaInicio")),fin=fecha(a.get("fechaFin"));int id=numero(a.get("idUsuario")).intValue();
             if("activo".equals(normalizar(a.get("estado")))&&inicio!=null&&fin!=null&&!dia.isBefore(inicio)&&!dia.isAfter(fin)&&!registrados.contains(id))
                 recordatorio(vigentes,"sin-registro-"+id,a.get("idUsuario"),"Día sin horas registradas","No hay horas registradas el "+dia+". Revisa tu asistencia o solicita registrar una justificación.","control-horas.html");}
-        for(Map<String,Object> r:jdbc.queryForList("SELECT id,clave FROM pmo_recordatorios WHERE estado<>'Resuelto'"))if(!vigentes.contains(texto(r.get("clave"))))jdbc.update("UPDATE pmo_recordatorios SET estado='Resuelto',actualizado_en=? WHERE id=?",ahora(),r.get("id"));
+        for(Map<String,Object> r:jdbc.queryForList("SELECT id,clave FROM pmo_recordatorios WHERE estado<>'Resuelto' AND clave NOT LIKE 'diario-%'"))if(!vigentes.contains(texto(r.get("clave"))))jdbc.update("UPDATE pmo_recordatorios SET estado='Resuelto',actualizado_en=? WHERE id=?",ahora(),r.get("id"));
         estado("recordatorios","Completada",vigentes.size()+" recordatorios vigentes dentro de la plataforma.");
     }
     private void recordatorio(Set<String> claves,String clave,Object usuario,String titulo,String detalle,String enlace) {
@@ -233,7 +233,7 @@ public class AutomatizacionesService {
                 titulo=VALUES(titulo),descripcion=VALUES(descripcion),enlace=VALUES(enlace),actualizado_en=VALUES(actualizado_en)
             """,clave,usuario,titulo,detalle,enlace,ahora());
     }
-    public List<Map<String,Object>> misRecordatorios(Integer id) { comprobar(id,false,false);return jdbc.queryForList("SELECT id,titulo,descripcion,enlace,estado FROM pmo_recordatorios WHERE id_usuario=? AND estado<>'Resuelto' ORDER BY actualizado_en DESC",id); }
+    public List<Map<String,Object>> misRecordatorios(Integer id) { comprobar(id,false,false);return jdbc.queryForList("SELECT id,clave,titulo,descripcion,enlace,estado FROM pmo_recordatorios WHERE id_usuario=? AND estado<>'Resuelto' ORDER BY actualizado_en DESC",id); }
     public void marcarLeido(Integer id,Long recordatorio) { comprobar(id,false,false);if(jdbc.update("UPDATE pmo_recordatorios SET estado='Visto' WHERE id=? AND id_usuario=? AND estado='Abierto'",recordatorio,id)==0&&jdbc.queryForList("SELECT id FROM pmo_recordatorios WHERE id=? AND id_usuario=?",recordatorio,id).isEmpty())throw new ResponseStatusException(HttpStatus.NOT_FOUND,"No se encontró tu recordatorio."); }
     private void reporte(List<Map<String,Object>> alumnos) {
         ZonedDateTime fecha=reloj.instant().atZone(AsistenciaAutomaticaService.ZONA);

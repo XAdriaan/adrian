@@ -602,6 +602,7 @@ function mostrarErrorCarga(mensaje) {
 }
 
 function renderizarProyectos() {
+    window.dispatchEvent(new CustomEvent('pmo:proyectos-canales',{detail:proyectos}));
     if (!contenedorProyectos) {
         return;
     }

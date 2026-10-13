@@ -45,7 +45,7 @@ class SuperadministradorAccesoTest {
     private ProyectoController proyectosController() {
         return new ProyectoController(proyectos, mock(OrganizacionRepository.class), miembros,
                 mock(MiembroProyectoRepository.class), mock(FaseProyectoRepository.class), usuarios,
-                mock(BitacoraService.class), mock(CatalogoProyectosSepDic2026Service.class));
+                mock(BitacoraService.class), mock(CatalogoProyectosSepDic2026Service.class), mock(com.jjm.oficina.servicio.SeparacionProyectosService.class));
     }
 
     private MiembroEquipoController equipoController() {

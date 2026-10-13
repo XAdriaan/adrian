@@ -27,7 +27,7 @@ class AsignacionesCatalogoTest {
         when(sesiones.obtenerUsuario("admin")).thenReturn(1); when(sesiones.obtenerUsuario("alumno")).thenReturn(2);
         when(sesiones.obtenerUsuario(null)).thenReturn(null);
         when(catalogo.obtenerAsignaciones()).thenReturn(Map.of("estado","correcto","proyectos",List.of()));
-        mvc = MockMvcBuilders.standaloneSetup(new AsignacionesCatalogoController(usuarios, permisos, catalogo))
+        mvc = MockMvcBuilders.standaloneSetup(new AsignacionesCatalogoController(usuarios, permisos, catalogo, mock(com.jjm.oficina.servicio.SeparacionProyectosService.class)))
                 .addFilters(new AutenticacionTokenFilter(sesiones, new ObjectMapper())).build();
     }
     @Test void consultarNoModificaDatos() throws Exception {

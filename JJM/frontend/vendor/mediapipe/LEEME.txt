@@ -1,0 +1,12 @@
+MediaPipe Tasks Vision 1.1.0
+Distribución: https://registry.npmjs.org/@mediapipe/tasks-vision/1.1.0
+Modelo: https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter_landscape/float16/1/selfie_segmenter_landscape.tflite
+Documentación: https://developers.google.com/edge/mediapipe/solutions/vision/image_segmenter/web_js
+Licencia del proyecto incluida en LICENSE. Los archivos originales se conservan sin modificaciones.
+LICENSE SHA256 8707eef0533987efc5b155d64761eeb6e20793f50b9bd1a68dad1cf4719d0ed8
+selfie_segmenter_landscape.tflite SHA256 490e9ea734313e0de10fa0cd9e3c6133e36ea4db2b7a49bde9ef019f72796b8e
+vision_bundle.js SHA256 022cbbfcdb74bae18e4bbc722e429e046d5fdd35f6183f1359c56b652b8b87f7
+wasm/vision_wasm_internal.js SHA256 7c652617b5bef832f42878ce8c5f752b0724bca6054e4bc1013a37d4b1949723
+wasm/vision_wasm_internal.wasm SHA256 782eda3ec1f414fdb4f1d66a8b59093eb4d5ab437e06117796abf05962d68eef
+wasm/vision_wasm_nosimd_internal.js SHA256 510fc70a170eb8b46767a7abab2af89a7a8341fa5b3ebfb8a5de41a79b7fa9df
+wasm/vision_wasm_nosimd_internal.wasm SHA256 b802041d105876865d6a0806f2ff7c4419a7f1b80bc01340fe36e759c2030011

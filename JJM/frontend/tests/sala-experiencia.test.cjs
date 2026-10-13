@@ -1,0 +1,46 @@
+const test=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs'),path=require('node:path');
+function entorno(){
+ class Elemento{
+  constructor(){this.listeners={};this.children=[];this.dataset={};this.hidden=true;this.attrs={};this.classList={toggle:(k,v)=>this.attrs[k]=v,add:k=>this.attrs[k]=true,remove:k=>this.attrs[k]=false};this.scrollHeight=0;this.scrollTop=0;this.clientHeight=100;}
+  addEventListener(n,f){this.listeners[n]=f;}setAttribute(n,v){this.attrs[n]=v;}getAttribute(n){return this.attrs[n]||null;}append(...hijos){hijos.forEach(c=>{if(typeof c==='object')c.parent=this;this.children.push(c);});}remove(){if(this.parent)this.parent.children=this.parent.children.filter(c=>c!==this);}get firstElementChild(){return this.children[0];}focus(){}play(){return Promise.resolve();}click(){return this.listeners.click?.();}
+ }
+ const elems={},el=id=>elems[id]||(elems[id]=new Elemento()),body=new Elemento(),handlers={};el('oficinaDuranteLlamada').contentWindow={};
+ const document={getElementById:el,createElement:()=>new Elemento(),createTextNode:text=>({textContent:text}),querySelector:()=>el('main'),querySelectorAll:()=>[],body,addEventListener(){}};
+ const window={addEventListener:(n,f)=>handlers[n]=f};const ctx=vm.createContext({window,document,location:{origin:'https://oficina.test'},localStorage:{getItem:()=> 'token'},setInterval:()=>1,clearInterval(){},setTimeout:()=>1,clearTimeout(){},Date,URL,console,MediaStream:class{constructor(tracks){this.tracks=tracks;}getVideoTracks(){return this.tracks.filter(t=>t.kind==='video');}}});
+ vm.runInContext(fs.readFileSync(path.join(__dirname,'../js/sala-experiencia.js'),'utf8'),ctx);
+ const rtc={id:'yo',activa:true,medios:{},estadoLocal:{video:false,audio:false,mano:false},lista:[],peers:new Map(),estado:{},async publicarEstado(d){Object.assign(this.estadoLocal,d);},async interaccion(tipo,datos){this.ultima={tipo,datos};return{datos:{...datos,id:1,nombre:'Yo',origen:'yo',fecha:0}};}};
+ const experiencia=new window.PMOExperienciaSala({rtc});return {el,ctx,rtc,experiencia,body,handlers};
+}
+test('resalta al hablante sin cambios rápidos por ruido o silencio',()=>{
+ const {ctx}=entorno(),e=ctx.window.PMOElegirHablante;
+ assert.equal(e([{id:'a',nivel:.01}],null,2000,0),null);
+ assert.equal(e([{id:'a',nivel:.2}],null,2000,0),'a');
+ assert.equal(e([{id:'b',nivel:.4}], 'a',2500,2000),'a');
+ assert.equal(e([{id:'a',nivel:.2},{id:'b',nivel:.23}], 'a',4000,2000),'a');
+ assert.equal(e([{id:'b',nivel:.4}], 'a',4000,2000),'b');
+});
+test('la presentación permanece en la vista principal aunque hable otro alumno',()=>{
+ const {rtc,experiencia,el}=entorno();const pista={kind:'video',readyState:'live'},stream={getVideoTracks:()=>[pista]};rtc.lista=[{id:'presenta',nombre:'Docente',pantalla:true},{id:'habla',nombre:'Alumno',video:true}];rtc.peers.set('presenta',{pantallaVideo:{srcObject:stream}});experiencia.hablante='habla';experiencia.actualizar();assert.equal(el('videoPrincipal').srcObject,stream);assert.match(el('nombrePrincipal').textContent,/Docente.*Compartiendo/);
+});
+test('chat muestra texto literal, evita duplicados y cuenta únicamente mensajes nuevos ajenos',()=>{
+ const {experiencia,el}=entorno(),dato={id:1,texto:'<script>alert(1)</script>',nombre:'<img>',origen:'otro',fecha:0};experiencia.mensaje(dato);experiencia.interaccion({tipo:'historial',datos:[dato]});assert.equal(el('mensajesSala').children.length,1);assert.equal(el('mensajesSala').children[0].children[1].textContent,dato.texto);assert.equal(el('chatNoLeidos').textContent,'1');experiencia.chat(true);assert.equal(el('chatNoLeidos').textContent,'');
+});
+test('levantar la mano publica el estado y el botón permite bajarla',async()=>{
+ const {rtc,el}=entorno();await el('btnManoSala').click();assert.equal(rtc.estadoLocal.mano,true);assert.equal(el('btnManoSala').attrs['aria-pressed'],'true');await el('btnManoSala').click();assert.equal(rtc.estadoLocal.mano,false);
+});
+test('minimizar conserva los medios y abre la Oficina dentro del mismo documento',()=>{
+ const {rtc,experiencia,el,body}=entorno();const pista={stop(){throw Error('No debe detenerse');}};rtc.medios.video=pista;experiencia.minimizar('dashboard.html');assert.equal(rtc.activa,true);assert.equal(rtc.medios.video,pista);assert.equal(el('oficinaDuranteLlamada').src,'dashboard.html');assert.equal(body.attrs['sala-minimizada'],true);experiencia.restaurar();assert.equal(el('oficinaDuranteLlamada').hidden,true);
+});
+test('solo el iframe propio puede solicitar volver a la llamada',()=>{
+ const {experiencia,el,handlers}=entorno();experiencia.minimizar('dashboard.html');handlers.message({origin:'https://otro.test',source:el('oficinaDuranteLlamada').contentWindow,data:{tipo:'pmo:volver-llamada'}});assert.equal(experiencia.minimizada,true);handlers.message({origin:'https://oficina.test',source:el('oficinaDuranteLlamada').contentWindow,data:{tipo:'pmo:volver-llamada'}});assert.equal(experiencia.minimizada,false);
+});
+test('un fallo del chat conserva el texto y vuelve a habilitar enviar',async()=>{
+ const {rtc,el}=entorno();rtc.interaccion=async()=>{throw Error('No hay conexión');};el('textoChatSala').value='Mensaje pendiente';await el('formChatSala').listeners.submit({preventDefault(){}});assert.equal(el('textoChatSala').value,'Mensaje pendiente');assert.equal(el('btnEnviarChat').disabled,false);assert.equal(rtc.estado.textContent,'No hay conexión');
+});
+test('un navegador sin segmentación informa el problema sin apagar la cámara',async()=>{
+ const {ctx}=entorno();vm.runInContext(fs.readFileSync(path.join(__dirname,'../js/sala-fondos.js'),'utf8'),ctx);const fondo=new ctx.window.PMOFondosSala({alCambiar:async()=>{},alError(){}}),pista={readyState:'live',stop(){throw Error('No debe detener original');}};await assert.rejects(()=>fondo.iniciar(pista,'azul'),/no admite fondos/);assert.equal(pista.readyState,'live');
+});
+
+test('foto de cámara descarga PNG después de comprobar imagen activa',async()=>{const e=entorno();e.ctx.URL={createObjectURL:()=> 'blob:foto',revokeObjectURL(){}};let descargas=0,dibujos=0;const anterior=e.ctx.document.createElement;e.ctx.document.createElement=tipo=>tipo==='canvas'?{getContext:()=>({fillRect(){},drawImage(){dibujos++;},fillText(){}}),toBlob:cb=>cb(new Blob(['PNG'],{type:'image/png'}))}:Object.assign(anterior(),{click(){descargas++;}});e.rtc.videoLocal={videoWidth:640,videoHeight:360,readyState:4};e.rtc.estadoLocal.video=true;await e.experiencia.foto('camara');assert.equal(dibujos,1);assert.equal(descargas,1);assert.equal(e.el('estadoCapturaSala').textContent,'Imagen descargada.');assert.equal(e.el('btnFotoCamara').disabled,false);});
+test('foto sin cámara lista no dice que se descargó y permite reintentar',async()=>{const e=entorno();e.ctx.document.createElement=()=>({getContext:()=>({fillRect(){}})});await e.experiencia.foto('camara');assert.match(e.el('estadoCapturaSala').textContent,/Activa tu cámara/);assert.equal(e.el('btnFotoCamara').disabled,false);});
+test('captura de reunión avisa a los presentes antes de descargar',async()=>{const e=entorno();let aviso=false,descargada=false;e.ctx.URL={createObjectURL:()=> 'blob:reunion',revokeObjectURL(){}};const anterior=e.ctx.document.createElement;e.ctx.document.createElement=tipo=>tipo==='canvas'?{getContext:()=>({fillRect(){},fillText(){},drawImage(){}}),toBlob:cb=>cb(new Blob(['PNG']))}:Object.assign(anterior(),{click(){assert.equal(aviso,true);descargada=true;}});e.rtc.interaccion=async(tipo)=>{assert.equal(tipo,'captura');aviso=true;};await e.experiencia.foto('reunion');assert.equal(descargada,true);});
