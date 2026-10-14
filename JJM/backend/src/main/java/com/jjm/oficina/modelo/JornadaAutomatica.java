@@ -16,6 +16,9 @@ public class JornadaAutomatica {
     @Column(name = "ultima_senal_epoch", nullable = false) private long ultimaSenal;
     @Column(name = "liquidado_epoch", nullable = false) private long liquidado;
     @Column(nullable = false) private boolean finalizada;
+    @Column(name = "modo_continuo", nullable = false) private boolean modoContinuo;
+    @Column(nullable = false) private boolean reposicion;
+    @Column(name = "limite_segundos", nullable = false) private long limiteSegundos = 36000;
     @Column(nullable = false, columnDefinition = "TEXT") private String conexiones = "";
     public Long getId() { return id; }
     public void setId(Long value) { id = value; }
@@ -33,6 +36,12 @@ public class JornadaAutomatica {
     public void setLiquidado(long value) { liquidado = value; }
     public boolean isFinalizada() { return finalizada; }
     public void setFinalizada(boolean value) { finalizada = value; }
+    public boolean isModoContinuo() { return modoContinuo; }
+    public void setModoContinuo(boolean value) { modoContinuo = value; }
+    public boolean isReposicion() { return reposicion; }
+    public void setReposicion(boolean value) { reposicion = value; }
+    public long getLimiteSegundos() { return limiteSegundos; }
+    public void setLimiteSegundos(long value) { limiteSegundos = value; }
     public String getConexiones() { return conexiones; }
     public void setConexiones(String value) { conexiones = value; }
 }

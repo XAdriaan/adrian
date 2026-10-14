@@ -13,8 +13,8 @@
     const horas=r=>Math.max(0,Number(r.horasTrabajadas)||0);
     function regularizado(r) {
         const fecha=String(r.fecha||'').slice(0,10),dia=new Date(fecha+'T12:00:00').getDay();
-        return valido(r)&&fecha>='2026-09-01'&&fecha<='2026-10-12'&&dia>=1&&dia<=5
-            && (r.regularizacionAdministrativa===true || String(r.descripcion||'').includes(origen));
+        return valido(r)&&fecha>='2026-09-01'&&fecha<='2026-10-13'&&dia>=1&&dia<=5
+            && (r.regularizacionAdministrativa===true || (String(r.descripcion||'').includes(origen)||String(r.descripcion||'').includes('Reconocimiento administrativo autorizado Sep-Dic 2026 (01/09/2026 a 13/10/2026).')));
     }
     function agruparRegistros(registros) {
         const fechas=new Map();
@@ -34,7 +34,7 @@
         const mesLista=registros.filter(r=>valido(r)&&String(r.fecha||'').startsWith(mes));
         const aprobados=mesLista.filter(r=>String(r.estadoValidacion).toLowerCase()==='aprobado');
         const corte=registros.filter(r=>{const f=String(r.fecha||'').slice(0,10),dia=new Date(f+'T12:00:00').getDay();
-            return f>='2026-09-01'&&f<='2026-10-12'&&dia>=1&&dia<=5&&String(r.estadoValidacion).toLowerCase()==='aprobado';});
+            return f>='2026-09-01'&&f<='2026-10-13'&&dia>=1&&dia<=5&&String(r.estadoValidacion).toLowerCase()==='aprobado';});
         return {horasMes:mesLista.reduce((s,r)=>s+horas(r),0),aprobadasMes:aprobados.reduce((s,r)=>s+horas(r),0),
             aprobadasCorte:horasAprobadasCorte==null?corte.reduce((s,r)=>s+horas(r),0):Math.max(0,Number(horasAprobadasCorte)||0),
             tieneRegularizacion:registros.some(regularizado)};
@@ -123,7 +123,7 @@
             text('INSTITUCIÓN: '+(contexto.datos.universidad||'________________________________'),75,331,20);
             if(contexto.proyecto)text('PROYECTO: '+envolver(ctx,contexto.proyecto.nombre,980)[0],2110,331,18,false,'right');
             text(`HORAS DEL MES: ${resumen.horasMes.toFixed(2)} h    |    APROBADAS DEL MES: ${resumen.aprobadasMes.toFixed(2)} h`,75,374,21,true);
-            if(resumen.tieneRegularizacion)text(`APROBADAS DEL 01/09/2026 AL 12/10/2026: ${resumen.aprobadasCorte.toFixed(2)} h`,2110,374,21,true,'right');
+            if(resumen.tieneRegularizacion)text(`APROBADAS DEL 01/09/2026 AL 13/10/2026: ${resumen.aprobadasCorte.toFixed(2)} h`,2110,374,21,true,'right');
             const columnas=[75,267,792,855,1045,1235,1420,1610,1795,1950,2110];
             const encabezados=['FECHA','NOMBRE','PISO','DÍA','ENTRADA','FIRMA','SALIDA','FIRMA','HORAS','APROB.'];
             const y=415,alto=38;
@@ -148,7 +148,7 @@
             text('1 - No laborado con justificación     2 - No laborado sin justificación     3 - Recuperación del día no laborado',75,sy+33,18);
             text('DÍA: Laboral / No laboral según el calendario. Las marcas no modifican las horas aprobadas.',75,sy+59,17);
             if(resumen.tieneRegularizacion) {
-                text('Regularización administrativa: 07:00-17:00 en días hábiles del 01/09 al 12/10/2026.',75,sy+90,19,true);
+                text('Regularización administrativa: 07:00-17:00 en días hábiles del 01/09 al 13/10/2026.',75,sy+90,19,true);
                 text('Horario reconocido por administración. Las conexiones reales se conservan en el historial; firmas por recabar.',75,sy+117,18);
             }
             const firmay=Math.max(sy+(resumen.tieneRegularizacion?145:80),1430),roles=[['Estudiante',nombre,contexto.datos.universidad||''],['Asesor empresarial',contexto.datos.asesorEmpresarial||'','JJM Tecnologías Innovadoras, S.A. de C.V.'],['Representante de la empresa','','JJM Tecnologías Innovadoras, S.A. de C.V.']];

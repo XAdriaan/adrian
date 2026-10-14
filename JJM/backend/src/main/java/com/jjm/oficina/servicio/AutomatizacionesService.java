@@ -111,7 +111,7 @@ public class AutomatizacionesService {
             FROM jornadas_automaticas j JOIN registros_horas h ON h.id_registro=j.id_registro
             JOIN usuarios u ON u.id_usuario=j.id_usuario JOIN roles r ON r.id_rol=u.id_rol
             JOIN miembros_equipo m ON m.id_miembro=h.id_miembro AND m.id_usuario=u.id_usuario
-            WHERE j.finalizada=TRUE AND m.estado='Activo' AND h.tipo_registro='Jornada' AND h.estado_validacion='Pendiente' ORDER BY h.id_registro FOR UPDATE
+            WHERE j.finalizada=TRUE AND j.modo_continuo=FALSE AND m.estado='Activo' AND h.tipo_registro='Jornada' AND h.estado_validacion='Pendiente' ORDER BY h.id_registro FOR UPDATE
             """);
         int total=0;
         for(Map<String,Object> j:lista)if(jornadaValida(j,hoy())) {

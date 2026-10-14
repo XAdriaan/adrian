@@ -3,7 +3,7 @@
     if (window.__asistenciaAutomaticaIniciada) return;
     window.__asistenciaAutomaticaIniciada = true;
     const pagina = window.crypto?.randomUUID?.() || `pagina_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    let pendiente = false, abandonando = false, tokenAnterior = '', datos = null, recibido = 0, conectado = false;
+    let pendiente = false, abandonando = false, tokenAnterior = '', datos = null, recibido = 0, conectado = false, accionPendiente = false;
     function usuario() { try { return JSON.parse(localStorage.getItem('usuarioActivo') || 'null'); } catch (_) { return null; } }
     function rol() { const u=usuario(); return String(u?.rol?.nombre || u?.rol || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase(); }
     function esAlumno() { return ['colaborador','alumno','alumna','estudiante','estudiante pmo'].includes(rol()); }
@@ -14,8 +14,8 @@
     function notificar() { window.dispatchEvent(new Event('pmo:asistencia')); pintar(); }
     function segundosVisibles() {
         if (!datos) return null;
-        const extra = datos.contando && !datos.error ? Math.min(Number(datos.vigenciaSegundos ?? 90),Number(datos.segundosHastaCierre ?? 90),Math.max(0,(Date.now()-recibido)/1000)) : 0;
-        return Math.min(36000,Math.max(0,Number(datos.segundos||0)+extra));
+        const extra = datos.contando && (datos.modoContinuo || !datos.error) ? Math.min(Number(datos.vigenciaSegundos ?? 90),Number(datos.segundosHastaCierre ?? 90),Math.max(0,(Date.now()-recibido)/1000)) : 0;
+        return Math.min(Number(datos.limiteSegundos??36000),Math.max(0,Number(datos.segundos||0)+extra));
     }
     function pintar() {
         if (typeof document === 'undefined' || !document.body || esAcceso() || !window.obtenerTokenSesionPMO()) return;
@@ -24,19 +24,29 @@
             const principal=document.querySelector('.main-content') || document.querySelector('.empresa-main'), pie=document.querySelector('.meeting-footer');
             if (!principal && !pie) return;
             barra=document.createElement('section'); barra.id='pmoAsistenciaBarra'; barra.className='pmo-asistencia-barra'; barra.setAttribute('aria-label','Conexión y asistencia');
-            barra.innerHTML='<div><strong id="pmoAsistenciaTitulo">Confirmando conexión…</strong><p id="pmoAsistenciaMensaje"></p></div><div class="pmo-reloj"><strong id="pmoAsistenciaReloj">00:00:00</strong><small>horas : minutos : segundos</small><progress id="pmoAsistenciaProgreso" max="36000" value="0" aria-label="Avance de las diez horas diarias"></progress></div><a id="pmoAsistenciaEnlace" href="asistencia.html">Ver asistencia de todos ↗</a>';
+            barra.innerHTML='<div><strong id="pmoAsistenciaTitulo">Confirmando conexión…</strong><p id="pmoAsistenciaMensaje"></p></div><div class="pmo-reloj"><strong id="pmoAsistenciaReloj">00:00:00</strong><small>horas : minutos : segundos</small><progress id="pmoAsistenciaProgreso" max="36000" value="0" aria-label="Avance de las diez horas diarias"></progress></div><div class="pmo-jornada-acciones"><button id="pmoIniciarJornada" type="button">Iniciar mi jornada</button><button id="pmoFinalizarJornada" type="button">Finalizar mi jornada</button><a id="pmoReporteJornada" href="canales-proyectos.html#diario">Hacer mis reportes</a><small id="pmoReporteEspera"></small><small id="pmoReposicionSaldo"></small></div><a id="pmoAsistenciaEnlace" href="asistencia.html">Ver asistencia de todos ↗</a>';
             if (principal) principal.prepend(barra); else { barra.classList.add('pmo-asistencia-compacta'); pie.append(barra); }
         }
-        const s=segundosVisibles(), contando=!!datos?.contando && !datos?.error && Date.now()-recibido < Number(datos?.vigenciaSegundos ?? 90)*1000;
+        const s=segundosVisibles(), contando=!!datos?.contando && (datos?.modoContinuo || !datos?.error) && Date.now()-recibido < Number(datos?.vigenciaSegundos ?? 90)*1000;
         const reloj=document.getElementById('pmoAsistenciaReloj'); reloj.textContent=formato(s); reloj.parentElement.hidden=!esAlumno();
+        document.getElementById('pmoAsistenciaProgreso').max=Number(datos?.limiteSegundos??36000)||36000;
         document.getElementById('pmoAsistenciaProgreso').value=s||0;
-        document.getElementById('pmoAsistenciaTitulo').textContent=datos?.error ? 'Conexión pendiente de confirmar' : esAlumno() ? s>=36000 ? 'Meta del día completada · 10 horas registradas' : contando ? 'Asistencia en curso · Meta diaria: 10 horas' : 'Asistencia pausada' : conectado ? 'Conectado a la Oficina de Proyectos' : 'Confirmando conexión…';
+        const inicio=document.getElementById('pmoIniciarJornada'),fin=document.getElementById('pmoFinalizarJornada');
+        inicio.parentElement.hidden=!esAlumno();inicio.hidden=!!datos?.modoContinuo;inicio.disabled=accionPendiente||!datos?.puedeIniciar;
+        inicio.textContent=datos?.reposicionPendienteSegundos>0?'Iniciar jornada / reposición':'Iniciar mi jornada';
+        fin.hidden=!datos?.puedeFinalizar;fin.disabled=accionPendiente;
+        inicio.onclick=()=>iniciar(true);fin.onclick=finalizar;
+        const acumulado=Number(datos?.segundosJornada??datos?.segundosConexion??0)+Math.max(0,(s||0)-Number(datos?.segundos||0)),habilitado=!!datos?.reporteHabilitado||acumulado>=32400;
+        document.getElementById('pmoReporteJornada').hidden=!habilitado;
+        document.getElementById('pmoReporteEspera').textContent=habilitado?'Entrega tu reporte en cada proyecto asignado.':`Reportes al acumular 9 horas. Faltan ${formato(32400-acumulado)}.`;
+        document.getElementById('pmoReposicionSaldo').textContent=datos?.reposicionPendienteSegundos>0?`Pendiente por reponer el fin de semana: ${formato(datos.reposicionPendienteSegundos)}.`:'';
+        document.getElementById('pmoAsistenciaTitulo').textContent=datos?.error ? datos?.modoContinuo?'Jornada iniciada · Conexión pendiente':'Conexión pendiente de confirmar' : esAlumno() ? s>=Number(datos?.limiteSegundos??36000) && Number(datos?.limiteSegundos??36000)>0 ? 'Meta de jornada registrada' : contando ? datos?.reposicion?'Reposición en curso':'Jornada en curso · Meta diaria: 10 horas' : datos?.finalizada?'Jornada finalizada':'Inicia tu jornada' : conectado ? 'Conectado a la Oficina de Proyectos' : 'Confirmando conexión…';
         document.getElementById('pmoAsistenciaMensaje').textContent=datos?.mensaje || 'Tu conexión se registra automáticamente. Horario escolar: lunes a viernes de 07:00 a 17:00.';
         document.getElementById('pmoAsistenciaEnlace').hidden=!puedeSupervisar(); barra.dataset.contando=String(contando);
         const titulo=document.getElementById('tituloJornada'), texto=document.getElementById('textoJornada');
-        if (titulo && texto && esAlumno()) { titulo.textContent=contando?'Asistencia automática en curso':'Asistencia automática'; texto.textContent=`${formato(s)} de 10:00:00 hoy. ${datos?.mensaje||'Confirmando tu conexión…'}`; }
+        if (titulo && texto && esAlumno()) { titulo.textContent=contando?'Jornada en curso':'Mi jornada'; texto.textContent=`${formato(s)} de 10:00:00 hoy. ${datos?.mensaje||'Confirmando tu conexión…'}`; }
     }
-    function publicarError(mensaje) { conectado=false; datos={...(datos||{segundos:0}),error:true,contando:false,mensaje}; notificar(); }
+    function publicarError(mensaje) { conectado=false; datos={...(datos||{segundos:0}),error:true,contando:!!datos?.modoContinuo&&!!datos?.contando,mensaje}; notificar(); }
     async function sincronizar() {
         const token=window.obtenerTokenSesionPMO(); if (pendiente || abandonando || !token) return;
         tokenAnterior=token; pendiente=true;
@@ -47,18 +57,27 @@
             if (window.obtenerTokenSesionPMO()!==token || abandonando) return;
             if (!respuesta.ok) throw new Error(resultado.mensaje || (respuesta.status===404?'La actualización de asistencia aún no está activa en el servidor.':'No se pudo confirmar la asistencia.'));
             datos=resultado.asistencia; recibido=Date.now(); conectado=resultado.conectado; notificar();
-        } catch (error) { if (window.obtenerTokenSesionPMO()===token && !abandonando) publicarError(error.message || 'No se pudo confirmar la conexión. El tiempo sin conexión no se registra.'); }
+        } catch (error) { if (window.obtenerTokenSesionPMO()===token && !abandonando) publicarError(error.message || 'No se pudo confirmar el avance. Si ya iniciaste la jornada, el servidor continúa hasta finalizar o las 17:00.'); }
         finally { clearTimeout(limite); pendiente=false; }
     }
     function salir() {
         const token=window.obtenerTokenSesionPMO(); if (!token || abandonando) return; abandonando=true;
         window.fetch(window.apiUrl('/api/presencia/salida'),{method:'POST',keepalive:true,headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({pagina,ruta:ruta()})}).catch(()=>{});
     }
-    window.asistenciaAutomaticaPMO={esAlumno,sincronizar,salir,formato,segundosVisibles,estado:()=>datos};
+    async function accion(nombre,navegar=false){
+        const token=window.obtenerTokenSesionPMO();if(accionPendiente||!token)return;accionPendiente=true;pintar();
+        const controlador=new AbortController(),timer=setTimeout(()=>controlador.abort(),15000);
+        try{const r=await window.fetch(window.apiUrl('/api/asistencia-automatica/'+nombre),{method:'POST',headers:{'Authorization':`Bearer ${token}`},signal:controlador.signal});const d=await r.json();if(window.obtenerTokenSesionPMO()!==token)return;if(!r.ok)throw Error(d.mensaje||d.detail||d.reason||'No se pudo completar la jornada.');datos=d;recibido=Date.now();notificar();
+            if(navegar&&d.modoContinuo&&!d.finalizada){if(window.PMOLlamadaActiva?.())document.getElementById('btnVolverProyecto')?.click();else window.location.href='proyectos.html';}
+        }catch(e){publicarError(e.message);}finally{clearTimeout(timer);accionPendiente=false;pintar();}
+    }
+    function iniciar(navegar=true){return accion('iniciar',navegar);}
+    function finalizar(){if(!window.confirm('¿Finalizar tu jornada? Las horas que falten se repondrán el fin de semana.'))return;return accion('finalizar');}
+    window.asistenciaAutomaticaPMO={esAlumno,sincronizar,salir,iniciar,finalizar,formato,segundosVisibles,estado:()=>datos};
     window.addEventListener('pagehide',salir);
     window.addEventListener('pageshow',()=>{abandonando=false;sincronizar();});
     window.addEventListener('online',sincronizar);
-    window.addEventListener('offline',()=>publicarError('Sin conexión: el reloj está pausado hasta confirmar tu asistencia con el servidor.'));
+    window.addEventListener('offline',()=>publicarError(datos?.modoContinuo?'Sin conexión: la jornada iniciada sigue en el servidor hasta finalizar o las 17:00.':'Sin conexión: conéctate para iniciar tu jornada.'));
     window.addEventListener('pmo:antes-cerrar-sesion',salir);
     window.addEventListener('pmo:sesion-cerrada',()=>{datos=null;tokenAnterior='';conectado=false;if(typeof document!=='undefined')document.getElementById('pmoAsistenciaBarra')?.remove();notificar();});
     window.addEventListener('storage',()=>{if(window.obtenerTokenSesionPMO()!==tokenAnterior){datos=null;abandonando=false;}sincronizar();});

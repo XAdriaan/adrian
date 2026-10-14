@@ -208,6 +208,9 @@ public class AuthController {
         return ResponseEntity.ok(respuesta);
     }
 
+    private String tokenBearer(String authorization){return authorization!=null&&authorization.startsWith("Bearer ")?authorization.substring(7).trim():"";}
+    @GetMapping("/vigencia") public ResponseEntity<Map<String,Object>> vigencia(@RequestHeader(value="Authorization",required=false) String authorization){String token=tokenBearer(authorization);Integer id=sesionService.obtenerUsuario(token);Usuario u=obtenerUsuarioActivo(id);if(u==null||!"Activo".equalsIgnoreCase(u.getEstado()))return respuestaError(HttpStatus.UNAUTHORIZED,"La sesión venció. Inicia sesión nuevamente.");return ResponseEntity.ok(Map.of("segundosRestantes",sesionService.segundosRestantes(token),"duracionHoras",12));}
+    @PostMapping("/renovar") public ResponseEntity<Map<String,Object>> renovar(@RequestHeader(value="Authorization",required=false) String authorization){String token=tokenBearer(authorization);Usuario u=obtenerUsuarioActivo(sesionService.obtenerUsuario(token));if(u==null||!"Activo".equalsIgnoreCase(u.getEstado())||!sesionService.renovar(token))return respuestaError(HttpStatus.UNAUTHORIZED,"La sesión venció. Inicia sesión nuevamente.");return ResponseEntity.ok(Map.of("segundosRestantes",sesionService.segundosRestantes(token),"duracionHoras",12));}
     @PutMapping("/perfil/nombre")
     @Transactional
     public ResponseEntity<Map<String, Object>> actualizarNombrePerfil(

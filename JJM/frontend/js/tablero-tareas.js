@@ -835,7 +835,7 @@ function renderizarTablero() {
 
     const tareasFiltradas = obtenerTareasFiltradas();
 
-    tareasFiltradas.forEach(function (tarea) {
+    tareasFiltradas.sort((a,b)=>String(a.proyectoNombre||'').localeCompare(String(b.proyectoNombre||''),'es',{numeric:true})||String(a.titulo||'').localeCompare(String(b.titulo||''),'es',{numeric:true})).forEach(function (tarea) {
         const columna = obtenerColumnaPorEstado(tarea.estado);
 
         if (columna) {
@@ -895,6 +895,7 @@ function crearTarjetaTarea(tarea) {
         "kanban-task priority-" +
         normalizarPrioridad(tarea.prioridad);
 
+    tarjeta.dataset.estadoTarea=String(tarea.estado||'Pendiente').trim().toLowerCase().replace(/\s+/g,'-');
     tarjeta.draggable = true;
 
     tarjeta.addEventListener(

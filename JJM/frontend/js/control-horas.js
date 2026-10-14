@@ -816,8 +816,8 @@ function limpiarSelectTareas(mensaje) {
 
 function actualizarEstadoJornada() {
     if (window.asistenciaAutomaticaPMO?.esAlumno()) {
-        if (btnCheckIn) btnCheckIn.hidden = true;
-        if (btnCheckOut) btnCheckOut.hidden = true;
+        if (btnCheckIn) {btnCheckIn.hidden=false;btnCheckIn.textContent='Iniciar mi jornada';btnCheckIn.disabled=!window.asistenciaAutomaticaPMO.estado()?.puedeIniciar;}
+        if (btnCheckOut) {btnCheckOut.hidden=false;btnCheckOut.disabled=!window.asistenciaAutomaticaPMO.estado()?.puedeFinalizar;}
         if (btnRegistrarHoras) btnRegistrarHoras.hidden = true;
         const asistencia = window.asistenciaAutomaticaPMO.estado();
         if (textoJornada) textoJornada.textContent = asistencia?.mensaje || "Confirmando tu asistencia automática...";
@@ -932,6 +932,7 @@ function actualizarEstadoJornada() {
 ========================================================= */
 
 async function iniciarJornada() {
+    if(window.asistenciaAutomaticaPMO?.esAlumno())return window.asistenciaAutomaticaPMO.iniciar(true);
     if (!confirm(
         "¿Deseas iniciar tu jornada de trabajo ahora?"
     )) {
@@ -982,6 +983,7 @@ async function iniciarJornada() {
 }
 
 async function finalizarJornada() {
+    if(window.asistenciaAutomaticaPMO?.esAlumno())return window.asistenciaAutomaticaPMO.finalizar();
     if (!confirm(
         "¿Deseas finalizar tu jornada de trabajo ahora?"
     )) {
@@ -1558,14 +1560,14 @@ function actualizarContadorAutomatico() {
         .reduce((total, r) => total + Number(r.horasTrabajadas || 0), 0);
     const registradasHoy = registrosHoras.filter(r => Number(r.idMiembro) === Number(estado.idMiembro)
             && String(r.fecha||'').slice(0,10) === estado.fecha).reduce((total,r)=>total+Number(r.horasTrabajadas||0),0);
-    if (horasHoy) horasHoy.textContent = seguimiento.formato(segundos) + " / 10:00:00";
+    if (horasHoy) horasHoy.textContent = seguimiento.formato(segundos) + ' / ' + seguimiento.formato(estado.limiteSegundos??36000);
     const acumuladas = estado.horasAcumuladas == null ? otrasHoras + Math.max(registradasHoy,segundos / 3600)
         : Number(estado.horasAcumuladas) + Math.max(0,segundos - Number(estado.segundos||0))/3600;
     if (horasTotales) horasTotales.textContent = acumuladas.toFixed(2) + "h";
     if (horasAprobadas && estado.horasAprobadasAcumuladas != null) horasAprobadas.textContent = Number(estado.horasAprobadasAcumuladas).toFixed(2) + "h";
     if (textoJornada && !estado.error && estado.contando) {
         const h = Math.floor(segundos / 3600), m = Math.floor(segundos % 3600 / 60), s = Math.floor(segundos % 60);
-        textoJornada.textContent = `Asistencia automática: ${[h,m,s].map(n => String(n).padStart(2,"0")).join(":")} de 10:00:00. Lunes a viernes, 07:00 a 17:00.`;
+        textoJornada.textContent = `Jornada en el servidor: ${[h,m,s].map(n => String(n).padStart(2,"0")).join(":")} de ${seguimiento.formato(estado.limiteSegundos??36000)}. Cierre a las 17:00, hora de México.`;
     }
 }
 

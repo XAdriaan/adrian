@@ -138,13 +138,16 @@
         },true);
     }
     if (typeof document !== "undefined" && document.createElement && document.head) {
-        window.PMOArdiaVozPromesa=new Promise(resolve=>{const v=document.createElement('script');v.src='js/ardia-voz.js?v=20261013-v20';v.onload=()=>resolve(true);v.onerror=()=>resolve(false);document.head.appendChild(v);});
+        window.PMOMicrofonoPromesa=window.PMOMicrofono?Promise.resolve(true):new Promise(resolve=>{const m=document.createElement('script');m.src='js/microfono.js?v=20261013-v21';m.onload=()=>resolve(true);m.onerror=()=>resolve(false);document.head.appendChild(m);});
+        const sesionAviso=document.createElement('script');sesionAviso.src='js/sesion-aviso.js?v=20261013-v21';document.head.appendChild(sesionAviso);
+        const contraste=document.createElement('link');contraste.rel='stylesheet';contraste.href='css/contraste-v21.css?v=20261013-v21';document.head.appendChild(contraste);
+        window.PMOArdiaVozPromesa=new Promise(resolve=>{const v=document.createElement('script');v.src='js/ardia-voz.js?v=20261013-v21';v.onload=()=>resolve(true);v.onerror=()=>resolve(false);document.head.appendChild(v);});
         const asistencia = document.createElement("script");
-        asistencia.src = "js/asistencia-automatica.js?v=20261012-v18";
+        asistencia.src = "js/asistencia-automatica.js?v=20261013-v21";
         document.head.appendChild(asistencia);
         const estiloAsistencia = document.createElement("link");
         estiloAsistencia.rel = "stylesheet";
-        estiloAsistencia.href = "css/asistencia.css?v=20261012-v16";
+        estiloAsistencia.href = "css/asistencia.css?v=20261013-v21";
         document.head.appendChild(estiloAsistencia);
         const automatizaciones = document.createElement("script");
         automatizaciones.src = "js/automatizaciones-global.js?v=20261012-v19";

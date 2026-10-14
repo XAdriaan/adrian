@@ -8,9 +8,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.sql.Timestamp;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
 
@@ -25,7 +22,6 @@ import java.util.HexFormat;
 @Service
 public class SesionService {
 
-    private static final Duration DURACION_SESION = Duration.ofHours(12);
 
     private final SecureRandom secureRandom = new SecureRandom();
     private final JdbcTemplate jdbc;
@@ -46,11 +42,10 @@ public class SesionService {
         jdbc.update(
                 """
                 INSERT INTO sesiones_usuario (token_hash, id_usuario, expira_en)
-                VALUES (?, ?, ?)
+                VALUES (?, ?, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 12 HOUR))
                 """,
                 hash(token),
-                idUsuario,
-                Timestamp.from(Instant.now().plus(DURACION_SESION))
+                idUsuario
         );
 
         return token;
@@ -93,6 +88,14 @@ public class SesionService {
         );
     }
 
+    public long segundosRestantes(String token) {
+        if(token==null||token.isBlank())return 0;asegurarEstructura();
+        try{Long segundos=jdbc.queryForObject("SELECT GREATEST(0,TIMESTAMPDIFF(SECOND,CURRENT_TIMESTAMP,expira_en)) FROM sesiones_usuario WHERE token_hash=? AND expira_en>CURRENT_TIMESTAMP",Long.class,hash(token));return segundos==null?0:segundos;}catch(EmptyResultDataAccessException e){return 0;}
+    }
+    public boolean renovar(String token) {
+        if(token==null||token.isBlank())return false;asegurarEstructura();
+        return jdbc.update("UPDATE sesiones_usuario SET expira_en=DATE_ADD(CURRENT_TIMESTAMP,INTERVAL 12 HOUR) WHERE token_hash=? AND expira_en>CURRENT_TIMESTAMP",hash(token))==1;
+    }
     private void limpiarVencidas() {
         jdbc.update("DELETE FROM sesiones_usuario WHERE expira_en <= CURRENT_TIMESTAMP");
     }

@@ -65,7 +65,7 @@ public class PresenciaPlataformaService {
                    r.nombre AS rol, u.estado,
                    p.ultima_senal_epoch AS ultimaSenal, p.ruta, p.conexiones,
                    j.id_registro AS idRegistro, j.total_segundos AS segundos,
-                   j.liquidado_epoch AS liquidado, j.ultima_senal_epoch AS senalJornada, j.finalizada,
+                   j.liquidado_epoch AS liquidado, j.ultima_senal_epoch AS senalJornada, j.finalizada,j.modo_continuo AS modoContinuo,j.reposicion,j.limite_segundos AS limiteSegundos,
                    resumen.entrada, COALESCE(resumen.horas,0) AS horasRegistradas,
                    COALESCE(observado.horas_trabajadas,0) AS horasAutomaticasRegistradas
             FROM usuarios u LEFT JOIN roles r ON r.id_rol=u.id_rol
@@ -86,21 +86,26 @@ public class PresenciaPlataformaService {
             boolean alumno = Set.of("colaborador","alumno","alumna","estudiante","estudiante pmo").contains(normalizar(rol));
             boolean activo = "Activo".equalsIgnoreCase(texto(fila.get("estado")));
             boolean conectado = activo && !conexiones(texto(fila.get("conexiones")),ahora.getEpochSecond()).isEmpty();
-            boolean contando = activo && alumno && dia.equals(hoy) && AsistenciaAutomaticaService.esDiaHabil(dia)
+            boolean continua=Boolean.TRUE.equals(fila.get("modoContinuo"))||numero(fila.get("modoContinuo"))==1;
+            boolean reposicion=Boolean.TRUE.equals(fila.get("reposicion"))||numero(fila.get("reposicion"))==1;
+            boolean contando = activo && alumno && dia.equals(hoy) && (AsistenciaAutomaticaService.esDiaHabil(dia)||reposicion)
                     && !ahora.isBefore(AsistenciaAutomaticaService.inicio(dia)) && ahora.isBefore(AsistenciaAutomaticaService.fin(dia))
                     && fila.get("idRegistro") != null && !Boolean.TRUE.equals(fila.get("finalizada")) && numero(fila.get("finalizada")) == 0
-                    && numero(fila.get("senalJornada")) + AsistenciaAutomaticaService.VIGENCIA_SENAL > ahora.getEpochSecond();
+                    && (continua || numero(fila.get("senalJornada")) + AsistenciaAutomaticaService.VIGENCIA_SENAL > ahora.getEpochSecond());
             long segundos = numero(fila.get("segundos"));
             long otrosSegundos=Math.max(0,decimal(fila.get("horasRegistradas")).subtract(decimal(fila.get("horasAutomaticasRegistradas"))).multiply(java.math.BigDecimal.valueOf(3600)).longValue());
             if(segundos+otrosSegundos>=36000)contando=false;
             if (contando) segundos += Math.max(0, Math.min(ahora.getEpochSecond(),
-                    numero(fila.get("senalJornada"))+AsistenciaAutomaticaService.VIGENCIA_SENAL)-numero(fila.get("liquidado")));
+                    continua?AsistenciaAutomaticaService.fin(dia).getEpochSecond():numero(fila.get("senalJornada"))+AsistenciaAutomaticaService.VIGENCIA_SENAL)-numero(fila.get("liquidado")));
+            if(continua)segundos=Math.min(numero(fila.get("limiteSegundos")),segundos);
+            dato.put("modoContinuo",continua);dato.put("reposicion",reposicion);
             dato.put("idUsuario",fila.get("idUsuario")); dato.put("nombre",fila.get("nombre")); dato.put("rol",rol);
             dato.put("estado",fila.get("estado")); dato.put("alumno",alumno); dato.put("conectado",conectado); dato.put("contando",contando);
             dato.put("segundos",Math.min(36000,Math.max(0,segundos+otrosSegundos))); dato.put("entrada",fila.get("entrada"));
             dato.put("asistenciaRegistrada",fila.get("idRegistro")!=null || otrosSegundos>0);
             dato.put("incluyeOtrosRegistros",otrosSegundos>0);
-            dato.put("vigenciaSegundos",Math.max(0,numero(fila.get("senalJornada"))+AsistenciaAutomaticaService.VIGENCIA_SENAL-ahora.getEpochSecond()));
+            dato.put("vigenciaSegundos",Math.max(0,(continua?AsistenciaAutomaticaService.fin(dia).getEpochSecond():numero(fila.get("senalJornada"))+AsistenciaAutomaticaService.VIGENCIA_SENAL)-ahora.getEpochSecond()));
+            dato.put("limiteSegundos",continua?numero(fila.get("limiteSegundos")):36000);
             dato.put("segundosHastaCierre",Math.max(0,Duration.between(ahora,AsistenciaAutomaticaService.fin(dia)).toSeconds()));
             long ultima = numero(fila.get("ultimaSenal"));
             dato.put("ultimaConexion", ultima > 0 ? Instant.ofEpochSecond(ultima).toString() : null);

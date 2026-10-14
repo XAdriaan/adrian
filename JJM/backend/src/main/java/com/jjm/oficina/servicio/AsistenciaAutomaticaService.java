@@ -14,6 +14,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 /** El servidor mide presencia; el navegador nunca proporciona horas ni fechas. */
 @Service
@@ -21,6 +23,7 @@ public class AsistenciaAutomaticaService {
     public static final ZoneId ZONA = ZoneId.of("America/Mexico_City");
     public static final long VIGENCIA_SENAL = 90;
     private static final String DESCRIPCION = "Asistencia automática: presencia en la Oficina de Proyectos (07:00 a 17:00).";
+    private static final String CONTINUA = "Jornada iniciada por el alumno: tiempo transcurrido en el servidor; incluye suspensión. Requiere revisión de actividades.";
     private static final Logger LOG = LoggerFactory.getLogger(AsistenciaAutomaticaService.class);
     private final UsuarioRepository usuarios;
     private final MiembroEquipoRepository miembros;
@@ -38,7 +41,6 @@ public class AsistenciaAutomaticaService {
         this.transaccion = new TransactionTemplate(gestor);
     }
 
-    @PostConstruct
     public void prepararEstructura() {
         // Tabla adicional: conserva intactos los registros y las cuentas existentes.
         jdbc.execute("""
@@ -55,6 +57,18 @@ public class AsistenciaAutomaticaService {
                 """);
     }
 
+    private void columna(String nombre, String tipo) {
+        Integer existe=jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='jornadas_automaticas' AND column_name=?",Integer.class,nombre);
+        if(existe==null||existe==0)jdbc.execute("ALTER TABLE jornadas_automaticas ADD COLUMN "+nombre+" "+tipo);
+    }
+    @PostConstruct public void prepararJornadaContinua() {
+        prepararEstructura();
+        columna("modo_continuo", "BOOLEAN NOT NULL DEFAULT FALSE");
+        columna("reposicion", "BOOLEAN NOT NULL DEFAULT FALSE");
+        columna("limite_segundos", "BIGINT NOT NULL DEFAULT 36000");
+        jdbc.execute("CREATE TABLE IF NOT EXISTS pmo_jornada_config(id INT PRIMARY KEY,inicio DATE NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        jdbc.update("INSERT IGNORE INTO pmo_jornada_config(id,inicio) VALUES(1,?)", reloj.instant().atZone(ZONA).toLocalDate());
+    }
     public static boolean esAlumno(Usuario u) {
         if (u == null || u.getRol() == null || u.getRol().getNombre() == null
                 || !"Activo".equalsIgnoreCase(u.getEstado())) return false;
@@ -63,7 +77,7 @@ public class AsistenciaAutomaticaService {
     }
 
     public static boolean esRegistroAutomatico(RegistroHoras registro) {
-        return registro != null && (DESCRIPCION.equals(registro.getDescripcion()) || (registro.getDescripcion()!=null && registro.getDescripcion().startsWith(DESCRIPCION+"\n")));
+        return registro != null && (registro.getDescripcion()!=null&&registro.getDescripcion().startsWith(CONTINUA) || DESCRIPCION.equals(registro.getDescripcion()) || (registro.getDescripcion()!=null && registro.getDescripcion().startsWith(DESCRIPCION+"\n")));
     }
 
     public Map<String, Object> actualizar(Integer idUsuario, boolean senal) {
@@ -71,10 +85,12 @@ public class AsistenciaAutomaticaService {
     }
 
     public Map<String, Object> actualizar(Integer idUsuario, boolean senal, String pagina, boolean salida) {
-        return transaccion.execute(estado -> actualizarBloqueado(idUsuario, senal, pagina, salida));
+        return transaccion.execute(estado -> actualizarBloqueado(idUsuario, senal, pagina, salida, false, false));
     }
+    public Map<String,Object> iniciar(Integer idUsuario) { return transaccion.execute(e->actualizarBloqueado(idUsuario,false,null,false,true,false)); }
+    public Map<String,Object> finalizar(Integer idUsuario) { return transaccion.execute(e->actualizarBloqueado(idUsuario,false,null,false,false,true)); }
 
-    private Map<String, Object> actualizarBloqueado(Integer idUsuario, boolean senal, String pagina, boolean retirar) {
+    private Map<String, Object> actualizarBloqueado(Integer idUsuario, boolean senal, String pagina, boolean retirar, boolean iniciar, boolean finalizar) {
         Usuario alumno = usuarios.buscarParaAsistencia(idUsuario).orElse(null);
         Instant ahora = reloj.instant();
         LocalDate fecha = ahora.atZone(ZONA).toLocalDate();
@@ -88,9 +104,14 @@ public class AsistenciaAutomaticaService {
         JornadaAutomatica jornada = jornadas.findByIdUsuarioAndFecha(idUsuario, fecha).orElse(null);
         long otrosSegundos = miembro == null ? 0 : segundosOtros(miembro.getId(),fecha,jornada==null?null:jornada.getIdRegistro());
         boolean metaCumplida = otrosSegundos + (jornada==null?0:jornada.getTotalSegundos()) >= 36000;
-        boolean enHorario = esDiaHabil(fecha) && !ahora.isBefore(inicio(fecha)) && ahora.isBefore(fin(fecha));
+        long reposicionPendiente=saldoReposicion(idUsuario);
+        boolean finSemana=!esDiaHabil(fecha);
+        boolean enHorario = (esDiaHabil(fecha) || reposicionPendiente>0 || jornada!=null&&jornada.isReposicion()) && !ahora.isBefore(inicio(fecha)) && ahora.isBefore(fin(fecha));
+        if((iniciar||finalizar)&&!aplicable)throw new ResponseStatusException(HttpStatus.FORBIDDEN,"La jornada corresponde a alumnos y miembros activos.");
+        if(iniciar&&!enHorario)throw new ResponseStatusException(HttpStatus.CONFLICT,finSemana?"Solo puedes iniciar reposición si tienes horas pendientes, entre 07:00 y 17:00.":"Inicia tu jornada entre 07:00 y 17:00, hora de México.");
+        if(iniciar&&jornada!=null&&jornada.isFinalizada())throw new ResponseStatusException(HttpStatus.CONFLICT,"La jornada de hoy ya terminó. No se puede reiniciar.");
         String aviso = "";
-        if (senal && aplicable && enHorario && jornada == null && !metaCumplida) {
+        if (iniciar && aplicable && enHorario && jornada == null && !metaCumplida) {
             // Una jornada manual abierta debe resolverse antes de empezar otra: no se duplican tiempos.
             List<RegistroHoras> abiertas = registros.buscarJornadasPendientesAbiertas(miembro.getId()).stream()
                     .filter(r -> r.getFecha() == null || !r.getFecha().isBefore(fecha)).toList();
@@ -105,18 +126,25 @@ public class AsistenciaAutomaticaService {
             } else {
                 RegistroHoras registro = continuarManual ? reutilizable : new RegistroHoras();
                 registro.setIdMiembro(miembro.getId()); registro.setFecha(fecha);
-                if (!continuarManual) registro.setHoraEntrada(ahora.atZone(ZONA).toLocalTime().withNano(0));
+                registro.setHoraEntrada(ahora.atZone(ZONA).toLocalTime().withNano(0));
                 registro.setHorasTrabajadas(BigDecimal.ZERO); registro.setTipoRegistro("Jornada");
-                registro.setIncidente("normal"); registro.setDescripcion(DESCRIPCION);
+                registro.setIncidente("normal"); registro.setDescripcion(CONTINUA+(finSemana?" Reposición de horas pendientes.":""));
                 registro.setEstadoValidacion("Pendiente");
                 registro = registros.saveAndFlush(registro);
                 jornada = new JornadaAutomatica(); jornada.setIdUsuario(idUsuario); jornada.setFecha(fecha);
                 jornada.setIdRegistro(registro.getId()); jornada.setUltimaSenal(ahora.getEpochSecond());
                 jornada.setLiquidado(ahora.getEpochSecond()); jornadas.save(jornada);
-                renovarConexion(jornada, pagina, ahora, false);
+                jornada.setModoContinuo(true); jornada.setReposicion(finSemana);
+                jornada.setLimiteSegundos(finSemana?Math.min(36000,reposicionPendiente):36000);jornadas.save(jornada);
+                alertarInicio(idUsuario,fecha,ahora,finSemana);
                 if (continuarManual) aviso = "Tu jornada abierta continúa con asistencia automática desde esta conexión.";
             }
-        } else if (senal && aplicable && enHorario && jornada != null && !jornada.isFinalizada() && !metaCumplida) {
+        } else if (iniciar && jornada!=null && !jornada.isFinalizada() && !jornada.isModoContinuo() && !metaCumplida) {
+            RegistroHoras r=registros.findById(jornada.getIdRegistro()).orElseThrow();
+            if(!"Pendiente".equalsIgnoreCase(r.getEstadoValidacion()))throw new ResponseStatusException(HttpStatus.CONFLICT,"Administración debe revisar el registro existente antes de continuar.");
+            jornada.setModoContinuo(true);jornada.setLiquidado(ahora.getEpochSecond());jornadas.save(jornada);
+            r.setDescripcion(CONTINUA);registros.save(r);alertarInicio(idUsuario,fecha,ahora,false);
+        } else if (senal && aplicable && enHorario && jornada != null && !jornada.isFinalizada() && !jornada.isModoContinuo() && !metaCumplida) {
             // Tras una suspensión larga se reanuda desde ahora; el hueco no se acredita.
             jornada.setUltimaSenal(Math.max(jornada.getUltimaSenal(), ahora.getEpochSecond()));
             jornada.setLiquidado(Math.max(jornada.getLiquidado(), ahora.getEpochSecond()));
@@ -126,12 +154,22 @@ public class AsistenciaAutomaticaService {
         if (retirar && jornada != null && !jornada.isFinalizada()) {
             renovarConexion(jornada, pagina, ahora, true); jornadas.save(jornada);
         }
+        if(finalizar && jornada!=null && !jornada.isFinalizada()) {jornada.setFinalizada(true);cerrarRegistro(jornada,ahora.isAfter(fin(fecha))?fin(fecha):ahora);jornadas.save(jornada);alertarFaltante(jornada);}
         Map<String, Object> salida = new LinkedHashMap<>();
         salida.put("estado", "correcto"); salida.put("aplicable", aplicable);
         salida.put("fecha", fecha.toString()); salida.put("zonaHoraria", ZONA.getId());
         salida.put("horario", "Lunes a viernes, 07:00 a 17:00"); salida.put("metaHoras", 10);
         salida.put("servidorEpoch", ahora.getEpochSecond());
-        salida.put("vigenciaSegundos", jornada == null ? 0 : Math.max(0, jornada.getUltimaSenal() + VIGENCIA_SENAL - ahora.getEpochSecond()));
+        long limiteHoy=jornada==null?finSemana?Math.min(36000,reposicionPendiente):36000:jornada.getLimiteSegundos();
+        boolean continua=jornada!=null&&jornada.isModoContinuo();
+        salida.put("modoContinuo",continua);salida.put("reposicion",jornada!=null&&jornada.isReposicion());
+        salida.put("limiteSegundos",limiteHoy);salida.put("reposicionPendienteSegundos",saldoReposicion(idUsuario));
+        salida.put("puedeIniciar",aplicable&&enHorario&&!metaCumplida&&(jornada==null||!jornada.isFinalizada()&&!continua));
+        salida.put("puedeFinalizar",aplicable&&continua&&!jornada.isFinalizada());
+        salida.put("finalizada",jornada!=null&&jornada.isFinalizada());
+        salida.put("segundosJornada",jornada==null?0:jornada.getTotalSegundos());
+        salida.put("reporteHabilitado",jornada!=null&&jornada.getTotalSegundos()>=32400||reconocido(idUsuario,fecha));
+        salida.put("vigenciaSegundos", continua?Math.max(0,Duration.between(ahora,fin(fecha)).toSeconds()):jornada == null ? 0 : Math.max(0, jornada.getUltimaSenal() + VIGENCIA_SENAL - ahora.getEpochSecond()));
         salida.put("enHorario", enHorario); salida.put("segundos", Math.min(36000,otrosSegundos+(jornada==null?0:jornada.getTotalSegundos())));
         salida.put("segundosConexion",jornada==null?0:jornada.getTotalSegundos());
         salida.put("segundosOtrosRegistros",otrosSegundos);
@@ -147,14 +185,16 @@ public class AsistenciaAutomaticaService {
         salida.put("idRegistro", jornada == null ? null : jornada.getIdRegistro());
         salida.put("idMiembro", miembro == null ? null : miembro.getId());
         salida.put("contando", !metaCumplida && aplicable && enHorario && jornada != null && !jornada.isFinalizada()
-                && ahora.getEpochSecond() < jornada.getUltimaSenal() + VIGENCIA_SENAL);
+                && (continua || ahora.getEpochSecond() < jornada.getUltimaSenal() + VIGENCIA_SENAL));
         salida.put("mensaje", metaCumplida ? "Las 10 horas de hoy ya están registradas. El total incluye las horas reconocidas por administración."
                 : !aviso.isEmpty() ? aviso : !aplicable ? esAlumno(alumno)
                 ? "Tu cuenta necesita un miembro de equipo activo para registrar horas. Solicita la revisión de administración."
                 : "Tu conexión queda registrada. Las horas de estadía corresponden a alumnos activos."
-                : !esDiaHabil(fecha) ? "La asistencia se registra de lunes a viernes."
+                : !esDiaHabil(fecha) && (jornada==null||!jornada.isReposicion()) ? reposicionPendiente>0?"Puedes reponer tus horas pendientes el fin de semana, de 07:00 a 17:00.":"No tienes horas pendientes para iniciar una reposición."
                 : !enHorario ? "El horario de asistencia es de 07:00 a 17:00."
-                : "Las horas avanzan mientras tengas abierta la plataforma.");
+                : jornada!=null&&jornada.isFinalizada()?"La jornada terminó. Revisa tus reportes y el saldo de reposición."
+                : continua ? "El servidor cuenta tu jornada aunque cierres o suspendas la laptop. Finaliza al terminar; cierre automático a las 17:00. La conexión y las actividades se revisan por separado."
+                : "Pulsa Iniciar mi jornada para trabajar en tus proyectos. El reporte se habilita al acumular 9 horas.");
         return salida;
     }
 
@@ -178,22 +218,78 @@ public class AsistenciaAutomaticaService {
     private void liquidar(JornadaAutomatica jornada, Instant ahora) {
         if (jornada.isFinalizada()) return;
         long desde = Math.max(jornada.getLiquidado(), inicio(jornada.getFecha()).getEpochSecond());
-        long hasta = Math.min(Math.min(ahora.getEpochSecond(), fin(jornada.getFecha()).getEpochSecond()),
-                jornada.getUltimaSenal() + VIGENCIA_SENAL);
-        long incremento = esDiaHabil(jornada.getFecha()) ? Math.max(0, hasta - desde) : 0;
+        long hasta = Math.min(ahora.getEpochSecond(), fin(jornada.getFecha()).getEpochSecond());
+        if(!jornada.isModoContinuo())hasta=Math.min(hasta,jornada.getUltimaSenal()+VIGENCIA_SENAL);
+        long incremento = esDiaHabil(jornada.getFecha())||jornada.isReposicion() ? Math.max(0, hasta - desde) : 0;
         RegistroHoras registro = registros.findById(jornada.getIdRegistro()).orElseThrow(
                 () -> new IllegalStateException("No se encontró el registro de la asistencia automática."));
-        long limite = Math.max(0,36000-segundosOtros(registro.getIdMiembro(),jornada.getFecha(),registro.getId()));
+        if(jornada.isModoContinuo()&&!"Pendiente".equalsIgnoreCase(registro.getEstadoValidacion())){jornada.setFinalizada(true);jornadas.save(jornada);return;}
+        long limite = Math.max(0,Math.min(jornada.getLimiteSegundos(),36000-segundosOtros(registro.getIdMiembro(),jornada.getFecha(),registro.getId())));
+        if(jornada.isReposicion())limite=Math.min(limite,jornada.getTotalSegundos()+saldoReposicion(jornada.getIdUsuario()));
         incremento = Math.min(incremento,Math.max(0,limite-jornada.getTotalSegundos()));
         if (incremento == 0 && ahora.isBefore(fin(jornada.getFecha()))) return;
         jornada.setTotalSegundos(Math.min(36000, jornada.getTotalSegundos() + incremento));
         jornada.setLiquidado(Math.max(jornada.getLiquidado(), hasta));
         registro.setHorasTrabajadas(horas(jornada.getTotalSegundos()));
-        if (!ahora.isBefore(fin(jornada.getFecha()))) {
+        if (!ahora.isBefore(fin(jornada.getFecha())) || jornada.isModoContinuo()&&jornada.getTotalSegundos()>=limite) {
             jornada.setFinalizada(true);
-            registro.setHoraSalida(Instant.ofEpochSecond(Math.max(desde, hasta)).atZone(ZONA).toLocalTime().withNano(0));
+            long cierre=jornada.isModoContinuo()?desde+incremento:Math.max(desde,hasta);
+            registro.setHoraSalida(Instant.ofEpochSecond(Math.min(fin(jornada.getFecha()).getEpochSecond(),cierre)).atZone(ZONA).toLocalTime().withNano(0));
         }
         registros.save(registro); jornadas.save(jornada);
+        if(jornada.isFinalizada())alertarFaltante(jornada);
+        if(jornada.isReposicion()&&saldoReposicion(jornada.getIdUsuario())==0)jdbc.update("UPDATE pmo_recordatorios SET estado='Resuelto',actualizado_en=? WHERE clave LIKE ?",reloj.instant().atZone(ZONA).toLocalDateTime(),"jornada-falta-"+jornada.getIdUsuario()+"-%");
+    }
+
+    private List<Map<String,Object>> deficits(Integer usuario) {
+        return jdbc.queryForList("""
+            SELECT j.fecha,GREATEST(0,36000-COALESCE(h.segundos,0)
+              +IF(COALESCE(r.estado_validacion,'Pendiente')<>'Rechazado',COALESCE(r.horas_trabajadas,0)*3600-j.total_segundos,0)) AS faltante
+            FROM jornadas_automaticas j JOIN registros_horas r ON r.id_registro=j.id_registro
+            LEFT JOIN (SELECT id_miembro,fecha,SUM(horas_trabajadas)*3600 AS segundos FROM registros_horas
+                       WHERE COALESCE(estado_validacion,'Pendiente')<>'Rechazado' AND id_miembro IN(SELECT id_miembro FROM miembros_equipo WHERE id_usuario=?) GROUP BY id_miembro,fecha) h
+              ON h.id_miembro=r.id_miembro AND h.fecha=j.fecha
+            WHERE j.id_usuario=? AND j.modo_continuo=TRUE AND j.reposicion=FALSE AND j.finalizada=TRUE
+              AND DAYOFWEEK(j.fecha) BETWEEN 2 AND 6 ORDER BY j.fecha
+            """,usuario,usuario);
+    }
+    private long reposiciones(Integer usuario) {
+        Long s=jdbc.queryForObject("SELECT COALESCE(SUM(j.total_segundos),0) FROM jornadas_automaticas j JOIN registros_horas r ON r.id_registro=j.id_registro WHERE j.id_usuario=? AND j.reposicion=TRUE AND COALESCE(r.estado_validacion,'Pendiente')<>'Rechazado'",Long.class,usuario);
+        return s==null?0:Math.max(0,s);
+    }
+    private long saldoReposicion(Integer usuario) {return Math.max(0,deficits(usuario).stream().mapToLong(d->((Number)d.get("faltante")).longValue()).sum()-reposiciones(usuario));}
+    private void alertarInicio(Integer usuario,LocalDate fecha,Instant ahora,boolean reposicion) {
+        if(!reposicion&&ahora.isAfter(inicio(fecha))) {
+            long faltan=Math.min(36000,Duration.between(inicio(fecha),ahora).toSeconds());
+            alerta(usuario,fecha,"Inicio tardío de jornada","Inicio a las "+ahora.atZone(ZONA).toLocalTime().withNano(0)+". Faltarán hasta "+horas(faltan)+" horas de la meta diaria; revisa el saldo al cerrar y repón las horas el fin de semana.");
+        }
+    }
+    private void alertarFaltante(JornadaAutomatica j) {
+        if(j.isModoContinuo()&&!j.isReposicion()&&saldoReposicion(j.getIdUsuario())>0)alerta(j.getIdUsuario(),j.getFecha(),"Horas pendientes de reposición","Jornada cerrada. Saldo total por reponer: "+horas(saldoReposicion(j.getIdUsuario()))+" horas. Inicia reposición el sábado o domingo entre 07:00 y 17:00. Las horas quedan pendientes de revisión de actividades.");
+    }
+    private void alerta(Integer alumno,LocalDate fecha,String titulo,String mensaje) {
+        Set<Integer> destinos=new HashSet<>();destinos.add(alumno);
+        jdbc.queryForList("SELECT u.id_usuario AS id FROM usuarios u JOIN roles r ON r.id_rol=u.id_rol WHERE u.estado='Activo' AND LOWER(r.nombre) IN ('superadministrador','administrador','admin pmo','admin_pmo','administrador pmo')").forEach(a->destinos.add(((Number)a.get("id")).intValue()));
+        for(Integer id:destinos)jdbc.update("INSERT INTO pmo_recordatorios(clave,id_usuario,titulo,descripcion,enlace,estado,actualizado_en) VALUES(?,?,?,?,?,'Abierto',?) ON DUPLICATE KEY UPDATE titulo=VALUES(titulo),descripcion=VALUES(descripcion),estado='Abierto',actualizado_en=VALUES(actualizado_en)","jornada-falta-"+alumno+"-"+fecha+"-"+id,id,titulo,"Alumno #"+alumno+": "+mensaje,"control-horas.html",reloj.instant().atZone(ZONA).toLocalDateTime());
+    }
+    public Map<String,Object> habilitacionReporte(Integer usuario,LocalDate fecha) {
+        actualizar(usuario,false);
+        List<Map<String,Object>> config=jdbc.queryForList("SELECT inicio FROM pmo_jornada_config WHERE id=1");
+        boolean anterior=!config.isEmpty()&&fecha.isBefore(LocalDate.parse(config.getFirst().get("inicio").toString()));
+        JornadaAutomatica j=jornadas.findByIdUsuarioAndFecha(usuario,fecha).orElse(null);
+        long segundos=j==null?0:j.getTotalSegundos(),credito=reposiciones(usuario);
+        for(Map<String,Object> d:deficits(usuario)) {
+            long falta=((Number)d.get("faltante")).longValue();LocalDate dia=LocalDate.parse(d.get("fecha").toString());
+            if(dia.equals(fecha)){segundos+=Math.min(falta,credito);break;}
+            credito=Math.max(0,credito-falta);
+        }
+        boolean habilitado=anterior||segundos>=32400||reconocido(usuario,fecha);
+        return Map.of("habilitado",habilitado,"segundos",segundos,"faltanSegundos",Math.max(0,32400-segundos),"mensaje",habilitado?"Puedes entregar tu reporte. La evidencia y el plazo se revisan por separado.":"El reporte se habilita al acumular 9 horas de jornada. Si faltan horas, repón el saldo el fin de semana. No se cuentan horas de fechas anteriores a la activación de esta regla.");
+    }
+    private boolean reconocido(Integer usuario,LocalDate fecha) {
+        if(fecha.isBefore(RegularizacionHorasService.DESDE)||fecha.isAfter(ReconocimientoHoras2026Service.CORTE))return false;
+        BigDecimal horas=jdbc.queryForObject("SELECT COALESCE(SUM(h.horas_trabajadas),0) FROM registros_horas h JOIN miembros_equipo m ON m.id_miembro=h.id_miembro WHERE m.id_usuario=? AND h.fecha=? AND h.estado_validacion='Aprobado' AND (EXISTS(SELECT 1 FROM pmo_reconocimiento2026 c WHERE c.id_usuario=m.id_usuario AND c.corte>=h.fecha) OR EXISTS(SELECT 1 FROM registros_horas x WHERE x.id_miembro=h.id_miembro AND x.fecha=h.fecha AND x.estado_validacion='Aprobado' AND (x.descripcion LIKE 'Reconocimiento administrativo autorizado Sep-Dic 2026%' OR x.descripcion LIKE '%Regularización administrativa Septiembre-Diciembre 2026%')))",BigDecimal.class,usuario,fecha);
+        return horas!=null&&horas.compareTo(BigDecimal.valueOf(9))>=0;
     }
 
     private void cerrarRegistro(JornadaAutomatica jornada, Instant ahora) {

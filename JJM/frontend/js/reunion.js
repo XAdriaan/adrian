@@ -67,6 +67,7 @@ function avisoMediosSala(texto = '') {
     if (aviso) { aviso.hidden = !texto; aviso.textContent = texto; }
 }
 function errorMediosSala(e, tipo) {
+    if(tipo==='audio'&&window.PMOMicrofono)return window.PMOMicrofono.mensaje(e);
     const nombre = tipo === 'audio' ? 'micrófono' : tipo === 'video' ? 'cámara' : 'pantalla';
     const dispositivo = (tipo === 'audio' ? 'el ' : 'la ') + nombre;
     if (e.name === 'NotAllowedError' || e.name === 'SecurityError') return tipo === 'pantalla'
@@ -87,6 +88,7 @@ function solicitarDispositivo(constraints) {
     return Promise.race([peticion,limite]).finally(()=>clearTimeout(temporizador));
 }
 async function actualizarCamarasDisponibles() {
+    if(window.PMOMicrofono)try{await window.PMOMicrofono.llenar(document.getElementById('selectorMicrofono'),rtc?.medios.audio?.getSettings?.().deviceId);}catch(_){}
     const selector=document.getElementById('selectorCamara');
     if(!selector?.replaceChildren || !navigator.mediaDevices?.enumerateDevices)return;
     try {
@@ -146,6 +148,7 @@ async function cargarProyecto() {
     proyectoActual = d.proyecto; nombreProyectoReunion.textContent = proyectoActual.nombre || "Proyecto";
 }
 function restablecerControles() {
+    detenerPruebaMicro();
     experienciaSala?.restaurar();meetingLoading?.classList.remove('hidden');
     if(meetingLoadingMessage)meetingLoadingMessage.textContent='La llamada se cerró. Pulsa Entrar a la sala para volver a intentarlo.';
     const mano=document.getElementById('btnManoSala');if(mano){mano.setAttribute('aria-pressed','false');mano.textContent='✋ Levantar la mano';}
@@ -177,6 +180,18 @@ function configurarEventos() {
         if(camaraPropia){camaraPropia.stop();camaraPropia=null;rtc.medios.video=null;rtc.actualizarVistaLocal();}
         await activarMedio('video',btnCamara);
     });
+    const selectorMicro=document.getElementById('selectorMicrofono');
+    selectorMicro?.addEventListener('change',async()=>{
+        window.PMOMicrofono?.elegir(selectorMicro.value);
+        if(!rtc?.activa||mediosPendientes.has('audio')||!rtc.medios.audio?.enabled)return;
+        if(grabando){avisoMediosSala('Detén la grabación antes de cambiar el micrófono.');await actualizarCamarasDisponibles();return;}
+        const sala=rtc,epoca=rtc.generacion,anterior=rtc.medios.audio;mediosPendientes.add('audio');let flujo;
+        try{flujo=await window.PMOMicrofono.obtener(selectorMicro.value);if(!sala.activa||sala.generacion!==epoca){flujo.getTracks().forEach(t=>t.stop());return;}await sala.cambiar('audio',flujo.getAudioTracks()[0]);anterior?.stop();await publicarMediosSala();avisoMediosSala();}
+        catch(e){flujo?.getTracks().forEach(t=>t.stop());avisoMediosSala(errorMediosSala(e,'audio'));}
+        finally{mediosPendientes.delete('audio');actualizarMediosSala();await actualizarCamarasDisponibles();}
+    });
+    document.getElementById('buscarMicrofonos')?.addEventListener('click',()=>actualizarCamarasDisponibles());
+    document.getElementById('probarMicrofono')?.addEventListener('click',probarMicrofonoSala);
     navigator.mediaDevices?.addEventListener?.('devicechange',actualizarCamarasDisponibles);
     actualizarCamarasDisponibles();
     btnPantalla.addEventListener('click',compartirPantalla);
@@ -195,7 +210,7 @@ function configurarEventos() {
         panel.hidden=!panel.hidden; b.setAttribute('aria-expanded',String(!panel.hidden));
         document.querySelector('.meeting-main').classList.toggle('con-panel',!panel.hidden);
     });
-    window.addEventListener('pagehide',()=>{registrarSalida({keepalive:true});liberarJitsi();});
+    window.addEventListener('pagehide',()=>{detenerPruebaMicro();registrarSalida({keepalive:true});liberarJitsi();});
 }
 async function activarMedio(tipo, boton) {
     if (!rtc?.activa || mediosPendientes.has(tipo)) return;
@@ -209,7 +224,7 @@ async function activarMedio(tipo, boton) {
             let flujo;
             const dispositivo=document.getElementById('selectorCamara')?.value;
             const video={width:{ideal:640},height:{ideal:360},...(dispositivo?{deviceId:{exact:dispositivo}}:{})};
-            try { flujo=await solicitarDispositivo(tipo==='audio'?{audio:{echoCancellation:true,noiseSuppression:true},video:false}:{video,audio:false}); }
+            try { flujo=tipo==='audio'&&window.PMOMicrofono?await window.PMOMicrofono.obtener(document.getElementById('selectorMicrofono')?.value||''):await solicitarDispositivo(tipo==='audio'?{audio:{echoCancellation:true,noiseSuppression:true},video:false}:{video,audio:false}); }
             catch(e) { if (tipo!=='video'||dispositivo||!['OverconstrainedError','NotFoundError'].includes(e.name)) throw e; flujo=await solicitarDispositivo({video:true,audio:false}); }
             if (!sala.activa || sala.generacion!==epoca) { flujo.getTracks().forEach(t=>t.stop()); return; }
             const pista=tipo==='audio'?flujo.getAudioTracks()[0]:flujo.getVideoTracks()[0];
@@ -224,11 +239,24 @@ async function activarMedio(tipo, boton) {
             if(tipo==='video' && fondosSala){
                 try{await fondosSala.iniciar(pista,document.getElementById('fondoSala').value);}catch(e){avisoMediosSala(e.message);await sala.cambiar('video',pista);}
             }else await sala.cambiar(tipo,pista);
-            if(tipo==='video')actualizarCamarasDisponibles();
+            actualizarCamarasDisponibles();
         }
         await publicarMediosSala();experienciaSala?.activarAudio().catch(()=>{});
     } catch(e) { if(sala.activa&&sala.generacion===epoca)avisoMediosSala(errorMediosSala(e,tipo)); }
     finally { mediosPendientes.delete(tipo); actualizarMediosSala(); }
+}
+let pruebaMicroGeneracion=0,finPruebaMicro=null;
+function detenerPruebaMicro(){pruebaMicroGeneracion++;finPruebaMicro?.();finPruebaMicro=null;}
+async function probarMicrofonoSala(){
+    if(!window.PMOMicrofono)return;detenerPruebaMicro();const g=pruebaMicroGeneracion,b=document.getElementById('probarMicrofono'),estado=document.getElementById('estadoPruebaMicrofono'),medidor=document.getElementById('nivelMicrofono');b.disabled=true;estado.textContent='Permite el micrófono y habla para probarlo. Esta prueba no se transmite.';
+    let stream,cerrar,timer,pico=0;
+    try{stream=await window.PMOMicrofono.obtener(document.getElementById('selectorMicrofono')?.value||'');if(g!==pruebaMicroGeneracion){stream.getTracks().forEach(t=>t.stop());return;}
+        cerrar=await window.PMOMicrofono.nivel(stream.getAudioTracks()[0],n=>{if(g!==pruebaMicroGeneracion)return;pico=Math.max(pico,n);medidor.value=n;estado.textContent=n>3?'Se detecta tu voz. Activa el micrófono en la llamada cuando quieras.':'Micrófono abierto: habla y comprueba el nivel.';});
+        if(g!==pruebaMicroGeneracion){cerrar?.();stream?.getTracks().forEach(t=>t.stop());return;}
+        finPruebaMicro=()=>{clearTimeout(timer);cerrar?.();stream?.getTracks().forEach(t=>t.stop());medidor.value=0;b.disabled=false;};
+        timer=setTimeout(()=>{if(g!==pruebaMicroGeneracion)return;detenerPruebaMicro();estado.textContent=pico>3?'Prueba terminada: el micrófono recibe sonido.':'No se detectó sonido. Selecciona otra entrada y revisa el volumen en Windows → Sonido → Entrada.';},7000);await actualizarCamarasDisponibles();
+    }catch(e){cerrar?.();stream?.getTracks().forEach(t=>t.stop());if(g===pruebaMicroGeneracion){estado.textContent=window.PMOMicrofono.mensaje(e);avisoMediosSala(estado.textContent);}}
+    finally{if(!finPruebaMicro)b.disabled=false;}
 }
 async function aplicarFondoSala(){
     const selector=document.getElementById('fondoSala'),aviso=document.getElementById('estadoFondoSala');

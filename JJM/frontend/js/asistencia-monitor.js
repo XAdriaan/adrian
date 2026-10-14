@@ -11,14 +11,14 @@
         el('monitorConectados').textContent=personas.filter(p=>p.conectado).length;
         el('monitorAlumnos').textContent=personas.filter(p=>p.alumno&&registrado(p)).length;
         el('monitorContando').textContent=personas.filter(p=>p.contando).length;
-        el('monitorFilas').innerHTML=visibles.length?visibles.map(p=>`<tr><td><strong>${escapar(p.nombre)}</strong><small>${escapar(p.rol)} · ${escapar(p.estado)}</small></td><td><span class="asistencia-badge ${p.conectado?'online':''}">${p.conectado?'Conectado':'Desconectado'}</span></td><td>${escapar(p.entrada||'Sin entrada registrada')}</td><td>${p.alumno?`<strong class="asistencia-digital" data-segundos="${Number(p.segundos)||0}" data-contando="${!!p.contando}" data-vigencia="${Math.max(0,Number(p.vigenciaSegundos??30))}" data-cierre="${Math.max(0,Number(p.segundosHastaCierre??30))}">${formato(Number(p.segundos)||0)}</strong><small>${p.contando?'En curso':registrado(p)?'Registradas o reconocidas':'Sin asistencia automática'}</small>`:'<small>Cuenta de supervisión o empresa</small>'}</td><td>${p.ultimaConexion?escapar(new Date(p.ultimaConexion).toLocaleString('es-MX',{timeZone:'America/Mexico_City'})):'Sin conexión registrada'}</td><td>${escapar(p.apartado?.replace(/\.html$/,'').replace(/-/g,' ')||'—')}</td></tr>`).join(''):'<tr><td colspan="6">No hay cuentas que coincidan con el filtro.</td></tr>';
+        el('monitorFilas').innerHTML=visibles.length?visibles.map(p=>`<tr><td><strong>${escapar(p.nombre)}</strong><small>${escapar(p.rol)} · ${escapar(p.estado)}</small></td><td><span class="asistencia-badge ${p.conectado?'online':''}">${p.conectado?'Conectado':'Desconectado'}</span></td><td>${escapar(p.entrada||'Sin entrada registrada')}</td><td>${p.alumno?`<strong class="asistencia-digital" data-segundos="${Number(p.segundos)||0}" data-contando="${!!p.contando}" data-vigencia="${Math.max(0,Number(p.vigenciaSegundos??30))}" data-limite="${Number(p.limiteSegundos??36000)}" data-cierre="${Math.max(0,Number(p.segundosHastaCierre??30))}">${formato(Number(p.segundos)||0)}</strong><small>${p.contando?p.modoContinuo?(p.reposicion?'Reposición en curso':'Jornada en curso · Tiempo en servidor'):'En curso':registrado(p)?'Registradas o reconocidas':'Sin asistencia automática'}</small>`:'<small>Cuenta de supervisión o empresa</small>'}</td><td>${p.ultimaConexion?escapar(new Date(p.ultimaConexion).toLocaleString('es-MX',{timeZone:'America/Mexico_City'})):'Sin conexión registrada'}</td><td>${escapar(p.apartado?.replace(/\.html$/,'').replace(/-/g,' ')||'—')}</td></tr>`).join(''):'<tr><td colspan="6">No hay cuentas que coincidan con el filtro.</td></tr>';
         reloj();
     }
     function reloj() {
         const extra=Math.min(30,Math.max(0,(Date.now()-recibido)/1000));
         document.querySelectorAll('[data-segundos]').forEach(n=>{
             const limite=Math.min(extra,Number(n.dataset.vigencia??30),Number(n.dataset.cierre??30));
-            n.textContent=formato(Math.min(36000,Number(n.dataset.segundos)+(n.dataset.contando==='true'?limite:0)));
+            n.textContent=formato(Math.min(Number(n.dataset.limite??36000),Number(n.dataset.segundos)+(n.dataset.contando==='true'?limite:0)));
         });
     }
     async function cargar() {

@@ -133,9 +133,9 @@ public class RegularizacionHorasService {
         return Map.of("estado","correcto","mensaje","Regularización aplicada. Se completaron las horas faltantes del periodo autorizado.","alumnos",ids.size(),"registrosCreados",creados,"horasReconocidas",reconocidas,"registrosAprobados",aprobados,"horasAprobadas",horasAprobadas,"diasIdentificados",identificados,"horasPorAlumno",300);
     }
     public static boolean esRegularizado(RegistroHoras r) {
-        return r!=null && r.getFecha()!=null && !r.getFecha().isBefore(DESDE) && !r.getFecha().isAfter(HASTA)
+        return r!=null && r.getFecha()!=null && !r.getFecha().isBefore(DESDE) && !r.getFecha().isAfter(ReconocimientoHoras2026Service.CORTE)
                 && r.getFecha().getDayOfWeek().getValue()<=5 && !"Rechazado".equalsIgnoreCase(r.getEstadoValidacion())
-                && Objects.toString(r.getDescripcion(),"").contains(ORIGEN);
+                && (Objects.toString(r.getDescripcion(),"").contains(ORIGEN)||Objects.toString(r.getDescripcion(),"").contains(ReconocimientoHoras2026Service.ORIGEN));
     }
     private static List<RegistroHoras> validosDia(List<RegistroHoras> lista,LocalDate dia) {
         return lista.stream().filter(r->dia.equals(r.getFecha())&&!"Rechazado".equalsIgnoreCase(r.getEstadoValidacion())).toList();

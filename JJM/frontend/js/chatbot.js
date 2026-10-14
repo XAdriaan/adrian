@@ -1,6 +1,6 @@
 /* =========================================================
    Ard.IA — Asistente contextual PMO con voz
-   Usa los datos permitidos por la sesión actual y Web Speech API.
+   Usa los datos permitidos por la sesión actual y el servicio de voz IA del backend.
 ========================================================= */
 const API_PROYECTOS = window.apiUrl("/api/proyectos");
 const API_TAREAS = window.apiUrl("/api/tareas");
@@ -12,7 +12,7 @@ const API_DOCUMENTOS = window.apiUrl("/api/documentos");
 
 let usuarioActivo = obtenerUsuarioActivo();
 let vozActiva = localStorage.getItem("ardiaVozActiva") === "1";
-let reconocimiento = null;
+let vozArdiaCompleta = null;
 let escuchando = false;
 let contextoCache = null;
 let contextoCacheEn = 0;
@@ -137,11 +137,22 @@ function responderRecomendaciones(d){const b=d.tareas.filter(x=>normalizarTexto(
 function responderResumen(d){return `**Resumen de tu contexto:**\n- Proyectos: ${d.proyectos.length}\n- Tareas: ${d.tareas.length}\n- Alertas: ${d.alertas.length}\n- Registros de horas: ${d.registrosHoras.length}\n- Documentos visibles: ${d.documentos.length}`}
 function responderAyuda(d){return `Puedo conversar contigo usando el contexto de JJM Oficina de Proyectos. Por ejemplo: **¿qué debo hacer hoy?**, **¿cómo va mi asistencia?**, **¿qué FO-EST tengo pendiente?**, **¿cómo va mi proyecto?**, **explícame PMBOK 8** o **dame un resumen**.`}
 
-function inicializarVoz(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(SR){reconocimiento=new SR();reconocimiento.lang="es-MX";reconocimiento.interimResults=false;reconocimiento.continuous=false;reconocimiento.onstart=()=>{escuchando=true;btnMicrofonoChatbot?.classList.add("listening");if(estadoArdia)estadoArdia.textContent="Escuchando..."};reconocimiento.onresult=e=>{const texto=e.results?.[0]?.[0]?.transcript||"";if(inputChatbot)inputChatbot.value=texto};reconocimiento.onend=()=>{escuchando=false;btnMicrofonoChatbot?.classList.remove("listening");if(estadoArdia)estadoArdia.textContent="Contexto conectado";if(inputChatbot?.value.trim())enviarMensajeUsuario()};reconocimiento.onerror=()=>{escuchando=false;btnMicrofonoChatbot?.classList.remove("listening")}}else if(btnMicrofonoChatbot){btnMicrofonoChatbot.disabled=true;btnMicrofonoChatbot.title="Tu navegador no ofrece reconocimiento de voz"}actualizarBotonVoz()}
-function alternarMicrofono(){if(!reconocimiento)return;if(escuchando){try{reconocimiento.stop()}catch(_){}}else{detenerVoz();try{reconocimiento.start()}catch(_){}}}
-function actualizarBotonVoz(){if(!btnVozChatbot)return;btnVozChatbot.classList.toggle("active",vozActiva);btnVozChatbot.setAttribute("aria-pressed",vozActiva?"true":"false");btnVozChatbot.textContent=vozActiva?"🔊 Voz activada":"🔈 Activar voz"}
-function hablarTexto(texto){if(!("speechSynthesis"in window)||!vozActiva)return;detenerVoz();const u=new SpeechSynthesisUtterance(textoParaVoz(texto));u.lang="es-MX";u.rate=.98;u.pitch=1.02;const voces=speechSynthesis.getVoices();u.voice=voces.find(v=>String(v.lang).toLowerCase().startsWith("es-mx"))||voces.find(v=>String(v.lang).toLowerCase().startsWith("es"))||null;speechSynthesis.speak(u)}
-function detenerVoz(){if("speechSynthesis"in window)speechSynthesis.cancel()}
+async function inicializarVoz(){
+    if(btnVozChatbot)btnVozChatbot.disabled=true;if(btnMicrofonoChatbot)btnMicrofonoChatbot.disabled=true;
+    const token=localStorage.getItem('sesionTokenPMO'),vigente=()=>!!token&&localStorage.getItem('sesionTokenPMO')===token;
+    try{
+        if(window.PMOArdiaVozPromesa)await window.PMOArdiaVozPromesa;
+        if(!vigente()||!window.PMOVozArdia){if(estadoArdia)estadoArdia.textContent='La voz con IA no está disponible. Actualiza la página o sigue por texto.';return;}
+        vozArdiaCompleta=new window.PMOVozArdia({vigente,estado:t=>{if(!vigente())return;escuchando=vozArdiaCompleta.escuchando;if(estadoArdia)estadoArdia.textContent=t;btnMicrofonoChatbot?.classList.toggle('listening',escuchando);btnMicrofonoChatbot?.setAttribute('aria-pressed',String(escuchando));if(btnMicrofonoChatbot)btnMicrofonoChatbot.title=escuchando?'Terminar pregunta':'Hablar con Ard.IA';},alTexto:t=>{if(!vigente())return;if(inputChatbot)inputChatbot.value=t;vozActiva=true;actualizarBotonVoz();enviarMensajeUsuario();}});
+        if(btnVozChatbot)btnVozChatbot.disabled=false;if(btnMicrofonoChatbot)btnMicrofonoChatbot.disabled=false;
+        const tarjeta=document.querySelector?.('.voice-card');if(tarjeta){const estado=document.createElement('p'),revisar=document.createElement('button');estado.className='ardia-estado-voz';estado.textContent='Comprobando voz natural…';revisar.type='button';revisar.textContent='Comprobar voz natural';revisar.className='btn-secondary-ai';const comprobar=async()=>{revisar.disabled=true;vozArdiaCompleta.config=null;try{await vozArdiaCompleta.disponible();estado.textContent='Voz natural con IA conectada. Pulsa Hablar o activa la lectura de respuestas.';}catch(e){estado.textContent=e.message;}finally{revisar.disabled=false;}};revisar.addEventListener('click',comprobar);tarjeta.append(estado,revisar);comprobar();}
+        window.addEventListener('pagehide',detenerVoz);window.addEventListener('pmo:sesion-cerrada',detenerVoz);window.addEventListener('storage',()=>{if(!vigente())detenerVoz();});actualizarBotonVoz();
+    }catch(e){if(estadoArdia)estadoArdia.textContent=e.message;}
+}
+function alternarMicrofono(){if(!vozArdiaCompleta){if(estadoArdia)estadoArdia.textContent='La conexión de voz está cargando. Actualiza la página si tarda.';return;}vozArdiaCompleta.escuchar();}
+function actualizarBotonVoz(){if(!btnVozChatbot)return;btnVozChatbot.classList.toggle('active',vozActiva);btnVozChatbot.setAttribute('aria-pressed',String(vozActiva));btnVozChatbot.textContent=vozActiva?'Silenciar voz IA':'Activar voz natural';}
+function hablarTexto(texto){if(!vozActiva)return;if(vozArdiaCompleta)vozArdiaCompleta.hablar(textoParaVoz(texto));else if(estadoArdia)estadoArdia.textContent='La conexión de voz con IA está cargando. No se utilizará la voz del sistema.';}
+function detenerVoz(){vozArdiaCompleta?.detener();window.speechSynthesis?.cancel();escuchando=false;btnMicrofonoChatbot?.classList.remove('listening');}
 function textoParaVoz(t){return String(t||"").replace(/\*\*/g,"").replace(/[•#]/g,"").replace(/\n+/g,". ")}
 
 function obtenerUsuarioActivo(){try{return JSON.parse(localStorage.getItem("usuarioActivo"))||null}catch(_){return null}}
