@@ -209,7 +209,7 @@ public class AutomatizacionesService {
             SELECT t.id_tarea AS id,t.titulo,t.fecha_limite AS limite,u.id_usuario AS idUsuario,u.estado,r.nombre AS rol
             FROM tareas t JOIN miembros_equipo m ON m.id_miembro=t.id_miembro_asignado
             JOIN usuarios u ON u.id_usuario=m.id_usuario JOIN roles r ON r.id_rol=u.id_rol
-            WHERE t.fecha_limite<=? AND LOWER(COALESCE(t.estado,'')) NOT IN ('completada','completado','terminada','terminado','finalizada','finalizado','cancelada','cancelado')
+            WHERE t.fecha_limite<=? AND LOWER(COALESCE(t.estado,'')) NOT IN ('completada','completado','terminada','terminado','finalizada','finalizado','cerrada','cerrado','cancelada','cancelado')
             """,hoy().plusDays(2)))if(alumno(t.get("rol"))&&"activo".equals(normalizar(t.get("estado"))))recordatorio(vigentes,"tarea-"+t.get("id"),t.get("idUsuario"),"Entrega de tarea",texto(t.get("titulo"))+". Fecha límite: "+texto(t.get("limite")),"tablero-tareas.html");
         for(Map<String,Object> h:jdbc.queryForList("""
             SELECT u.id_usuario AS idUsuario,COUNT(*) AS pendientes,u.estado,r.nombre AS rol
@@ -223,7 +223,8 @@ public class AutomatizacionesService {
         for(Map<String,Object> a:alumnos){LocalDate inicio=fecha(a.get("fechaInicio")),fin=fecha(a.get("fechaFin"));int id=numero(a.get("idUsuario")).intValue();
             if("activo".equals(normalizar(a.get("estado")))&&inicio!=null&&fin!=null&&!dia.isBefore(inicio)&&!dia.isAfter(fin)&&!registrados.contains(id))
                 recordatorio(vigentes,"sin-registro-"+id,a.get("idUsuario"),"Día sin horas registradas","No hay horas registradas el "+dia+". Revisa tu asistencia o solicita registrar una justificación.","control-horas.html");}
-        for(Map<String,Object> r:jdbc.queryForList("SELECT id,clave FROM pmo_recordatorios WHERE estado<>'Resuelto' AND clave NOT LIKE 'diario-%'"))if(!vigentes.contains(texto(r.get("clave"))))jdbc.update("UPDATE pmo_recordatorios SET estado='Resuelto',actualizado_en=? WHERE id=?",ahora(),r.get("id"));
+        // Cada revisión resuelve solamente los avisos que ella misma administra.
+        for(Map<String,Object> r:jdbc.queryForList("SELECT id,clave FROM pmo_recordatorios WHERE estado<>'Resuelto' AND (clave LIKE 'expediente-%' OR clave LIKE 'tarea-%' OR clave LIKE 'horas-%' OR clave LIKE 'sin-registro-%')"))if(!vigentes.contains(texto(r.get("clave"))))jdbc.update("UPDATE pmo_recordatorios SET estado='Resuelto',actualizado_en=? WHERE id=?",ahora(),r.get("id"));
         estado("recordatorios","Completada",vigentes.size()+" recordatorios vigentes dentro de la plataforma.");
     }
     private void recordatorio(Set<String> claves,String clave,Object usuario,String titulo,String detalle,String enlace) {

@@ -36,9 +36,9 @@
         inicio.textContent=datos?.reposicionPendienteSegundos>0?'Iniciar jornada / reposición':'Iniciar mi jornada';
         fin.hidden=!datos?.puedeFinalizar;fin.disabled=accionPendiente;
         inicio.onclick=()=>iniciar(true);fin.onclick=finalizar;
-        const acumulado=Number(datos?.segundosJornada??datos?.segundosConexion??0)+Math.max(0,(s||0)-Number(datos?.segundos||0)),habilitado=!!datos?.reporteHabilitado||acumulado>=32400;
+        const hastaReporte=Number(datos?.segundosHastaReporte),faltanReporte=Math.max(0,hastaReporte-Math.max(0,(Date.now()-recibido)/1000)),habilitado=!!datos?.reporteHabilitado||(Number.isFinite(hastaReporte)&&faltanReporte===0);
         document.getElementById('pmoReporteJornada').hidden=!habilitado;
-        document.getElementById('pmoReporteEspera').textContent=habilitado?'Entrega tu reporte en cada proyecto asignado.':`Reportes al acumular 9 horas. Faltan ${formato(32400-acumulado)}.`;
+        document.getElementById('pmoReporteEspera').textContent=habilitado?'Reporte diario obligatorio: entrega las actividades y evidencias de cada proyecto antes de las 17:00.':`Reporte disponible a las 16:00 (hora de México). ${Number.isFinite(hastaReporte)?'Faltan '+formato(faltanReporte)+'.':''}`;
         document.getElementById('pmoReposicionSaldo').textContent=datos?.reposicionPendienteSegundos>0?`Pendiente por reponer el fin de semana: ${formato(datos.reposicionPendienteSegundos)}.`:'';
         document.getElementById('pmoAsistenciaTitulo').textContent=datos?.error ? datos?.modoContinuo?'Jornada iniciada · Conexión pendiente':'Conexión pendiente de confirmar' : esAlumno() ? s>=Number(datos?.limiteSegundos??36000) && Number(datos?.limiteSegundos??36000)>0 ? 'Meta de jornada registrada' : contando ? datos?.reposicion?'Reposición en curso':'Jornada en curso · Meta diaria: 10 horas' : datos?.finalizada?'Jornada finalizada':'Inicia tu jornada' : conectado ? 'Conectado a la Oficina de Proyectos' : 'Confirmando conexión…';
         document.getElementById('pmoAsistenciaMensaje').textContent=datos?.mensaje || 'Tu conexión se registra automáticamente. Horario escolar: lunes a viernes de 07:00 a 17:00.';

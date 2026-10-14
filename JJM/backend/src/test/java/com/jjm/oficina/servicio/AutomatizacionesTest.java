@@ -40,4 +40,10 @@ class AutomatizacionesTest {
     @Test void futuroFinDeSemanaYDuracionesImposiblesNoSeAprueban(){for(String dia:List.of("2026-10-13","2026-10-10","fecha incorrecta")){Map<String,Object>j=jornada();j.put("fecha",dia);assertFalse(AutomatizacionReglas.jornadaValida(j,LocalDate.of(2026,10,12)));}Map<String,Object>j=jornada();j.put("horaEntrada","16:30:00");assertFalse(AutomatizacionReglas.jornadaValida(j,LocalDate.of(2026,10,12)));}
     @Test void pdfIncompletoYExcesoDeTamanoNoSeAceptan(){assertThrows(IllegalArgumentException.class,()->AutomatizacionReglas.pdf(Base64.getEncoder().encodeToString("%PDF-1.4 archivo truncado".getBytes())));assertThrows(IllegalArgumentException.class,()->AutomatizacionReglas.pdf("A".repeat(5_650_001)));assertThrows(IllegalArgumentException.class,()->AutomatizacionReglas.pdf(Base64.getEncoder().encodeToString("<script>datos</script>%%EOF".getBytes())));}
     @Test void porcentajeRespetaMetaYSemanaAnteriorCruzaMes(){assertEquals(50,AutomatizacionReglas.porcentaje(new BigDecimal("300"),new BigDecimal("600")));assertEquals(100,AutomatizacionReglas.porcentaje(new BigDecimal("700"),new BigDecimal("600")));assertEquals(0,AutomatizacionReglas.porcentaje(BigDecimal.TEN,BigDecimal.ZERO));assertEquals(LocalDate.of(2026,9,28),AutomatizacionReglas.lunesAnterior(LocalDate.of(2026,10,5)));}
+    @Test void revisionGeneralResuelveSoloLosAvisosQueAdministra(){
+        when(jdbc.queryForMap(contains("FOR UPDATE"))).thenReturn(Map.of("opciones_json","{\"recordatorios\":true}","ultima_revision_epoch",0));
+        servicio.ejecutar(1,true);
+        verify(jdbc).queryForList(contains("clave LIKE 'expediente-%' OR clave LIKE 'tarea-%' OR clave LIKE 'horas-%' OR clave LIKE 'sin-registro-%'"));
+        verify(jdbc,never()).queryForList(contains("clave NOT LIKE 'diario-%'"));
+    }
 }

@@ -168,7 +168,8 @@ public class AsistenciaAutomaticaService {
         salida.put("puedeFinalizar",aplicable&&continua&&!jornada.isFinalizada());
         salida.put("finalizada",jornada!=null&&jornada.isFinalizada());
         salida.put("segundosJornada",jornada==null?0:jornada.getTotalSegundos());
-        salida.put("reporteHabilitado",jornada!=null&&jornada.getTotalSegundos()>=32400||reconocido(idUsuario,fecha));
+        salida.put("reporteHabilitado",!ahora.isBefore(fecha.atTime(16,0).atZone(ZONA).toInstant()));
+        salida.put("segundosHastaReporte",Math.max(0,Duration.between(ahora,fecha.atTime(16,0).atZone(ZONA).toInstant()).getSeconds()));
         salida.put("vigenciaSegundos", continua?Math.max(0,Duration.between(ahora,fin(fecha)).toSeconds()):jornada == null ? 0 : Math.max(0, jornada.getUltimaSenal() + VIGENCIA_SENAL - ahora.getEpochSecond()));
         salida.put("enHorario", enHorario); salida.put("segundos", Math.min(36000,otrosSegundos+(jornada==null?0:jornada.getTotalSegundos())));
         salida.put("segundosConexion",jornada==null?0:jornada.getTotalSegundos());
@@ -194,7 +195,7 @@ public class AsistenciaAutomaticaService {
                 : !enHorario ? "El horario de asistencia es de 07:00 a 17:00."
                 : jornada!=null&&jornada.isFinalizada()?"La jornada terminó. Revisa tus reportes y el saldo de reposición."
                 : continua ? "El servidor cuenta tu jornada aunque cierres o suspendas la laptop. Finaliza al terminar; cierre automático a las 17:00. La conexión y las actividades se revisan por separado."
-                : "Pulsa Iniciar mi jornada para trabajar en tus proyectos. El reporte se habilita al acumular 9 horas.");
+                : "Pulsa Iniciar mi jornada para trabajar en tus proyectos. El reporte diario se habilita a las 16:00, hora de Ciudad de México.");
         return salida;
     }
 
@@ -274,22 +275,12 @@ public class AsistenciaAutomaticaService {
     }
     public Map<String,Object> habilitacionReporte(Integer usuario,LocalDate fecha) {
         actualizar(usuario,false);
-        List<Map<String,Object>> config=jdbc.queryForList("SELECT inicio FROM pmo_jornada_config WHERE id=1");
-        boolean anterior=!config.isEmpty()&&fecha.isBefore(LocalDate.parse(config.getFirst().get("inicio").toString()));
         JornadaAutomatica j=jornadas.findByIdUsuarioAndFecha(usuario,fecha).orElse(null);
-        long segundos=j==null?0:j.getTotalSegundos(),credito=reposiciones(usuario);
-        for(Map<String,Object> d:deficits(usuario)) {
-            long falta=((Number)d.get("faltante")).longValue();LocalDate dia=LocalDate.parse(d.get("fecha").toString());
-            if(dia.equals(fecha)){segundos+=Math.min(falta,credito);break;}
-            credito=Math.max(0,credito-falta);
-        }
-        boolean habilitado=anterior||segundos>=32400||reconocido(usuario,fecha);
-        return Map.of("habilitado",habilitado,"segundos",segundos,"faltanSegundos",Math.max(0,32400-segundos),"mensaje",habilitado?"Puedes entregar tu reporte. La evidencia y el plazo se revisan por separado.":"El reporte se habilita al acumular 9 horas de jornada. Si faltan horas, repón el saldo el fin de semana. No se cuentan horas de fechas anteriores a la activación de esta regla.");
-    }
-    private boolean reconocido(Integer usuario,LocalDate fecha) {
-        if(fecha.isBefore(RegularizacionHorasService.DESDE)||fecha.isAfter(ReconocimientoHoras2026Service.CORTE))return false;
-        BigDecimal horas=jdbc.queryForObject("SELECT COALESCE(SUM(h.horas_trabajadas),0) FROM registros_horas h JOIN miembros_equipo m ON m.id_miembro=h.id_miembro WHERE m.id_usuario=? AND h.fecha=? AND h.estado_validacion='Aprobado' AND (EXISTS(SELECT 1 FROM pmo_reconocimiento2026 c WHERE c.id_usuario=m.id_usuario AND c.corte>=h.fecha) OR EXISTS(SELECT 1 FROM registros_horas x WHERE x.id_miembro=h.id_miembro AND x.fecha=h.fecha AND x.estado_validacion='Aprobado' AND (x.descripcion LIKE 'Reconocimiento administrativo autorizado Sep-Dic 2026%' OR x.descripcion LIKE '%Regularización administrativa Septiembre-Diciembre 2026%')))",BigDecimal.class,usuario,fecha);
-        return horas!=null&&horas.compareTo(BigDecimal.valueOf(9))>=0;
+        Instant apertura=fecha.atTime(16,0).atZone(ZONA).toInstant(),ahora=reloj.instant();
+        boolean habilitado=!ahora.isBefore(apertura);
+        return Map.of("habilitado",habilitado,"segundos",j==null?0:j.getTotalSegundos(),
+            "faltanSegundos",Math.max(0,Duration.between(ahora,apertura).getSeconds()),"horaApertura","16:00","zona","America/Mexico_City",
+            "mensaje",habilitado?"El reporte diario está habilitado. Entrega las actividades y evidencias de cada proyecto; hora límite 17:00.":"El reporte diario se habilita a las 16:00 (4:00 p. m.), hora de Ciudad de México, independientemente de las horas acumuladas.");
     }
 
     private void cerrarRegistro(JornadaAutomatica jornada, Instant ahora) {

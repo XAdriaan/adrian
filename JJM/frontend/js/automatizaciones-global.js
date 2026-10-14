@@ -2,7 +2,7 @@
     'use strict';
     let pendiente=false;
     async function actualizar(){
-        const token=window.obtenerTokenSesionPMO?.();if(!token||pendiente)return;
+        const token=window.obtenerTokenSesionPMO?.();if(!token||pendiente||document.hidden)return;
         let usuario;try{usuario=JSON.parse(localStorage.getItem('usuarioActivo')||'null');}catch(_){return;}
         const rol=String(usuario?.rol?.nombre||usuario?.rol||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
         if(!['superadministrador','administrador','admin pmo','admin_pmo','administrador pmo','directivo escolar','directivo','asesor academico','asesor empresarial','colaborador','alumno','alumna','estudiante','estudiante pmo'].includes(rol))return;
@@ -14,5 +14,6 @@
         }catch(_){}finally{pendiente=false;}
     }
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{setTimeout(actualizar,1500);});else setTimeout(actualizar,1500);
-    setInterval(actualizar,300000);
+    setInterval(actualizar,60000);
+    window.addEventListener('focus',actualizar);
 })();

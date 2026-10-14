@@ -25,4 +25,12 @@ class ReportesDiariosTest {
     @Test void calendarioNoLaboralNoInfluyeEnAlertasDelHorario(){reloj("2026-10-13T23:01:00Z");when(jdbc.queryForList(contains("SELECT DISTINCT u.id_usuario"),any(Object[].class))).thenReturn(List.of(Map.of("usuario",7,"proyecto",2,"nombre","Alumno","proyectoNombre","Proyecto")));s.revisarPlazos();verify(jdbc).queryForList(contains("u.fecha_registro<=?"),eq(LocalDateTime.of(2026,10,13,17,0)),eq(LocalDateTime.of(2026,10,13,17,0)),eq(LocalDate.of(2026,10,13)));verify(jdbc).update(contains("ON DUPLICATE KEY"),eq("diario-falta-2-7-2026-10-13-7"),eq(7),anyString(),anyString(),eq("canales-proyectos.html?id=2#diario"),any(LocalDateTime.class));verify(jdbc,never()).queryForList(contains("pmo_calendario_proyecto"),any(Object[].class));}
     @Test void noGeneraFaltaAntesDe17NiFinDeSemana(){for(String instant:List.of("2026-10-13T22:59:00Z","2026-10-17T23:01:00Z")){reset(jdbc);String fecha=instant.substring(0,10);when(jdbc.queryForList(contains("SELECT inicio"))).thenReturn(List.of(Map.of("inicio",fecha)));reloj(instant);s.revisarPlazos();verify(jdbc,never()).queryForList(contains("SELECT DISTINCT u.id_usuario"),any(Object[].class));}}
     @Test void revisionNecesitaMotivoSiSeObservaYReporteDebePertenecerAlProyecto(){assertThrows(ResponseStatusException.class,()->s.revisar(2,99L,1,"Observado",""));assertThrows(ResponseStatusException.class,()->s.revisar(2,99L,1,"Aprobado",""));verify(jdbc).update(contains("WHERE id=? AND id_proyecto=?"),eq("Aprobado"),eq(""),eq(1),any(LocalDateTime.class),eq(99L),eq(2));}
+    @Test void corregirUnReporteDespuesDelCorteConservaLaPrimeraEntregaPuntual(){
+        reloj("2026-10-13T23:15:00Z");when(jdbc.queryForList(contains("FOR UPDATE"),any(Object[].class))).thenReturn(List.of(Map.of("id",20L,"estado","Observado","primera_entrega",java.sql.Timestamp.valueOf("2026-10-13 16:40:00"))));
+        assertEquals(false,s.guardar(2,7,reporte("2026-10-13")).get("fueraPlazo"));verify(jdbc).update(contains("fuera_plazo=(primera_entrega>TIMESTAMP(fecha,'17:00:00'))"),any(Object[].class));
+    }
+    @Test void corregirUnReporteAlDiaSiguienteNoBorraElAtrasoOriginal(){
+        reloj("2026-10-14T14:00:00Z");when(jdbc.queryForList(contains("FOR UPDATE"),any(Object[].class))).thenReturn(List.of(Map.of("id",20L,"estado","Pendiente","primera_entrega",LocalDateTime.of(2026,10,13,17,20))));
+        assertEquals(true,s.guardar(2,7,reporte("2026-10-13")).get("fueraPlazo"));
+    }
 }

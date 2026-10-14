@@ -50,13 +50,16 @@ public class ReportesDiariosService {
         if(!evidencia.isEmpty()){try{URI uri=URI.create(evidencia);if(!Set.of("http","https").contains(uri.getScheme())||uri.getHost()==null||evidencia.length()>2000)throw new IllegalArgumentException();}catch(Exception e){throw error("La evidencia debe ser un enlace HTTP o HTTPS válido.");}}
         if(evidencia.isEmpty()&&r.idArchivo()==null)throw error("Adjunta un archivo compartido o agrega el enlace del entregable.");
         if(r.idArchivo()!=null && jdbc.queryForList("SELECT id FROM pmo_proyecto_archivos WHERE id=? AND id_proyecto=? AND eliminado=FALSE",r.idArchivo(),proyecto).isEmpty())throw error("El archivo de evidencia no pertenece a este proyecto.");
-        LocalDateTime momento=ahora();boolean fuera=tarde(fecha,momento);
+        LocalDateTime momento=ahora();
         return tx.execute(estado->{
-            List<Map<String,Object>> anterior=jdbc.queryForList("SELECT id,estado FROM pmo_reportes_actividad WHERE id_proyecto=? AND id_usuario=? AND fecha=? FOR UPDATE",proyecto,usuario,fecha);
+            List<Map<String,Object>> anterior=jdbc.queryForList("SELECT id,estado,primera_entrega FROM pmo_reportes_actividad WHERE id_proyecto=? AND id_usuario=? AND fecha=? FOR UPDATE",proyecto,usuario,fecha);
             if(!anterior.isEmpty()&&"Aprobado".equals(anterior.getFirst().get("estado")))throw new ResponseStatusException(HttpStatus.CONFLICT,"El reporte aprobado queda protegido. Solicita a administración su revisión.");
+            Object primera=anterior.isEmpty()?null:anterior.getFirst().get("primera_entrega");
+            LocalDateTime primeraEntrega=primera instanceof java.sql.Timestamp t?t.toLocalDateTime():primera instanceof LocalDateTime t?t:momento;
+            boolean fuera=tarde(fecha,primeraEntrega);
             jdbc.update("""
                     INSERT INTO pmo_reportes_actividad(id_proyecto,id_usuario,fecha,actividad,resultado,evidencia,id_archivo,fase,horas,bloqueos,entregado_en,primera_entrega,fuera_plazo)
-                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE actividad=VALUES(actividad),resultado=VALUES(resultado),evidencia=VALUES(evidencia),id_archivo=VALUES(id_archivo),fase=VALUES(fase),horas=VALUES(horas),bloqueos=VALUES(bloqueos),entregado_en=VALUES(entregado_en),fuera_plazo=VALUES(fuera_plazo),estado='Pendiente',id_revisor=NULL,revisado_en=NULL
+                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE actividad=VALUES(actividad),resultado=VALUES(resultado),evidencia=VALUES(evidencia),id_archivo=VALUES(id_archivo),fase=VALUES(fase),horas=VALUES(horas),bloqueos=VALUES(bloqueos),entregado_en=VALUES(entregado_en),fuera_plazo=(primera_entrega>TIMESTAMP(fecha,'17:00:00')),estado='Pendiente',id_revisor=NULL,revisado_en=NULL
                     """,proyecto,usuario,fecha,actividad,resultado,evidencia,r.idArchivo(),fase,r.horas(),bloqueos,momento,momento,fuera);
             List<Map<String,Object>> guardado=jdbc.queryForList("SELECT id FROM pmo_reportes_actividad WHERE id_proyecto=? AND id_usuario=? AND fecha=?",proyecto,usuario,fecha);
             if(!guardado.isEmpty())jdbc.update("INSERT INTO pmo_reporte_diario_historial(id_reporte,id_usuario,accion,detalle,fecha) VALUES(?,?,?,?,?)",guardado.getFirst().get("id"),usuario,"Entrega",actividad+"\nResultado: "+resultado+"\nEvidencia: "+evidencia+"\nArchivo: "+r.idArchivo()+"\nFase: "+fase+"\nHoras declaradas: "+r.horas()+"\nBloqueos: "+bloqueos,momento);
