@@ -114,7 +114,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (normalizarTexto(reunionActual.estado) !== "activa") throw new Error("Esta reunión ya terminó.");
         idReunion = reunionActual.id;
         if (!esSalaGeneral) actualizarReunionEnURL(idReunion);
-        document.getElementById("tituloSala").textContent = esSalaGeneral ? "Sala general" : "Reunión de proyecto";
+        document.getElementById("tituloSala").textContent = esSalaGeneral ? "Sala general" : "Reunión de Proyecto";
         btnVolverProyecto.textContent = "Minimizar y navegar";
         btnFinalizarReunion.hidden = !reunionActual.puedeFinalizar;
         rtc = new window.PMOSalaWebRTC({sala:esSalaGeneral?'general':String(idReunion),contenedor:jitsiContainer,
@@ -123,6 +123,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         experienciaSala=new window.PMOExperienciaSala({rtc});
         window.PMOLlamadaActiva=()=>!!rtc?.activa;
         window.PMORestaurarLlamada=()=>{experienciaSala.restaurar();estadoReunion.textContent='Tu llamada sigue activa. Sal de ella antes de entrar a otra sala.';};
+        window.PMONavegarEnLlamada=url=>{
+            if(!rtc?.activa||!experienciaSala)return false;
+            const destino=new URL(url,window.location.href);
+            if(destino.origin!==window.location.origin)return false;
+            experienciaSala.minimizar(destino.pathname+destino.search+destino.hash,true);return true;
+        };
         fondosSala=new window.PMOFondosSala({alCambiar:async pista=>{if(rtc?.activa){await rtc.cambiar('video',pista);actualizarMediosSala();}},alError:e=>{avisoMediosSala(e.message);document.getElementById('fondoSala').value='ninguno';}});
         meetingLoadingMessage.textContent = (esSalaGeneral ? "Todos los usuarios con sesión pueden entrar." : "Acceso exclusivo para administración y miembros asignados al proyecto.")
             + " Entras con cámara y micrófono apagados. Después actívalos desde la barra de controles.";
@@ -192,10 +198,22 @@ function configurarEventos() {
     });
     document.getElementById('buscarMicrofonos')?.addEventListener('click',()=>actualizarCamarasDisponibles());
     document.getElementById('probarMicrofono')?.addEventListener('click',probarMicrofonoSala);
+    const dispositivosSala=document.getElementById('dispositivosSala');
+    const abrirPruebaMicrofono=document.getElementById('btnAbrirPruebaMicrofono');
+    abrirPruebaMicrofono?.addEventListener('click',()=>{
+        if(!dispositivosSala)return;
+        dispositivosSala.open=true;
+        abrirPruebaMicrofono.setAttribute('aria-expanded','true');
+        document.getElementById('selectorMicrofono')?.focus({preventScroll:true});
+        document.getElementById('pruebaMicrofonoSala')?.scrollIntoView({block:'nearest'});
+    });
+    dispositivosSala?.addEventListener('toggle',()=>{
+        abrirPruebaMicrofono?.setAttribute('aria-expanded',String(dispositivosSala.open));
+        if(!dispositivosSala.open)detenerPruebaMicro();
+    });
     navigator.mediaDevices?.addEventListener?.('devicechange',actualizarCamarasDisponibles);
     actualizarCamarasDisponibles();
     btnPantalla.addEventListener('click',compartirPantalla);
-    document.getElementById('btnEscuchar').addEventListener('click',()=>{jitsiContainer.querySelectorAll('video').forEach(v=>v.play().catch(()=>{}));experienciaSala?.activarAudio().catch(()=>{});});
     document.getElementById('fondoSala').addEventListener('change',aplicarFondoSala);
     document.getElementById('imagenFondoSala').addEventListener('change',async e=>{
         try{await fondosSala.cargarImagen(e.target.files[0]);document.getElementById('fondoSala').value='personalizado';await aplicarFondoSala();}catch(error){document.getElementById('estadoFondoSala').textContent=error.message;}
@@ -214,6 +232,8 @@ function configurarEventos() {
 }
 async function activarMedio(tipo, boton) {
     if (!rtc?.activa || mediosPendientes.has(tipo)) return;
+    // Reanuda la escucha en el gesto del botón, antes de esperar permisos.
+    experienciaSala?.activarAudio().catch(()=>{});
     const sala=rtc, epoca=rtc.generacion;
     mediosPendientes.add(tipo); avisoMediosSala(); actualizarMediosSala();
     try {

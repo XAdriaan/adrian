@@ -1,13 +1,15 @@
 (function(){
     'use strict';
     if(window.parent!==window||window.__avisosReuniones)return;window.__avisosReuniones=true;
-    let pendiente=false,lista=[],usuarioAnterior='',timer,panel,boton,capa;
+    let pendiente=false,lista=[],usuarioAnterior='',tokenAnterior='',timer,panel,boton,capa;
     const el=(tipo,texto)=>{const e=document.createElement(tipo);if(texto)e.textContent=texto;return e;};
+    function limpiar(){capa?.__pmoMovible?.destruir();capa?.remove();capa=panel=boton=null;lista=[];}
     function preparar(){
         if(capa)return;
         const estilo=el('style');estilo.textContent='.pmo-reuniones-avisos{position:fixed;z-index:180;right:18px;top:86px;font:13px Segoe UI,sans-serif;color:#edf4ff}.pmo-reuniones-avisos button{font:inherit;cursor:pointer;background:#1e4d9a;color:white;border:1px solid #7da3e0;border-radius:9px;padding:9px 13px}.pmo-reuniones-panel{width:min(330px,calc(100vw - 32px));max-height:60vh;overflow:auto;border:1px solid #536e98;background:#10233e;padding:14px;border-radius:12px;box-shadow:0 12px 35px #0007;margin-top:7px}.pmo-reuniones-panel[hidden]{display:none!important}.pmo-reuniones-panel article{border-top:1px solid #385477;padding:12px 0;display:flex;flex-direction:column;gap:8px}.pmo-reuniones-panel h2{font-size:16px;margin:0 0 10px}.pmo-reuniones-panel p{line-height:1.4;margin:0}.pmo-reuniones-panel .pmo-aviso-leer{background:#1a334f}.pmo-reuniones-panel .pmo-permiso{width:100%;margin:10px 0}.pmo-reuniones-panel small{color:#bed0e9;line-height:1.5;display:block}';document.head.append(estilo);
         capa=el('div');capa.className='pmo-reuniones-avisos';boton=el('button','🔔 Avisos');boton.type='button';boton.setAttribute('aria-expanded','false');boton.setAttribute('aria-controls','pmoAvisosReunionesPanel');
         panel=el('section');panel.id='pmoAvisosReunionesPanel';panel.className='pmo-reuniones-panel';panel.hidden=true;capa.append(boton,panel);document.body.append(capa);boton.addEventListener('click',()=>{panel.hidden=!panel.hidden;boton.setAttribute('aria-expanded',String(!panel.hidden));pintar();});
+        const movible={id:'avisos',capa,boton,panel,idUsuario:usuarioAnterior};if(window.PMOWidgetsMovibles)window.PMOWidgetsMovibles.vincular(movible);else (window.PMOWidgetsMoviblesPendientes ||= []).push(movible);
     }
     function clave(){return 'pmoReunionesVistas:'+usuarioAnterior;}
     function pintar(){
@@ -25,6 +27,7 @@
             permiso.addEventListener('click',async()=>{const p=await Notification.requestPermission();localStorage.setItem('pmoReunionesNavegador:'+usuarioAnterior,p==='granted'?'si':'no');pintar();});panel.append(permiso);
         }
         panel.append(el('small','Se revisan cada 15 segundos mientras la Oficina está abierta. Al volver a entrar aparecen las reuniones que siguen activas.'));
+        capa.__pmoMovible?.actualizar();
     }
     function nueva(dato){
         if(window.Notification && Notification.permission==='granted' && localStorage.getItem('pmoReunionesNavegador:'+usuarioAnterior)==='si'){
@@ -32,10 +35,10 @@
         }
     }
     async function actualizar(){
-        const token=window.obtenerTokenSesionPMO?.();if(!token||pendiente)return;
-        let u;try{u=JSON.parse(localStorage.getItem('usuarioActivo')||'null');}catch(_){return;}if(!u)return;
-        const rol=String(u.rol?.nombre||u.rol||'').toLowerCase();if(rol==='empresa')return;
-        if(usuarioAnterior!==String(u.id)){usuarioAnterior=String(u.id);lista=[];}
+        const token=window.obtenerTokenSesionPMO?.();if(!token){limpiar();return;}if(pendiente)return;
+        let u;try{u=JSON.parse(localStorage.getItem('usuarioActivo')||'null');}catch(_){limpiar();return;}if(!u?.id){limpiar();return;}
+        if(usuarioAnterior!==String(u.id)||tokenAnterior!==token){limpiar();usuarioAnterior=String(u.id);tokenAnterior=token;}
+        const rol=String(u.rol?.nombre||u.rol||'').toLowerCase();if(rol==='empresa'){limpiar();return;}
         pendiente=true;const controlador=new AbortController(),limite=setTimeout(()=>controlador.abort(),10000);
         try{
             const r=await fetch(window.apiUrl('/api/reuniones/mis-avisos'),{signal:controlador.signal});if(!r.ok)return;const d=await r.json();if(token!==window.obtenerTokenSesionPMO())return;
@@ -47,5 +50,6 @@
     }
     window.PMOAvisosReuniones={actualizar};
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',actualizar);else actualizar();timer=setInterval(actualizar,15000);
-    window.addEventListener('storage',e=>{if(e.key==='sesionTokenPMO'){capa?.remove();capa=panel=boton=null;lista=[];}});
+    window.addEventListener('storage',e=>{if(e.key===null||e.key==='sesionTokenPMO'||e.key==='usuarioActivo')limpiar();});
+    window.addEventListener('pmo:sesion-cerrada',limpiar);
 })();

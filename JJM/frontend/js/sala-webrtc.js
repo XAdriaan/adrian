@@ -72,7 +72,7 @@
                     const flujo = pantalla ? p.pantallaStream : p.stream;
                     const video = pantalla ? p.pantallaVideo : p.video;
                     if (!flujo.getTracks().includes(e.track)) flujo.addTrack(e.track); video.srcObject=flujo;
-                    e.track.onunmute = () => { video.play().catch(() => { this.estado.textContent = 'Pulsa Activar audio para escuchar a los participantes.'; }); this.alActualizar?.(); };
+                    e.track.onunmute = () => { video.play().catch(() => { this.estado.textContent = 'Toca la sala o usa sus controles para reanudar el audio.'; }); this.alActualizar?.(); };
                     e.track.onended = () => this.alActualizar?.(); this.alActualizar?.();
                 };
                 pc.onconnectionstatechange = () => {
@@ -208,7 +208,7 @@
             local.hidden = !visible;
             if (this.avatarLocal) this.avatarLocal.hidden = !!visible;
             if (visible && (cambio || local.paused)) local.play().catch(() => {
-                this.estado.textContent='La cámara está disponible. Pulsa Activar audio para iniciar la reproducción, o vuelve a seleccionar tu cámara.';
+                this.estado.textContent='La cámara está disponible. Toca la sala para reanudar la reproducción, o vuelve a seleccionar tu cámara.';
             });
         }
         async salir(keepalive = false) {

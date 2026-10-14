@@ -1,0 +1,114 @@
+/* Sala compacta: la presentación ocupa el espacio entre cabecera y controles. */
+.meeting-app{height:100dvh;min-height:0!important}
+.meeting-app .meeting-topbar{min-height:58px;padding:8px 14px;gap:8px;flex-wrap:nowrap;flex-shrink:0}
+.meeting-app .meeting-title{flex:1;min-width:0;gap:10px}
+.meeting-app .meeting-title>div{min-width:0}
+.sala-titulo-linea{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.meeting-app .meeting-title h1{font-size:18px;line-height:1.25;margin:0}
+#estadoReunion{font-size:11px;line-height:1.35;color:#d4e5fc;max-width:420px;overflow-wrap:anywhere}
+.meeting-subtitle{font-size:11px;color:#b9d0ef;line-height:1.4;max-width:680px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
+.meeting-app .meeting-actions{gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.meeting-app .meeting-pill,.meeting-app .meeting-actions>.meeting-btn{font-size:11px;padding:8px 10px;min-height:34px}
+.meeting-app .meeting-main{flex:1;min-height:0;grid-template-columns:minmax(0,1fr);padding:8px;gap:8px}
+.meeting-app .meeting-main.con-chat,.meeting-app .meeting-main.con-panel{grid-template-columns:minmax(0,1fr) clamp(270px,21vw,310px)}
+.meeting-app .sala-distribucion{grid-template-columns:clamp(155px,13vw,225px) minmax(0,1fr);gap:8px;padding:8px}
+.meeting-app .sala-alumnos h2{padding:2px 0 7px;margin:0;font-size:11px}
+.meeting-app .rtc-grid{gap:7px!important}
+.meeting-app .rtc-persona{min-height:82px;max-height:130px;aspect-ratio:16/9}
+.meeting-app .rtc-avatar{width:38px;height:38px;font-size:20px}
+.meeting-app .rtc-persona strong{font-size:10px;padding:4px 6px;bottom:5px;left:5px;max-width:calc(100% - 10px)}
+.meeting-app .rtc-estado{font-size:9px;padding:3px 5px;right:5px;top:5px}
+.meeting-app .sala-presentacion-titulo{min-height:38px;padding:5px 9px;flex-wrap:wrap;font-size:11px;gap:6px}
+.sala-vista-controles{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.sala-vista-controles .meeting-btn{padding:5px 8px;font-size:10px;min-height:28px}
+.sala-vista-controles output{font:11px ui-monospace,monospace;min-width:37px;text-align:center;color:#edf4ff}
+#escenarioPrincipal{display:block;overflow:auto;overscroll-behavior:contain;background:#060e1c}
+#lienzoPresentacion{position:relative;display:grid;place-items:center;flex:none}
+#lienzoPresentacion #videoPrincipal{position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:contain;pointer-events:none}
+#escenarioPrincipal.sala-vista-ampliada{cursor:grab;touch-action:pan-x pan-y;user-select:none}
+#escenarioPrincipal.sala-arrastrando-vista{cursor:grabbing}
+#escenarioPrincipal:focus-visible{outline:2px solid #b9d8ff;outline-offset:-3px}
+.meeting-app #nombrePrincipal{bottom:8px;left:9px;padding:5px 8px;font-size:11px;pointer-events:none}
+.sala-presentacion:fullscreen{width:100vw;height:100dvh;border:0;border-radius:0;display:flex!important;background:#060e1c}
+.sala-presentacion:fullscreen #escenarioPrincipal{flex:1;min-height:0}
+.meeting-app .meeting-controls{padding:7px 10px;gap:8px;flex-shrink:0}
+.meeting-app .meeting-controls .call-control{min-width:91px;min-height:53px;padding:6px 8px;gap:4px;font-size:10px}
+.meeting-app .meeting-controls .call-control svg{width:21px;height:21px}
+.meeting-app .meeting-controls .meeting-btn{min-height:33px;padding:7px 9px;font-size:11px}
+.meeting-app .meeting-controls-tools{gap:5px}
+.meeting-app .meeting-device-alert{margin:4px 10px;padding:7px 10px;font-size:11px;flex-shrink:0}
+.meeting-app .sala-chat{padding:10px;gap:8px}
+.meeting-app .sala-chat h2{font-size:14px}
+.meeting-app .sala-chat textarea{min-height:54px;max-height:130px;font-size:12px}
+.sala-dispositivos{position:relative;flex:none;color:#edf4ff;font-size:11px}
+.sala-dispositivos>summary{cursor:pointer;padding:8px 10px;min-height:34px;box-sizing:border-box;border:1px solid #476994;border-radius:8px;background:#152e50;list-style-position:inside}
+.sala-dispositivos[open]>summary{background:#245090;border-color:#90b5ed}
+.sala-dispositivos-contenido{position:fixed;z-index:160;right:12px;top:65px;width:min(680px,calc(100vw - 24px));max-height:calc(100dvh - 145px);overflow:auto;background:#10233e;border:1px solid #5d81af;border-radius:12px;box-shadow:0 16px 50px #0008;padding:12px;box-sizing:border-box}
+.sala-dispositivos:not([open])>.sala-dispositivos-contenido{display:none!important}
+.sala-dispositivos-contenido #estadoDispositivos{font-size:11px;margin:0 0 10px;color:#dceafe}
+.meeting-app .sala-dispositivos-contenido .meeting-device-strip{padding:0 0 10px;background:transparent;border:0}
+.meeting-app .sala-dispositivos-contenido .sala-prueba-microfono{display:flex;align-items:center;gap:9px;padding:10px 0 0;background:transparent;border:0;border-top:1px solid #3b577e;color:#edf4ff}
+.sala-prueba-acciones{display:flex;gap:7px;flex-wrap:wrap}
+.sala-dispositivos-contenido select{max-width:350px;font-size:12px;background:#0c1a30;color:#edf4ff;border:1px solid #5479aa;padding:7px;border-radius:7px}
+.sala-dispositivos-contenido label{display:flex;align-items:center;gap:8px}
+.sala-dispositivos-contenido #estadoPruebaMicrofono{flex-basis:100%;min-width:0;line-height:1.5}
+.sala-asistencia-superior{max-width:260px;min-width:0}
+.sala-asistencia-superior .pmo-asistencia-barra{display:flex!important;align-items:center;gap:8px;padding:5px 9px!important;margin:0!important;border-radius:8px;box-sizing:border-box;min-height:32px;max-width:260px}
+.sala-asistencia-superior .pmo-asistencia-barra>div:first-child,.sala-asistencia-superior .pmo-jornada-acciones,.sala-asistencia-superior .pmo-reloj small,.sala-asistencia-superior .pmo-reloj progress{display:none!important}
+.sala-asistencia-superior .pmo-asistencia-barra .pmo-reloj{min-width:0!important;width:auto!important;padding:0!important}
+.sala-asistencia-superior .pmo-reloj strong{font-size:14px!important;letter-spacing:.04em}
+.sala-asistencia-superior #pmoAsistenciaEnlace{font-size:10px!important;white-space:nowrap}
+.meeting-app .sala-galeria .sala-distribucion{grid-template-columns:1fr}
+body.sala-galeria .meeting-app .sala-distribucion{grid-template-columns:1fr}
+body.sala-galeria .meeting-app .rtc-persona{max-height:none;min-height:135px}
+body.sala-minimizada .meeting-app .meeting-topbar{padding:6px 8px;min-height:44px}
+body.sala-minimizada .meeting-app .meeting-actions{flex-wrap:nowrap;gap:4px}
+body.sala-minimizada .meeting-subtitle,body.sala-minimizada #estadoReunion,body.sala-minimizada .sala-dispositivos,body.sala-minimizada .sala-asistencia-superior{display:none!important}
+body.sala-minimizada .meeting-app .meeting-title h1{font-size:12px}
+body.sala-minimizada .meeting-app .sala-distribucion{padding:0;gap:0;grid-template-columns:1fr}
+body.sala-minimizada .meeting-app .meeting-main{padding:0;display:block!important}
+body.sala-minimizada .meeting-app .meeting-controls .call-control{min-height:44px;min-width:80px;font-size:9px;padding:4px}
+body.sala-minimizada .meeting-app .meeting-controls{padding:5px;gap:4px}
+body.sala-minimizada .meeting-app .meeting-controls-devices{flex:1;min-width:0;gap:3px}
+body.sala-minimizada .meeting-app .meeting-controls .call-control{flex:1;min-width:0;width:auto!important;padding:4px 2px}
+body.sala-minimizada .ardia-global{display:block!important}
+@media(max-width:1100px){
+ .meeting-app .meeting-topbar{flex-wrap:wrap}
+ .meeting-app .meeting-title{flex-basis:45%}
+ .meeting-app .meeting-actions{flex:1}
+ .meeting-app .sala-distribucion{grid-template-columns:155px minmax(0,1fr)}
+ .meeting-app .meeting-controls-devices{flex-shrink:0}
+ .sala-vista-etiqueta{display:none}
+}
+@media(max-width:760px){
+ .meeting-app .meeting-topbar{padding:7px 9px;gap:6px}
+ .meeting-app .meeting-title{flex-basis:100%}
+ .meeting-app .meeting-title h1{font-size:16px}
+ .meeting-app .meeting-actions{justify-content:flex-start;gap:4px}
+ .meeting-app .meeting-pill,.meeting-app .meeting-actions>.meeting-btn,.sala-dispositivos>summary{font-size:10px;padding:6px 8px;min-height:29px}
+ .meeting-app .meeting-main,.meeting-app .meeting-main.con-chat,.meeting-app .meeting-main.con-panel{grid-template-columns:1fr;padding:5px;gap:5px;position:relative}
+ .meeting-app .sala-distribucion{display:flex;flex-direction:column-reverse;padding:5px;gap:5px}
+ .meeting-app .sala-presentacion{flex:1;min-height:100px}
+ .meeting-app .sala-alumnos{height:78px;flex:none}
+ .meeting-app .sala-alumnos h2{display:none}
+ .meeting-app .rtc-grid{flex-direction:row;overflow-x:auto;overflow-y:hidden;height:78px!important}
+ .meeting-app .rtc-persona{width:120px;min-height:72px;max-height:73px}
+ .meeting-app .sala-presentacion-titulo{padding:4px 6px;min-height:33px}
+ .sala-vista-controles .meeting-btn{padding:5px 7px;min-height:27px}
+ .meeting-app .meeting-controls{flex-wrap:wrap;padding:5px;gap:5px}
+ .meeting-app .meeting-controls-devices{width:auto!important;flex:1;justify-content:center}
+ .meeting-app .meeting-controls .call-control{min-width:76px;width:auto!important;min-height:46px;font-size:9px}
+ body.sala-minimizada .meeting-app .meeting-controls .call-control{min-width:0}
+ .meeting-app .meeting-controls-tools{flex-basis:100%;flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;max-width:100%;padding-bottom:3px}
+ .meeting-app .meeting-controls-tools>.meeting-btn{white-space:nowrap;flex:none;font-size:10px;min-height:32px}
+ .meeting-app .sala-chat,.meeting-app .recordings-panel{position:absolute;top:5px;bottom:5px;right:5px;width:min(310px,calc(100% - 10px));z-index:12}
+ .sala-dispositivos-contenido{top:100px;max-height:calc(100dvh - 150px)}
+ .sala-dispositivos-contenido label{max-width:100%;flex-wrap:wrap}
+ .sala-dispositivos-contenido select{max-width:min(100%,280px)}
+ .sala-asistencia-superior{max-width:230px}
+ body.sala-galeria .meeting-app .sala-alumnos{height:auto;flex:1}
+ body.sala-galeria .meeting-app .rtc-grid{height:auto!important;display:grid!important;grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+ body.sala-galeria .meeting-app .rtc-persona{width:100%;min-height:100px;max-height:none}
+ body.sala-minimizada .meeting-app .meeting-title{flex-basis:auto}
+ body.sala-minimizada .meeting-app .meeting-actions{justify-content:flex-end}
+}

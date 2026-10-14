@@ -21,11 +21,12 @@
         if (typeof document === 'undefined' || !document.body || esAcceso() || !window.obtenerTokenSesionPMO()) return;
         let barra=document.getElementById('pmoAsistenciaBarra');
         if (!barra) {
-            const principal=document.querySelector('.main-content') || document.querySelector('.empresa-main'), pie=document.querySelector('.meeting-footer');
-            if (!principal && !pie) return;
+            const principal=document.querySelector('.main-content') || document.querySelector('.empresa-main'), superior=document.querySelector('.sala-asistencia-superior'), pie=document.querySelector('.meeting-footer');
+            if (!principal && !superior && !pie) return;
             barra=document.createElement('section'); barra.id='pmoAsistenciaBarra'; barra.className='pmo-asistencia-barra'; barra.setAttribute('aria-label','Conexión y asistencia');
             barra.innerHTML='<div><strong id="pmoAsistenciaTitulo">Confirmando conexión…</strong><p id="pmoAsistenciaMensaje"></p></div><div class="pmo-reloj"><strong id="pmoAsistenciaReloj">00:00:00</strong><small>horas : minutos : segundos</small><progress id="pmoAsistenciaProgreso" max="36000" value="0" aria-label="Avance de las diez horas diarias"></progress></div><div class="pmo-jornada-acciones"><button id="pmoIniciarJornada" type="button">Iniciar mi jornada</button><button id="pmoFinalizarJornada" type="button">Finalizar mi jornada</button><a id="pmoReporteJornada" href="canales-proyectos.html#diario">Hacer mis reportes</a><small id="pmoReporteEspera"></small><small id="pmoReposicionSaldo"></small></div><a id="pmoAsistenciaEnlace" href="asistencia.html">Ver asistencia de todos ↗</a>';
-            if (principal) principal.prepend(barra); else { barra.classList.add('pmo-asistencia-compacta'); pie.append(barra); }
+            if (superior) { barra.classList.add('pmo-asistencia-compacta'); superior.append(barra); }
+            else if (principal) principal.prepend(barra); else { barra.classList.add('pmo-asistencia-compacta'); pie.append(barra); }
         }
         const s=segundosVisibles(), contando=!!datos?.contando && (datos?.modoContinuo || !datos?.error) && Date.now()-recibido < Number(datos?.vigenciaSegundos ?? 90)*1000;
         const reloj=document.getElementById('pmoAsistenciaReloj'); reloj.textContent=formato(s); reloj.parentElement.hidden=!esAlumno();
@@ -42,7 +43,9 @@
         document.getElementById('pmoReposicionSaldo').textContent=datos?.reposicionPendienteSegundos>0?`Pendiente por reponer el fin de semana: ${formato(datos.reposicionPendienteSegundos)}.`:'';
         document.getElementById('pmoAsistenciaTitulo').textContent=datos?.error ? datos?.modoContinuo?'Jornada iniciada · Conexión pendiente':'Conexión pendiente de confirmar' : esAlumno() ? s>=Number(datos?.limiteSegundos??36000) && Number(datos?.limiteSegundos??36000)>0 ? 'Meta de jornada registrada' : contando ? datos?.reposicion?'Reposición en curso':'Jornada en curso · Meta diaria: 10 horas' : datos?.finalizada?'Jornada finalizada':'Inicia tu jornada' : conectado ? 'Conectado a la Oficina de Proyectos' : 'Confirmando conexión…';
         document.getElementById('pmoAsistenciaMensaje').textContent=datos?.mensaje || 'Tu conexión se registra automáticamente. Horario escolar: lunes a viernes de 07:00 a 17:00.';
-        document.getElementById('pmoAsistenciaEnlace').hidden=!puedeSupervisar(); barra.dataset.contando=String(contando);
+        const enlace=document.getElementById('pmoAsistenciaEnlace');enlace.hidden=!puedeSupervisar();
+        enlace.onclick=event=>{if(!window.PMOLlamadaActiva?.())return;event.preventDefault();window.PMONavegarEnLlamada?.('asistencia.html');};
+        barra.dataset.contando=String(contando);
         const titulo=document.getElementById('tituloJornada'), texto=document.getElementById('textoJornada');
         if (titulo && texto && esAlumno()) { titulo.textContent=contando?'Jornada en curso':'Mi jornada'; texto.textContent=`${formato(s)} de 10:00:00 hoy. ${datos?.mensaje||'Confirmando tu conexión…'}`; }
     }

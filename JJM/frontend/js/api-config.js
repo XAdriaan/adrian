@@ -138,12 +138,13 @@
         },true);
     }
     if (typeof document !== "undefined" && document.createElement && document.head) {
+        window.PMOWidgetsMoviblesPromesa=window.PMOWidgetsMovibles?Promise.resolve(true):new Promise(resolve=>{const mover=document.createElement('script');mover.src='js/widgets-movibles.js?v=20261014-v24';mover.onload=()=>resolve(true);mover.onerror=()=>resolve(false);document.head.appendChild(mover);});
         window.PMOMicrofonoPromesa=window.PMOMicrofono?Promise.resolve(true):new Promise(resolve=>{const m=document.createElement('script');m.src='js/microfono.js?v=20261013-v21';m.onload=()=>resolve(true);m.onerror=()=>resolve(false);document.head.appendChild(m);});
         const sesionAviso=document.createElement('script');sesionAviso.src='js/sesion-aviso.js?v=20261013-v21';document.head.appendChild(sesionAviso);
         const contraste=document.createElement('link');contraste.rel='stylesheet';contraste.href='css/contraste-v21.css?v=20261013-v21';document.head.appendChild(contraste);
         window.PMOArdiaVozPromesa=new Promise(resolve=>{const v=document.createElement('script');v.src='js/ardia-voz.js?v=20261013-v21';v.onload=()=>resolve(true);v.onerror=()=>resolve(false);document.head.appendChild(v);});
         const asistencia = document.createElement("script");
-        asistencia.src = "js/asistencia-automatica.js?v=20261014-v22";
+        asistencia.src = "js/asistencia-automatica.js?v=20261014-v24";
         document.head.appendChild(asistencia);
         const estiloAsistencia = document.createElement("link");
         estiloAsistencia.rel = "stylesheet";
@@ -152,6 +153,6 @@
         const automatizaciones = document.createElement("script");
         automatizaciones.src = "js/automatizaciones-global.js?v=20261014-v22";
         document.head.appendChild(automatizaciones);
-        const avisosReuniones=document.createElement('script');avisosReuniones.src='js/reuniones-avisos.js?v=20261013-v20';document.head.appendChild(avisosReuniones);
+        const avisosReuniones=document.createElement('script');avisosReuniones.src='js/reuniones-avisos.js?v=20261014-v24';document.head.appendChild(avisosReuniones);
     }
 })();

@@ -1,6 +1,14 @@
 (() => {
     'use strict';
     const el=id=>document.getElementById(id);
+    function calcularVistaPresentacion(videoAncho,videoAlto,ancho,alto,zoom=1){
+        const w=Math.max(0,Number(ancho)||0),h=Math.max(0,Number(alto)||0);
+        const vw=Number(videoAncho)>0?Number(videoAncho):w,vh=Number(videoAlto)>0?Number(videoAlto):h;
+        const factor=Math.min(3,Math.max(1,Number(zoom)||1));
+        const escala=vw>0&&vh>0?Math.min(w/vw,h/vh)*factor:0;
+        const resultado={ancho:vw*escala,alto:vh*escala};
+        return {...resultado,izquierda:Math.max(0,(w-resultado.ancho)/2),arriba:Math.max(0,(h-resultado.alto)/2)};
+    }
     function elegirHablante(niveles,anterior,ahora,cambio){
         const activos=niveles.filter(p=>p.nivel>.025).sort((a,b)=>b.nivel-a.nivel);
         if(!activos.length)return anterior;
@@ -13,9 +21,86 @@
         constructor({rtc,alFotoCamara}){
             this.rtc=rtc;this.alFotoCamara=alFotoCamara;this.analizadores=new Map();this.mensajes=new Set();this.noLeidos=0;this.cambio=0;this.galeria=false;this.minimizada=false;
             this.video=el('videoPrincipal');this.avatar=el('avatarPrincipal');
+            this.zoomPresentacion=1;this.limpiarVista=[];this.identidadVista=null;
             this.enlazar();this.vigilar();
+            this.enlazarVista();
         }
         error(e){this.rtc.estado.textContent=e.message || 'No se pudo completar la acción.';}
+        enlazarVista(){
+            const escuchar=(n,tipo,fn)=>{if(!n?.addEventListener)return;n.addEventListener(tipo,fn);this.limpiarVista.push(()=>n.removeEventListener?.(tipo,fn));};
+            escuchar(el('btnZoomAmpliar'),'click',()=>this.cambiarZoom(.25));
+            escuchar(el('btnZoomReducir'),'click',()=>this.cambiarZoom(-.25));
+            escuchar(el('btnAjustarVista'),'click',()=>this.ajustarVista());
+            escuchar(el('btnPantallaCompleta'),'click',()=>this.pantallaCompleta());
+            escuchar(this.video,'loadedmetadata',()=>this.actualizarTamanoVista());
+            escuchar(this.video,'resize',()=>this.actualizarTamanoVista());
+            escuchar(window,'resize',()=>this.actualizarTamanoVista());
+            escuchar(document,'fullscreenchange',()=>{
+                const completa=document.fullscreenElement===el('presentacionPrincipal'),b=el('btnPantallaCompleta');
+                b?.setAttribute('aria-pressed',String(completa));
+                b?.setAttribute('aria-label',completa?'Salir de pantalla completa':'Pantalla completa');
+                if(b)b.title=completa?'Salir de pantalla completa':'Pantalla completa';
+                this.actualizarTamanoVista();
+            });
+            const area=el('escenarioPrincipal');
+            escuchar(area,'pointerdown',e=>{
+                if(this.zoomPresentacion<=1||e.pointerType==='touch'||e.button!==0)return;
+                this.panVista={id:e.pointerId,x:e.clientX,y:e.clientY,left:area.scrollLeft,top:area.scrollTop};
+                area.setPointerCapture?.(e.pointerId);area.classList.add('sala-arrastrando-vista');
+            });
+            escuchar(area,'pointermove',e=>{
+                const inicio=this.panVista;if(!inicio||e.pointerId!==inicio.id)return;e.preventDefault();
+                area.scrollLeft=inicio.left-(e.clientX-inicio.x);area.scrollTop=inicio.top-(e.clientY-inicio.y);
+            });
+            const finPan=e=>{if(!this.panVista||e.pointerId!==this.panVista.id)return;this.panVista=null;area.releasePointerCapture?.(e.pointerId);area.classList.remove('sala-arrastrando-vista');};
+            escuchar(area,'pointerup',finPan);escuchar(area,'pointercancel',finPan);
+            escuchar(area,'keydown',e=>{
+                if(e.ctrlKey||e.metaKey||e.altKey)return;
+                if(e.key==='+'||e.key==='='){e.preventDefault();this.cambiarZoom(.25);}
+                else if(e.key==='-'){e.preventDefault();this.cambiarZoom(-.25);}
+                else if(e.key==='0'){e.preventDefault();this.ajustarVista();}
+            });
+            this.observadorVista=typeof ResizeObserver==='function'?new ResizeObserver(()=>this.actualizarTamanoVista()):null;
+            if(area)this.observadorVista?.observe(area);
+            this.actualizarTamanoVista();
+        }
+        dimensionesVista(zoom=this.zoomPresentacion){
+            const area=el('escenarioPrincipal');
+            return calcularVistaPresentacion(this.video.videoWidth,this.video.videoHeight,area?.clientWidth,area?.clientHeight,zoom);
+        }
+        actualizarTamanoVista(){
+            const area=el('escenarioPrincipal'),lienzo=el('lienzoPresentacion');if(!area||!lienzo?.style)return;
+            const d=this.dimensionesVista();
+            lienzo.style.width=d.ancho+'px';lienzo.style.height=d.alto+'px';
+            lienzo.style.marginLeft=d.izquierda+'px';lienzo.style.marginTop=d.arriba+'px';
+            area.classList.toggle('sala-vista-ampliada',this.zoomPresentacion>1);
+            area.scrollLeft=Math.max(0,Math.min(area.scrollLeft||0,Math.max(0,d.ancho-area.clientWidth)));
+            area.scrollTop=Math.max(0,Math.min(area.scrollTop||0,Math.max(0,d.alto-area.clientHeight)));
+            if(el('escalaPresentacion'))el('escalaPresentacion').textContent=Math.round(this.zoomPresentacion*100)+'%';
+            if(el('btnZoomReducir'))el('btnZoomReducir').disabled=this.zoomPresentacion<=1;
+            if(el('btnZoomAmpliar'))el('btnZoomAmpliar').disabled=this.zoomPresentacion>=3;
+        }
+        cambiarZoom(delta){
+            const area=el('escenarioPrincipal'),antes=this.dimensionesVista();
+            const x=((area?.scrollLeft||0)+(area?.clientWidth||0)/2-antes.izquierda)/(antes.ancho||1);
+            const y=((area?.scrollTop||0)+(area?.clientHeight||0)/2-antes.arriba)/(antes.alto||1);
+            this.zoomPresentacion=Math.min(3,Math.max(1,this.zoomPresentacion+(Number(delta)||0)));
+            this.actualizarTamanoVista();const ahora=this.dimensionesVista();
+            if(area){area.scrollLeft=Math.max(0,Math.min(x*ahora.ancho+ahora.izquierda-area.clientWidth/2,Math.max(0,ahora.ancho-area.clientWidth)));
+                area.scrollTop=Math.max(0,Math.min(y*ahora.alto+ahora.arriba-area.clientHeight/2,Math.max(0,ahora.alto-area.clientHeight)));}
+        }
+        ajustarVista(){this.zoomPresentacion=1;const area=el('escenarioPrincipal');if(area){area.scrollLeft=0;area.scrollTop=0;}this.actualizarTamanoVista();}
+        async pantallaCompleta(){
+            const panel=el('presentacionPrincipal');
+            try{
+                if(document.fullscreenElement===panel)await document.exitFullscreen?.();
+                else{
+                    if(!panel?.requestFullscreen)throw new Error('Este navegador no permite la pantalla completa. Puedes ampliar con +.');
+                    this.galeria=false;document.body.classList.remove('sala-galeria');await panel.requestFullscreen();
+                }
+                this.actualizarTamanoVista();
+            }catch(e){this.error(e);}
+        }
         enlazar(){
             el('btnChatSala').addEventListener('click',()=>this.chat());el('btnCerrarChat').addEventListener('click',()=>this.chat(false));
             for(const [boton,panel] of [['btnReaccionesSala','opcionesReacciones'],['btnFondosSala','opcionesFondos'],['btnCapturasSala','opcionesCapturas']])el(boton).addEventListener('click',()=>{
@@ -45,6 +130,16 @@
             });
             window.addEventListener('storage',e=>{if(e.key==='sesionTokenPMO'&&!e.newValue){this.rtc.salir();window.location.replace('login.html');}});
             document.addEventListener('keydown',e=>{if(e.key==='Escape')this.cerrarOpciones();});
+            // La interacción habitual con la sala permite reintentar el audio
+            // bloqueado por el navegador sin encender el micrófono del usuario.
+            this.gestoAudio=e=>{
+                if(!this.rtc.activa || !e.target?.closest?.('.meeting-app, .sala-opciones'))return;
+                if(e.type==='keydown' && (e.repeat || !['Enter',' '].includes(e.key)))return;
+                if(e.type==='pointerdown' && e.button!=null && e.button!==0)return;
+                this.activarAudio().catch(()=>{});
+            };
+            document.addEventListener('pointerdown',this.gestoAudio,true);
+            document.addEventListener('keydown',this.gestoAudio,true);
         }
         cerrarOpciones(){for(const [b,p] of [['btnReaccionesSala','opcionesReacciones'],['btnFondosSala','opcionesFondos'],['btnCapturasSala','opcionesCapturas']]){el(p).hidden=true;el(b).setAttribute('aria-expanded','false');}}
         chat(abrir=el('panelChatSala').hidden){
@@ -67,8 +162,18 @@
             capa.append(aviso);while(capa.children.length>5)capa.firstElementChild.remove();setTimeout(()=>aviso.remove(),5500);
         }
         async activarAudio(){
+            // play() y resume() se solicitan durante el gesto, antes del await.
+            this.reproducirAudioRemoto();
             const Audio=window.AudioContext || window.webkitAudioContext;
             if(Audio&&!this.audio)this.audio=new Audio();await this.audio?.resume().catch(()=>{});this.actualizarAnalizadores();
+        }
+        reproducirAudioRemoto(){
+            if(!this.rtc.activa)return;
+            for(const p of this.rtc.peers.values()){
+                if(p.video?.paused && p.stream?.getAudioTracks?.().some(t=>t.readyState==='live')){
+                    try{p.video.play().catch(()=>{});}catch(_){}
+                }
+            }
         }
         actualizarAnalizadores(){
             if(!this.audio||this.audio.state!=='running')return;
@@ -92,7 +197,7 @@
                 for(const p of this.rtc.lista){const div=p.id===this.rtc.id?document.querySelector('[data-propia]'):this.rtc.peers.get(p.id)?.div;if(div)div.dataset.hablando=String(niveles.some(n=>n.id===p.id&&n.nivel>.025));}
                 this.actualizar();
             },250);
-            this.reproduccion=setInterval(()=>{if(!this.rtc.activa)return;for(const p of this.rtc.peers.values())if(p.video.paused&&p.stream.getAudioTracks?.().some(t=>t.readyState==='live'))p.video.play().catch(()=>{});if(this.audio?.state==='suspended')this.audio.resume().catch(()=>{});},5000);
+            this.reproduccion=setInterval(()=>{if(!this.rtc.activa)return;this.reproducirAudioRemoto();if(this.audio?.state==='suspended')this.audio.resume().catch(()=>{});},5000);
         }
         actualizar(){
             const lista=this.rtc.lista,propia={id:this.rtc.id,nombre:'Tú',...this.rtc.estadoLocal};
@@ -102,17 +207,21 @@
             else fuente=destacada.id===this.rtc.id?this.rtc.videoLocal?.srcObject:peer?.video.srcObject;
             // Mantener el mismo objeto evita reiniciar el video cada 250 ms.
             const pistas=fuente?.getVideoTracks?.() || [];const actuales=this.video.srcObject?.getVideoTracks?.() || [];
-            if(pistas.length!==actuales.length || pistas.some(t=>!actuales.includes(t))){this.video.srcObject=fuente || null;this.video.play().catch(()=>{});}
+            const cambiaPistas=pistas.length!==actuales.length || pistas.some(t=>!actuales.includes(t));
+            if(cambiaPistas || this.identidadVista!==destacada.id){this.identidadVista=destacada.id;this.ajustarVista();}
+            if(cambiaPistas){this.video.srcObject=fuente || null;this.video.play().catch(()=>{});}
             const visible=!!(pistas.some(t=>t.readyState==='live') && (presenta || destacada.video));this.video.hidden=!visible;this.avatar.hidden=visible;this.avatar.textContent=String(destacada.nombre||'JJM').slice(0,1).toUpperCase();
             el('nombrePrincipal').textContent=`${destacada.nombre||'Participante'}${presenta?' · Compartiendo pantalla':destacada.id===this.hablante?' · Hablando':''}`;
             el('tituloPresentacion').textContent=presenta?'Pantalla compartida':this.hablante?'Participante que habla':'Vista principal';
             const galeria=this.galeria&&!presenta;document.body.classList.toggle('sala-galeria',galeria);el('btnVistaGaleria').setAttribute('aria-pressed',String(galeria));
             el('btnVistaGaleria').textContent=galeria?'Ver participante':'Galería';el('btnVistaGaleria').disabled=!!presenta;
+            this.actualizarTamanoVista();
         }
-        minimizar(url){
+        minimizar(url,navegar=false){
             if(!this.rtc.activa){this.error(new Error('Entra a la sala para mantenerla abierta mientras navegas.'));return;}
             const frame=el('oficinaDuranteLlamada');this.cerrarOpciones();this.chat(false);
-            if(!frame.getAttribute('src'))frame.src=url||'dashboard.html';frame.hidden=false;this.minimizada=true;document.body.classList.add('sala-minimizada');el('btnRestaurarSala').hidden=false;
+            if(document.fullscreenElement===el('presentacionPrincipal'))document.exitFullscreen?.().catch(()=>{});
+            if(navegar||!frame.getAttribute('src'))frame.src=url||'dashboard.html';frame.hidden=false;this.minimizada=true;document.body.classList.add('sala-minimizada');el('btnRestaurarSala').hidden=false;
         }
         restaurar(){el('oficinaDuranteLlamada').hidden=true;this.minimizada=false;document.body.classList.remove('sala-minimizada');el('btnRestaurarSala').hidden=true;this.actualizar();}
         async foto(tipo){
@@ -140,7 +249,7 @@
             c.fillStyle='#193453';c.fillRect(x,y,w,h);if(!v?.videoWidth || v.readyState<2){c.fillStyle='#aec9ef';c.font='22px sans-serif';c.fillText('JJM',x+w/2-22,y+h/2);return;}
             const escala=Math.min(w/v.videoWidth,h/v.videoHeight);c.drawImage(v,x+(w-v.videoWidth*escala)/2,y+(h-v.videoHeight*escala)/2,v.videoWidth*escala,v.videoHeight*escala);
         }
-        cerrar(){clearInterval(this.timer);clearInterval(this.reproduccion);for(const a of this.analizadores.values())a.fuente.disconnect();this.analizadores.clear();this.audio?.close().catch(()=>{});}
+        cerrar(){clearInterval(this.timer);clearInterval(this.reproduccion);document.removeEventListener('pointerdown',this.gestoAudio,true);document.removeEventListener('keydown',this.gestoAudio,true);this.limpiarVista.forEach(fn=>fn());this.observadorVista?.disconnect();this.panVista=null;for(const a of this.analizadores.values())a.fuente.disconnect();this.analizadores.clear();this.audio?.close().catch(()=>{});}
     }
-    window.PMOExperienciaSala=ExperienciaSala;window.PMOElegirHablante=elegirHablante;
+    window.PMOExperienciaSala=ExperienciaSala;window.PMOElegirHablante=elegirHablante;window.PMOCalcularVistaPresentacion=calcularVistaPresentacion;
 })();

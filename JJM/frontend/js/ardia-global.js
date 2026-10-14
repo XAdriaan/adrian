@@ -25,16 +25,16 @@
     const consultas = new Set();
     function vigente() {
         if(destruido)return false;
-        if(localStorage.getItem('sesionTokenPMO')!==token){destruir();return false;}
+        if(localStorage.getItem('sesionTokenPMO')!==token||String(cuenta()?.id)!==String(usuario?.id)){destruir();return false;}
         return true;
     }
     function destruir() {
         if(destruido)return;destruido=true;consultas.forEach(c=>c.abort());consultas.clear();
-        vozIA?.detener();window.speechSynthesis?.cancel();reconocer?.abort();widget?.remove();
+        widget?.__pmoMovible?.destruir();vozIA?.detener();window.speechSynthesis?.cancel();reconocer?.abort();widget?.remove();
         document.removeEventListener('keydown',teclado);window.removeEventListener('storage',cambioSesion);
         window.removeEventListener('pmo:sesion-cerrada',destruir);delete window.PMOArdia;
     }
-    function cambioSesion(e){if(e.key===null||e.key==='sesionTokenPMO')vigente();}
+    function cambioSesion(e){if(e.key===null||e.key==='sesionTokenPMO'||e.key==='usuarioActivo')vigente();}
     function hablar(texto) {
         if(!vigente()||!leyendo||!gesto||panel.hidden)return;
         if(vozIA){vozIA.hablar(texto);return;}
@@ -123,7 +123,7 @@
         catch(e) { mensaje(e.name==='AbortError'?'El servidor tardó demasiado. Intenta de nuevo en unos segundos.':e.message+' Puedes usar los accesos rápidos mientras reintentas.'); }
         finally {if(vigente()){ocupado=false;enviar.disabled=false;panel.setAttribute('aria-busy','false');if(!leyendo)estado.textContent='Lista para ayudarte';if(!panel.hidden)input.focus({preventScroll:true});}}
     }
-    function abrir(desdeUsuario=true) {if(!vigente())return;panel.hidden=false;boton.setAttribute('aria-expanded','true');if(desdeUsuario){gesto=true;hablar(ultimaRespuesta);}input.focus({preventScroll:true});}
+    function abrir(desdeUsuario=true) {if(!vigente())return;panel.hidden=false;widget.__pmoMovible?.actualizar();boton.setAttribute('aria-expanded','true');if(desdeUsuario){gesto=true;hablar(ultimaRespuesta);}input.focus({preventScroll:true});}
     function cerrar() {panel.hidden=true;boton.setAttribute('aria-expanded','false');vozIA?.detener();window.speechSynthesis?.cancel?.();reconocer?.abort();widget.classList.remove('hablando');boton.focus();}
     function teclado(e){if(!vigente())return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();abrir();}else if(e.key==='Escape'&&!panel.hidden)cerrar();}
     function montar() {
@@ -132,6 +132,7 @@
         widget.innerHTML=`<button class="ardia-lanzador" id="ardia-abrir" type="button" aria-expanded="false" aria-controls="ardia-panel" aria-label="Abrir Ard.IA y accesos rápidos"><span aria-hidden="true">✦</span> Ard.IA <kbd>Ctrl K</kbd></button>
         <section class="ardia-panel" id="ardia-panel" role="dialog" aria-label="Ard.IA y accesos rápidos" hidden><header><div><strong>Ard.IA</strong><small>Tu asistente y accesos rápidos</small></div><button type="button" id="ardia-cerrar" aria-label="Cerrar asistente">×</button></header><div class="ardia-mensajes" id="ardia-mensajes" role="log" aria-live="polite"></div><nav class="ardia-accesos" id="ardia-accesos" aria-label="Accesos sugeridos"></nav><form id="ardia-form"><label class="ardia-sr" for="ardia-input">Pregunta o busca un apartado</label><input id="ardia-input" type="search" name="pmo-assistant-query" autocomplete="off" data-lpignore="true" data-1p-ignore="true" placeholder="Pregunta o busca un apartado…" maxlength="500"><button id="ardia-enviar" type="submit" aria-label="Enviar pregunta">↑</button></form><footer><button id="ardia-voz" type="button" aria-pressed="false">Leer respuestas</button><button id="ardia-mic" type="button" hidden>Dictar</button><span>Ctrl K · Escape para cerrar</span></footer></section>`;
         document.body.append(widget);panel=document.getElementById('ardia-panel');mensajes=document.getElementById('ardia-mensajes');input=document.getElementById('ardia-input');accesos=document.getElementById('ardia-accesos');boton=document.getElementById('ardia-abrir');enviar=document.getElementById('ardia-enviar');
+        const movible={id:'ardia',capa:widget,boton,panel,idUsuario:usuario.id};if(window.PMOWidgetsMovibles)window.PMOWidgetsMovibles.vincular(movible);else (window.PMOWidgetsMoviblesPendientes ||= []).push(movible);
         boton.addEventListener('click',()=>panel.hidden?abrir():cerrar());document.getElementById('ardia-cerrar').addEventListener('click',cerrar);
         document.getElementById('ardia-form').addEventListener('submit',e=>{e.preventDefault();preguntar(input.value);});input.addEventListener('input',()=>enlaces(buscar(input.value).slice(0,6)));
         estado=panel.querySelector('header small');estado.setAttribute('role','status');

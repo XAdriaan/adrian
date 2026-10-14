@@ -1,7 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 function entorno(getUserMedia){
- const elems={},el=id=>elems[id]||(elems[id]={dataset:{},disabled:false,hidden:false,setAttribute(n,v){this[n]=v},querySelector:()=>null});
- const ctx=vm.createContext({window:{apiUrl:v=>v,location:{search:'?general=1'}},document:{getElementById:el,addEventListener(){}},navigator:{mediaDevices:{getUserMedia}},URLSearchParams,setTimeout,clearTimeout,console});
+ const elems={},el=id=>elems[id]||(elems[id]={dataset:{},listeners:{},disabled:false,hidden:false,setAttribute(n,v){this[n]=v},querySelector:()=>null,addEventListener(n,f){this.listeners[n]=f}});
+ const ctx=vm.createContext({window:{apiUrl:v=>v,location:{search:'?general=1'},addEventListener(){}},document:{getElementById:id=>id==='btnEscuchar'?null:el(id),addEventListener(){}},navigator:{mediaDevices:{getUserMedia}},URLSearchParams,setTimeout,clearTimeout,console});
  vm.runInContext(fs.readFileSync(path.join(__dirname,'../js/reunion.js'),'utf8'),ctx);
  ctx.sala={activa:true,generacion:1,medios:{audio:null,video:null,pantalla:null},estadoLocal:{},actualizarVistaLocal(){},async publicarEstado(c){Object.assign(this.estadoLocal,c);},async cambiar(tipo,pista){this.medios[tipo]=pista}};
  vm.runInContext('rtc=sala',ctx);
@@ -51,4 +51,31 @@ test('silenciar el micrófono también silencia su copia de grabación sin deten
  const e=entorno(),pista=track('audio'),copia=track('audio');
  e.ctx.pista=pista;e.ctx.copia=copia;e.run('rtc.medios.audio=pista;grabacionMicrofonoStream={getAudioTracks:()=>[copia]}');
  await e.run("activarMedio('audio',btnMicrofono)");assert.equal(pista.enabled,false);assert.equal(copia.enabled,false);assert.equal(pista.readyState,'live');
+});
+
+test('la sala configura sus controles sin el botón Activar audio',()=>{
+ const e=entorno();assert.doesNotThrow(()=>e.run('configurarEventos()'));
+ assert.equal(e.ctx.document.getElementById('btnEscuchar'),null);
+ assert.equal(typeof e.el('btnEntrarSala').listeners.click,'function');
+ assert.equal(typeof e.el('btnMicrofono').listeners.click,'function');
+ assert.equal(typeof e.el('btnCamara').listeners.click,'function');
+ assert.doesNotMatch(fs.readFileSync(path.join(__dirname,'../reunion.html'),'utf8'),/btnEscuchar|>Activar audio</);
+});
+
+test('Probar micrófono abre los dispositivos sin solicitar ni encender el micrófono',()=>{
+ let solicitudes=0;const e=entorno(()=>{solicitudes++;throw Error('No se debe pedir permiso al abrir el apartado');});
+ e.el('selectorMicrofono').focus=()=>{};e.el('pruebaMicrofonoSala').scrollIntoView=()=>{};
+ e.run('configurarEventos()');assert.equal(e.el('dispositivosSala').open,undefined);
+ e.el('btnAbrirPruebaMicrofono').listeners.click();assert.equal(e.el('dispositivosSala').open,true);
+ assert.equal(e.el('btnAbrirPruebaMicrofono')['aria-expanded'],'true');assert.equal(solicitudes,0);assert.equal(e.ctx.sala.medios.audio,null);
+ e.el('dispositivosSala').open=false;e.el('dispositivosSala').listeners.toggle();assert.equal(e.el('btnAbrirPruebaMicrofono')['aria-expanded'],'false');
+});
+
+test('el control de cámara reanuda la escucha antes de esperar el permiso sin activar micrófono',async()=>{
+ let resolver,reanudaciones=0;const e=entorno(()=>new Promise(r=>resolver=r)),pista=track('video');
+ e.ctx.experiencia={activarAudio(){reanudaciones++;return Promise.resolve();},actualizar(){}};
+ e.run('experienciaSala=experiencia');
+ const pendiente=e.run("activarMedio('video',btnCamara)");assert.equal(reanudaciones,1);assert.equal(e.ctx.sala.medios.audio,null);
+ resolver({getVideoTracks:()=>[pista],getTracks:()=>[pista]});await pendiente;
+ assert.equal(e.ctx.sala.medios.audio,null);assert.equal(e.el('btnMicrofono')['aria-pressed'],'false');
 });

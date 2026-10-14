@@ -11,7 +11,8 @@
 <link rel="stylesheet" href="css/ardia-global.css?v=20261005-v10">
 <link rel="stylesheet" href="css/elegancia-v9.css?v=20261005-v10">
 <link rel="stylesheet" href="css/sala-v10.css?v=20261012-v16">
-<link rel="stylesheet" href="css/sala-v20.css?v=20261013-v20">
+<link rel="stylesheet" href="css/sala-v20.css?v=20261014-v24">
+<link rel="stylesheet" href="css/sala-v24.css?v=20261014-v24">
 </head>
 <body>
 <div class="meeting-app">
@@ -19,29 +20,36 @@
         <div class="meeting-title">
             <span class="meeting-live-dot" aria-hidden="true"></span>
             <div>
-                <h1 id="tituloSala">Videollamada</h1>
-                <p id="nombreProyectoReunion">Cargando proyecto...</p>
+                <div class="sala-titulo-linea"><h1 id="tituloSala">Reunión de Proyecto</h1><span id="estadoReunion" role="status">Comprobando reunión...</span></div>
+                <div class="meeting-subtitle"><span id="nombreProyectoReunion">Cargando proyecto...</span></div>
             </div>
         </div>
 
         <div class="meeting-actions">
+            <div class="sala-asistencia-superior" aria-label="Jornada y asistencia"></div>
             <span class="meeting-pill" id="meetingTimer">00:00:00</span>
             <span class="meeting-pill" id="contadorParticipantes">0 participantes</span>
+            <details class="sala-dispositivos" id="dispositivosSala">
+                <summary>Dispositivos</summary>
+                <div class="sala-dispositivos-contenido">
+                    <p id="estadoDispositivos">Micrófono apagado · Cámara apagada</p>
+                    <div class="meeting-device-strip"><label class="meeting-camera-select" for="selectorCamara">Cámara<select id="selectorCamara"><option value="">Cámara predeterminada</option></select></label></div>
+                    <section class="sala-prueba-microfono" id="pruebaMicrofonoSala" aria-label="Prueba local de micrófono"><label for="selectorMicrofono">Micrófono<select id="selectorMicrofono"><option value="">Micrófono predeterminado</option></select></label><div class="sala-prueba-acciones"><button id="buscarMicrofonos" type="button">Buscar micrófonos</button><button id="probarMicrofono" type="button">Iniciar prueba</button></div><meter id="nivelMicrofono" min="0" max="100" value="0" aria-label="Nivel de entrada del micrófono"></meter><span id="estadoPruebaMicrofono" role="status">La prueba es local; no activa el micrófono de la llamada.</span></section>
+                </div>
+            </details>
             <button type="button" class="meeting-btn secondary" id="btnVolverProyecto">Navegar por la Oficina</button>
             <button type="button" class="meeting-btn" id="btnRestaurarSala" hidden>Ampliar llamada</button>
         </div>
     </header>
 
-    <div class="meeting-device-strip"><span id="estadoDispositivos">Micrófono apagado · Cámara apagada</span><label class="meeting-camera-select" for="selectorCamara">Cámara<select id="selectorCamara"><option value="">Cámara predeterminada</option></select></label></div>
-    <div class="sala-prueba-microfono"><label for="selectorMicrofono">Micrófono<select id="selectorMicrofono"><option value="">Micrófono predeterminado</option></select></label><button id="buscarMicrofonos" type="button">Buscar micrófonos</button><button id="probarMicrofono" type="button">Probar micrófono</button><meter id="nivelMicrofono" min="0" max="100" value="0" aria-label="Nivel de entrada del micrófono"></meter><span id="estadoPruebaMicrofono" role="status">La prueba es local; no activa el micrófono de la llamada.</span></div>
     <p class="meeting-device-alert" id="avisoMedios" role="alert" hidden></p>
     <main class="meeting-main">
         <section class="meeting-stage" aria-label="Videollamada de proyecto">
             <div class="sala-distribucion">
                 <section class="sala-alumnos" aria-label="Participantes"><h2>Participantes</h2><div id="jitsiContainer" class="jitsi-container rtc-grid"></div></section>
-                <section class="sala-presentacion" aria-label="Presentación y participante destacado">
-                    <div class="sala-presentacion-titulo"><strong id="tituloPresentacion">Vista principal</strong><button id="btnVistaGaleria" type="button" class="meeting-btn secondary" aria-pressed="false">Galería</button></div>
-                    <div id="escenarioPrincipal"><video id="videoPrincipal" autoplay playsinline muted></video><div id="avatarPrincipal" class="sala-avatar-principal">JJM</div><p id="nombrePrincipal">La reunión aparecerá aquí</p></div>
+                <section class="sala-presentacion" id="presentacionPrincipal" aria-label="Presentación y participante destacado">
+                    <div class="sala-presentacion-titulo"><strong id="tituloPresentacion">Vista principal</strong><div class="sala-vista-controles" aria-label="Tamaño de presentación"><button id="btnZoomReducir" type="button" class="meeting-btn secondary" aria-label="Reducir presentación" title="Reducir presentación">−</button><output id="escalaPresentacion" aria-live="polite">100%</output><button id="btnZoomAmpliar" type="button" class="meeting-btn secondary" aria-label="Ampliar presentación" title="Ampliar presentación">+</button><button id="btnAjustarVista" type="button" class="meeting-btn secondary">Ajustar</button><button id="btnPantallaCompleta" type="button" class="meeting-btn secondary" aria-label="Pantalla completa" aria-pressed="false" title="Pantalla completa"><span aria-hidden="true">⛶</span><span class="sala-vista-etiqueta"> Pantalla completa</span></button><button id="btnVistaGaleria" type="button" class="meeting-btn secondary" aria-pressed="false">Galería</button></div></div>
+                    <div id="escenarioPrincipal" tabindex="0" aria-label="Vista de la presentación. Al ampliar, desplázate con las barras o arrastra la imagen."><div id="lienzoPresentacion"><video id="videoPrincipal" autoplay playsinline muted></video><div id="avatarPrincipal" class="sala-avatar-principal">JJM</div></div></div><p id="nombrePrincipal">La reunión aparecerá aquí</p>
                     <div id="reaccionesSala" aria-live="polite"></div>
                 </section>
             </div>
@@ -96,7 +104,7 @@
             <button id="btnPantalla" class="call-control" type="button" aria-pressed="false" disabled>Compartir pantalla</button>
         </div>
         <div class="meeting-controls-tools">
-            <button id="btnEscuchar" type="button" class="meeting-btn secondary">Activar audio</button>
+            <button type="button" class="meeting-btn secondary" id="btnAbrirPruebaMicrofono" aria-expanded="false" aria-controls="dispositivosSala">Probar micrófono</button>
             <button type="button" class="meeting-btn secondary" id="btnManoSala" aria-pressed="false">✋ Levantar la mano</button>
             <button type="button" class="meeting-btn secondary" id="btnChatSala" aria-expanded="false" aria-controls="panelChatSala">Chat <span id="chatNoLeidos"></span></button>
             <button type="button" class="meeting-btn secondary" id="btnReaccionesSala" aria-expanded="false" aria-controls="opcionesReacciones">Reacciones</button>
@@ -111,10 +119,6 @@
         </div>
         <button id="btnSalirMini" type="button" class="meeting-btn hangup" hidden>Colgar</button>
     </nav>
-    <footer class="meeting-footer">
-        <span id="estadoReunion">Comprobando reunión...</span>
-        <span class="meeting-provider">Sala protegida · JJM Oficina de Proyectos</span>
-    </footer>
 </div>
 <div id="opcionesReacciones" class="sala-opciones" hidden><h2>Reaccionar</h2><div class="sala-emojis"><button data-reaccion="👍" aria-label="Me gusta">👍</button><button data-reaccion="👏" aria-label="Aplausos">👏</button><button data-reaccion="❤️" aria-label="Corazón">❤️</button><button data-reaccion="😂" aria-label="Risa">😂</button><button data-reaccion="🎉" aria-label="Celebrar">🎉</button><button data-reaccion="🤔" aria-label="Pensando">🤔</button></div></div>
 <div id="opcionesFondos" class="sala-opciones" hidden><h2>Fondo de tu cámara</h2><label for="fondoSala">Selecciona un fondo</label><select id="fondoSala"><option value="ninguno">Sin efecto</option><option value="desenfoque">Desenfocar fondo</option><option value="oficina">Oficina JJM</option><option value="azul">Azul</option><option value="bosque">Verde</option><option value="personalizado">Imagen propia</option></select><label for="imagenFondoSala">Imagen propia (JPG, PNG o WebP, hasta 5 MB)</label><input id="imagenFondoSala" type="file" accept="image/jpeg,image/png,image/webp"><p id="estadoFondoSala" role="status">Activa tu cámara para aplicar el efecto.</p></div>
@@ -122,12 +126,12 @@
 <iframe id="oficinaDuranteLlamada" title="Oficina de Proyectos durante la llamada" hidden></iframe>
 
 <script src="js/microfono.js?v=20261013-v21"></script>
-<script src="js/api-config.js?v=20261014-v22"></script>
-<script src="js/sala-webrtc.js?v=20261013-v20"></script>
+<script src="js/api-config.js?v=20261014-v24"></script>
+<script src="js/sala-webrtc.js?v=20261014-v24"></script>
 <script src="js/sala-fondos.js?v=20261013-v20"></script>
-<script src="js/sala-experiencia.js?v=20261013-v20"></script>
+<script src="js/sala-experiencia.js?v=20261014-v24"></script>
 <script src="js/grabaciones.js?v=20261005-v10"></script>
-<script src="js/reunion.js?v=20261013-v21"></script>
-<script src="js/ardia-global.js?v=20261013-v21"></script>
+<script src="js/reunion.js?v=20261014-v24"></script>
+<script src="js/ardia-global.js?v=20261014-v24"></script>
 </body>
 </html>
