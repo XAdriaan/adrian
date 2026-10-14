@@ -13,6 +13,7 @@ import com.jjm.oficina.repositorio.ProyectoRepository;
 import com.jjm.oficina.repositorio.TareaRepository;
 import com.jjm.oficina.repositorio.UsuarioRepository;
 import com.jjm.oficina.servicio.BitacoraService;
+import com.jjm.oficina.servicio.PermisosService;
 
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
@@ -109,12 +110,13 @@ public class TareaController {
 
         List<Tarea> tareas;
 
-        if (esAdministrador(usuario)) {
+        boolean asesorEmpresarial = PermisosService.esAsesorEmpresarial(usuario);
+        if (esAdministrador(usuario) || asesorEmpresarial) {
             tareas = tareaRepository.findAll(
                     Sort.by(Sort.Direction.DESC, "fechaCreacion")
             );
 
-            respuesta.put("tipoAcceso", "administrador");
+            respuesta.put("tipoAcceso", asesorEmpresarial ? "asesor_empresarial" : "administrador");
         } else {
             MiembroEquipo miembro = obtenerMiembroDesdeUsuario(usuario);
 
@@ -200,7 +202,7 @@ public class TareaController {
                     .body(respuesta);
         }
 
-        if (!tieneAccesoAlProyecto(usuario, tarea.getIdProyecto())) {
+        if (!puedeConsultarProyecto(usuario, tarea.getIdProyecto())) {
             respuesta.put("estado", "error");
             respuesta.put(
                     "mensaje",
@@ -256,7 +258,7 @@ public class TareaController {
                     .body(respuesta);
         }
 
-        if (!tieneAccesoAlProyecto(usuario, idProyecto)) {
+        if (!puedeConsultarProyecto(usuario, idProyecto)) {
             respuesta.put("estado", "error");
             respuesta.put(
                     "mensaje",
@@ -652,6 +654,11 @@ public class TareaController {
         return null;
     }
 
+    private boolean puedeConsultarProyecto(Usuario usuario, Integer idProyecto) {
+        return idProyecto != null && (PermisosService.esAsesorEmpresarial(usuario)
+                || tieneAccesoAlProyecto(usuario, idProyecto));
+    }
+
     private boolean tieneAccesoAlProyecto(
             Usuario usuario,
             Integer idProyecto
@@ -867,7 +874,8 @@ public class TareaController {
         Optional<Usuario> usuarioEncontrado =
                 usuarioRepository.findById(idUsuarioActivo);
 
-        return usuarioEncontrado.orElse(null);
+        return usuarioEncontrado.filter(usuario -> "Activo".equalsIgnoreCase(usuario.getEstado()))
+                .orElse(null);
     }
 
     private String valorODefecto(

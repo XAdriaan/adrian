@@ -45,6 +45,10 @@ public class GrabacionController {
         if("general".equals(sala))return true;
         try{return Long.parseLong(sala)>0&&reuniones.puedeAccederGrabacion(id,Long.parseLong(sala));}catch(NumberFormatException e){return false;}
     }
+    private boolean puedeGuardar(String sala,int id) {
+        if("general".equals(sala))return true;
+        try{return Long.parseLong(sala)>0&&reuniones.puedeGuardarGrabacion(id,Long.parseLong(sala));}catch(NumberFormatException e){return false;}
+    }
     private Path archivo(String id,String extension) {
         try{if(!UUID.fromString(id).toString().equals(id))throw new IllegalArgumentException();}
         catch(Exception e){throw fallo(HttpStatus.BAD_REQUEST,"Identificador de grabación inválido.");}
@@ -58,7 +62,7 @@ public class GrabacionController {
     @PostMapping("/cargas")
     public synchronized Map<String,Object> iniciar(@RequestBody Inicio entrada,@RequestHeader(value="X-Usuario-Id",required=false) Integer id) throws IOException {
         Usuario u=usuario(id);
-        if(entrada.sala()==null||!acceso(entrada.sala(),u.getId()))throw fallo(HttpStatus.FORBIDDEN,"No tienes acceso a esta sala.");
+        if(entrada.sala()==null||!puedeGuardar(entrada.sala(),u.getId()))throw fallo(HttpStatus.FORBIDDEN,"No tienes permiso para guardar grabaciones en esta sala.");
         // Solo se limpian cargas temporales abandonadas, nunca videos publicados.
         var it=cargas.values().iterator();while(it.hasNext()){Carga c=it.next();if(System.currentTimeMillis()-c.actividad>86_400_000){Files.deleteIfExists(archivo(c.id,".part"));it.remove();}}
         if(cargas.values().stream().filter(c->c.usuario==u.getId()).count()>=3)throw fallo(HttpStatus.CONFLICT,"Ya tienes tres videos pendientes de guardar.");
@@ -71,7 +75,7 @@ public class GrabacionController {
     private Carga carga(String id,Integer usuario) {
         Usuario u=usuario(usuario);archivo(id,".part");Carga c=cargas.get(id);
         if(c==null||c.usuario!=u.getId())throw fallo(HttpStatus.NOT_FOUND,"La carga no está disponible. Vuelve a guardar el video.");
-        if(!acceso(c.sala,u.getId()))throw fallo(HttpStatus.FORBIDDEN,"Ya no tienes acceso a la sala.");
+        if(!puedeGuardar(c.sala,u.getId()))throw fallo(HttpStatus.FORBIDDEN,"Ya no tienes permiso para guardar grabaciones en la sala.");
         c.actividad=System.currentTimeMillis();return c;
     }
     @PutMapping(value="/cargas/{id}",consumes="application/octet-stream")
@@ -95,7 +99,7 @@ public class GrabacionController {
             @RequestHeader(value="X-Usuario-Id",required=false) Integer usuario) throws IOException {
         if(!cargas.containsKey(id)) {
             Usuario u=usuario(usuario);Properties p=leer(id);
-            if(!p.getProperty("usuario").equals(String.valueOf(u.getId()))||!acceso(p.getProperty("sala"),u.getId()))throw fallo(HttpStatus.FORBIDDEN,"No puedes finalizar esa grabación.");
+            if(!p.getProperty("usuario").equals(String.valueOf(u.getId()))||!puedeGuardar(p.getProperty("sala"),u.getId()))throw fallo(HttpStatus.FORBIDDEN,"No puedes finalizar esa grabación.");
             return Map.of("estado","correcto","grabacion",vista(p));
         }
         Carga c=carga(id,usuario);

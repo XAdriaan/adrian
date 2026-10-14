@@ -16,6 +16,8 @@ public class PermisosService {
     public static final String ROL_SUPERADMIN = "Superadministrador";
     public static final String ROL_ADMIN = "Administrador";
     public static final String ROL_SUPERVISOR = "Supervisor";
+    public static final String ROL_ASESOR_EMPRESARIAL = "Asesor Empresarial";
+    private static final List<String> PERMISOS_ASESOR_EMPRESARIAL = List.of("proyectos.ver_todos");
     private static final List<String> PERMISOS_DIRECTIVO = List.of("dashboard.ver", "supervision.ver");
 
     private final JdbcTemplate jdbcTemplate;
@@ -34,6 +36,14 @@ public class PermisosService {
                 || !"Activo".equalsIgnoreCase(usuario.getEstado())) return false;
         String nombre = usuario.getRol().getNombre().trim().toLowerCase(Locale.ROOT);
         return nombre.equals("directivo escolar") || nombre.equals("directivo");
+    }
+
+    /** Consulta transversal de proyectos; este rol conserva sus permisos administrativos separados. */
+    public static boolean esAsesorEmpresarial(Usuario usuario) {
+        if (usuario == null || usuario.getRol() == null
+                || !"Activo".equalsIgnoreCase(usuario.getEstado())) return false;
+        String nombre = normalizarNombre(usuario.getRol().getNombre());
+        return nombre.equals("asesor empresarial") || nombre.equals("asesor de empresa");
     }
 
     public boolean esAdministradorBase(Usuario usuario) {
@@ -55,6 +65,7 @@ public class PermisosService {
             return true;
         }
         if (esDirectivoEscolar(usuario)) return PERMISOS_DIRECTIVO.contains(clave.trim());
+        if (esAsesorEmpresarial(usuario) && PERMISOS_ASESOR_EMPRESARIAL.contains(clave.trim())) return true;
         Integer idRol = usuario.getRol().getId();
         if (idRol == null) {
             return false;
@@ -113,6 +124,11 @@ public class PermisosService {
             );
         }
         if (esDirectivoEscolar(usuario)) return PERMISOS_DIRECTIVO;
+        if (esAsesorEmpresarial(usuario)) {
+            java.util.LinkedHashSet<String> claves = new java.util.LinkedHashSet<>(listarClaves(usuario.getRol()));
+            claves.addAll(PERMISOS_ASESOR_EMPRESARIAL);
+            return List.copyOf(claves);
+        }
         return listarClaves(usuario.getRol());
     }
 
@@ -123,11 +139,15 @@ public class PermisosService {
     }
 
     public String normalizar(String valor) {
+        return normalizarNombre(valor);
+    }
+
+    private static String normalizarNombre(String valor) {
         if (valor == null) {
             return "";
         }
         String sinAcentos = Normalizer.normalize(valor, Normalizer.Form.NFD)
                 .replaceAll("\\p{M}", "");
-        return sinAcentos.trim().toLowerCase(Locale.ROOT);
+        return sinAcentos.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
     }
 }

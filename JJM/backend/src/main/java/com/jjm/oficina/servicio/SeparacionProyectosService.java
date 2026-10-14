@@ -4,6 +4,7 @@ import com.jjm.oficina.modelo.*;
 import com.jjm.oficina.repositorio.*;
 import org.springframework.boot.*;
 import org.springframework.core.annotation.Order;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -30,6 +31,13 @@ public class SeparacionProyectosService implements ApplicationRunner {
     private final ProyectoRepository proyectos;private final MiembroProyectoRepository asignaciones;private final MiembroEquipoRepository miembros;private final CatalogoProyectosSepDic2026Service catalogo;
     public SeparacionProyectosService(ProyectoRepository proyectos,MiembroProyectoRepository asignaciones,MiembroEquipoRepository miembros,CatalogoProyectosSepDic2026Service catalogo){this.proyectos=proyectos;this.asignaciones=asignaciones;this.miembros=miembros;this.catalogo=catalogo;}
     @Override public void run(ApplicationArguments args){sincronizar();}
+    /** Completa el catálogo y sus proyectos separados para cuentas nuevas, sin depender de un inicio de sesión. */
+    @Scheduled(fixedDelayString="${jjm.catalogo.sep-dic-2026.sync-delay-ms:60000}",initialDelayString="${jjm.catalogo.sep-dic-2026.sync-initial-delay-ms:25000}")
+    public synchronized void sincronizarNuevasCuentas(){
+        if(!catalogo.estaHabilitado())return;
+        try{catalogo.sincronizarCatalogo();sincronizar();}
+        catch(RuntimeException e){java.util.logging.Logger.getLogger(getClass().getName()).warning("No se pudo completar la asignación de cuentas nuevas; se reintentará conservando las asignaciones existentes.");}
+    }
     public synchronized void sincronizar(){
         for(Parte parte:PARTES){Proyecto padre=proyectos.findByCodigo(parte.origen()).orElse(null);if(padre==null)continue;Proyecto hijo=crear(parte,padre);for(MiembroProyecto a:asignaciones.findByIdProyectoOrderByFechaAsignacionDesc(padre.getId()))vincular(hijo,a);}
         if(proyectos.findByCodigo("JJM-SD26-AIKOI").isEmpty()){

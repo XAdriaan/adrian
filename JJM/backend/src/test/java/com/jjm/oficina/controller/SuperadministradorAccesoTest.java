@@ -86,7 +86,7 @@ class SuperadministradorAccesoTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"Colaborador", "Asesor Empresarial", "Asesor Académico"})
+    @ValueSource(strings = {"Colaborador", "Asesor Académico"})
     void asesoresYColaboradoresConservanSuAlcanceSinAccesoAdministrativo(String rol) throws Exception {
         mvc(proyectosController(), rol).perform(get("/api/proyectos")
                         .header("Authorization", "Bearer sesion-roles"))
@@ -107,6 +107,19 @@ class SuperadministradorAccesoTest {
                         .header("Authorization", "Bearer sesion-roles"))
                 .andExpect(status().isForbidden());
         verify(jdbc, never()).queryForList(contains("FROM progreso_cursos_usuario"));
+    }
+
+    @Test void asesorEmpresarialConsultaProyectosYEquipoPeroNoDocumentosPersonalesAjenosNiCursosGlobales() throws Exception {
+        String rol="Asesor Empresarial";
+        mvc(proyectosController(),rol).perform(get("/api/proyectos").header("Authorization","Bearer sesion-roles"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.tipoAcceso").value("asesor_empresarial"));
+        verify(proyectos).findAll(any(Sort.class));
+        mvc(equipoController(),rol).perform(get("/api/miembros").header("Authorization","Bearer sesion-roles")).andExpect(status().isOk());
+        verify(miembros).findAll(any(Sort.class));
+        mvc(documentosController(),rol).perform(get("/api/documentos").header("Authorization","Bearer sesion-roles")).andExpect(status().isOk());
+        verify(jdbc).queryForList(contains("WHERE d.id_usuario=?"),eq(7));
+        mvc(cursosController(),rol).perform(get("/api/cursos/progreso").header("Authorization","Bearer sesion-roles")).andExpect(status().isForbidden());
+        verify(jdbc,never()).queryForList(contains("FROM progreso_cursos_usuario"));
     }
 
     @Test

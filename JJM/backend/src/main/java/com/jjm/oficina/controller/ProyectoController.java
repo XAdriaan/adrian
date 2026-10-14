@@ -15,6 +15,7 @@ import com.jjm.oficina.repositorio.ProyectoRepository;
 import com.jjm.oficina.repositorio.UsuarioRepository;
 import com.jjm.oficina.servicio.BitacoraService;
 import com.jjm.oficina.servicio.CatalogoProyectosSepDic2026Service;
+import com.jjm.oficina.servicio.PermisosService;
 import com.jjm.oficina.servicio.SeparacionProyectosService;
 
 import jakarta.transaction.Transactional;
@@ -137,15 +138,18 @@ public class ProyectoController {
                     .body(respuesta);
         }
 
-        separacion.sincronizarParaUsuario(usuario.getId());
+        boolean asesorEmpresarial = PermisosService.esAsesorEmpresarial(usuario);
+        if (!asesorEmpresarial) {
+            separacion.sincronizarParaUsuario(usuario.getId());
+        }
         List<Proyecto> proyectos;
 
-        if (esAdministrador(usuario)) {
+        if (esAdministrador(usuario) || asesorEmpresarial) {
             proyectos = proyectoRepository.findAll(
                     Sort.by(Sort.Direction.DESC, "fechaCreacion")
             );
 
-            respuesta.put("tipoAcceso", "administrador");
+            respuesta.put("tipoAcceso", asesorEmpresarial ? "asesor_empresarial" : "administrador");
 
         } else {
             MiembroEquipo miembro = obtenerMiembroDesdeUsuario(usuario);
@@ -223,7 +227,7 @@ public class ProyectoController {
                     .body(respuesta);
         }
 
-        if (!tieneAccesoAlProyecto(usuario, id)) {
+        if (!puedeConsultarProyecto(usuario, id)) {
             respuesta.put("estado", "error");
             respuesta.put(
                     "mensaje",
@@ -279,7 +283,7 @@ public class ProyectoController {
                     .body(respuesta);
         }
 
-        if (!tieneAccesoAlProyecto(usuario, id)) {
+        if (!puedeConsultarProyecto(usuario, id)) {
             respuesta.put("estado", "error");
             respuesta.put(
                     "mensaje",
@@ -291,7 +295,8 @@ public class ProyectoController {
                     .body(respuesta);
         }
 
-        if ("Normal".equalsIgnoreCase(proyecto.getTipoProyecto())) {
+        if ("Normal".equalsIgnoreCase(proyecto.getTipoProyecto())
+                && !PermisosService.esAsesorEmpresarial(usuario)) {
             crearFasesBaseProyecto(proyecto);
         }
 
@@ -590,7 +595,7 @@ public class ProyectoController {
         miembroProyectoRepository.save(asignacion);
     }
 
-    private boolean tieneAccesoAlProyecto(
+    private boolean puedeConsultarProyecto(
             Usuario usuario,
             Integer idProyecto
     ) {
@@ -598,7 +603,7 @@ public class ProyectoController {
             return false;
         }
 
-        if (esAdministrador(usuario)) {
+        if (esAdministrador(usuario) || PermisosService.esAsesorEmpresarial(usuario)) {
             return true;
         }
 
@@ -798,7 +803,8 @@ public class ProyectoController {
         Optional<Usuario> usuarioEncontrado =
                 usuarioRepository.findById(idUsuarioActivo);
 
-        return usuarioEncontrado.orElse(null);
+        return usuarioEncontrado.filter(usuario -> "Activo".equalsIgnoreCase(usuario.getEstado()))
+                .orElse(null);
     }
 
     private MiembroEquipo obtenerMiembroDesdeUsuario(Usuario usuario) {

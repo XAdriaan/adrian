@@ -365,6 +365,12 @@ function tieneAccesoGestionGlobal(usuario) {
         tienePermisoGlobal(usuario, "equipo.ver");
 }
 
+function esAsesorEmpresarialGlobal(usuario) {
+    if (!usuario || (usuario.estado && String(usuario.estado).toLowerCase() !== "activo")) return false;
+    const rol = normalizarRolGlobal(obtenerRolUsuarioGlobal(usuario)).replace(/\s+/g, " ");
+    return rol === "asesor empresarial" || rol === "asesor de empresa";
+}
+
 window.PMOPermisos = {
     usuario: obtenerUsuarioActivoGlobal,
     tiene: function (clave) { return tienePermisoGlobal(obtenerUsuarioActivoGlobal(), clave); },
@@ -476,7 +482,7 @@ function tieneDatosAcademicosGlobal(usuario) {
 }
 
 function debeCompletarDatosAcademicosGlobal(usuario, paginaActual, esAdmin) {
-    if (!usuario || esAdmin || esDirectivoEscolarGlobal(usuario) || tieneAccesoGestionGlobal(usuario)) return false;
+    if (!usuario || esAdmin || esDirectivoEscolarGlobal(usuario) || esAsesorEmpresarialGlobal(usuario) || tieneAccesoGestionGlobal(usuario)) return false;
 
     const paginasLibres = [
         "login.html",

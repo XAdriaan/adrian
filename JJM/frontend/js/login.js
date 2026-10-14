@@ -80,10 +80,12 @@ loginForm.addEventListener("submit", async function (event) {
         localStorage.setItem("sesionTokenPMO", datos.token);
         try { sessionStorage.setItem("ardia-bienvenida", String(datos.usuario.id)); } catch (_) {}
 
-        const rolLogin = String(datos.usuario.rol?.nombre || datos.usuario.rol || "").trim().toLowerCase();
+        const rolLogin = String(datos.usuario.rol?.nombre || datos.usuario.rol || "")
+            .trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
         const esDirectivoLogin = ["directivo escolar", "directivo"].includes(rolLogin);
         const esEmpresaLogin = rolLogin === "empresa";
-        const expedienteCompleto = esEmpresaLogin || esDirectivoLogin || await datosAcademicosCompletos(datos.usuario);
+        const esAsesorEmpresarialLogin = ["asesor empresarial", "asesor de empresa"].includes(rolLogin);
+        const expedienteCompleto = esEmpresaLogin || esDirectivoLogin || esAsesorEmpresarialLogin || await datosAcademicosCompletos(datos.usuario);
         if (localStorage.getItem("sesionTokenPMO") !== datos.token) {
             mostrarError("El servidor no confirmó tu sesión. Inicia sesión nuevamente.");
             return;

@@ -125,10 +125,18 @@ function normalizarTexto(valor) {
 }
 
 function esAdministrador() {
-    if (window.PMOPermisos && window.PMOPermisos.tiene("proyectos.ver_todos")) return true;
-
     const rol = normalizarTextoCompatibilidadPermisos(obtenerRolCompatibilidadPermisos());
     return rol === "superadministrador" || rol === "administrador" || rol === "admin pmo" || rol === "admin_pmo" || rol === "administrador pmo";
+}
+
+function esAsesorEmpresarial() {
+    const rol = normalizarTextoCompatibilidadPermisos(obtenerRolCompatibilidadPermisos());
+    return rol === "asesor empresarial" || rol === "asesor de empresa";
+}
+
+function puedeConsultarTodosProyectos() {
+    return esAdministrador() || esAsesorEmpresarial() ||
+        !!window.PMOPermisos?.tiene("proyectos.ver_todos");
 }
 function obtenerRolCompatibilidadPermisos() {
     try {
@@ -138,7 +146,7 @@ function obtenerRolCompatibilidadPermisos() {
 }
 
 function normalizarTextoCompatibilidadPermisos(valor) {
-    return String(valor || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return String(valor || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
 }
 
 
@@ -257,6 +265,16 @@ function configurarPermisosVisuales() {
         permisoProyectos.innerHTML = `
             <span class="permission-admin">
                 Acceso global: puedes consultar todos los proyectos. ${detalle}
+            </span>
+        `;
+        return;
+    }
+
+    if (puedeConsultarTodosProyectos()) {
+        permisoProyectos.innerHTML = `
+            <span class="permission-readonly">
+                Puedes consultar todos los proyectos y sus actividades.${esAsesorEmpresarial()
+                    ? " También puedes iniciar y entrar a las videollamadas de cualquier proyecto." : ""}
             </span>
         `;
         return;
@@ -452,7 +470,7 @@ async function cargarOrganizaciones() {
 async function cargarMiembros() {
     try {
         const respuesta = await fetch(
-            esAdministrador()
+            esAdministrador() || esAsesorEmpresarial()
                 ? API_MIEMBROS
                 : API_MIEMBRO_SESION,
             {
@@ -469,7 +487,7 @@ async function cargarMiembros() {
             );
         }
 
-        if (esAdministrador()) {
+        if (esAdministrador() || esAsesorEmpresarial()) {
             miembrosEquipo = Array.isArray(datos.miembros)
                 ? datos.miembros
                 : [];

@@ -140,10 +140,13 @@ function normalizarTexto(valor) {
 }
 
 function esAdministrador() {
-    if (window.PMOPermisos && window.PMOPermisos.tiene("proyectos.ver_todos")) return true;
-
     const rol = normalizarTextoCompatibilidadPermisos(obtenerRolCompatibilidadPermisos());
     return rol === "superadministrador" || rol === "administrador" || rol === "admin pmo" || rol === "admin_pmo" || rol === "administrador pmo";
+}
+
+function esAsesorEmpresarial() {
+    const rol = normalizarTextoCompatibilidadPermisos(obtenerRolCompatibilidadPermisos());
+    return rol === "asesor empresarial" || rol === "asesor de empresa";
 }
 function obtenerRolCompatibilidadPermisos() {
     try {
@@ -153,7 +156,7 @@ function obtenerRolCompatibilidadPermisos() {
 }
 
 function normalizarTextoCompatibilidadPermisos(valor) {
-    return String(valor || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return String(valor || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
 }
 
 
@@ -287,7 +290,7 @@ function puedeCrearTareasEnProyecto() {
 }
 
 function puedeCrearReunionProyecto() {
-    if (window.PMOPermisos?.esAdministradorReal?.()) return true;
+    if (esAdministrador() || esAsesorEmpresarial()) return true;
     return esMiembroDelProyecto();
 }
 
@@ -501,7 +504,7 @@ async function cargarMiembroSesion() {
 }
 
 async function cargarMiembrosEquipo() {
-    if (!esAdministrador()) {
+    if (!esAdministrador() && !esAsesorEmpresarial()) {
         miembrosEquipo = miembroSesion
             ? [miembroSesion]
             : [];

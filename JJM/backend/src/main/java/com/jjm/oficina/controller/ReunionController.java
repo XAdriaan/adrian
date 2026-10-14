@@ -7,6 +7,7 @@ import com.jjm.oficina.repositorio.MiembroEquipoRepository;
 import com.jjm.oficina.repositorio.MiembroProyectoRepository;
 import com.jjm.oficina.repositorio.ProyectoRepository;
 import com.jjm.oficina.repositorio.UsuarioRepository;
+import com.jjm.oficina.servicio.PermisosService;
 import jakarta.annotation.PostConstruct;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,7 +20,8 @@ import java.util.*;
 /**
  * Reuniones de proyecto persistentes.
  *
- * El acceso requiere administración o asignación al proyecto. El canal WebRTC
+ * Administración y asesores empresariales pueden acceder a todas las salas;
+ * los demás usuarios requieren asignación al proyecto. El canal WebRTC
  * usa estas mismas reglas antes de intercambiar señales entre participantes.
  */
 @RestController
@@ -116,7 +118,7 @@ public class ReunionController {
                 + columnaCreador + " AS idCreador, fecha_inicio AS fechaInicio, fecha_fin AS fechaFin ";
     }
 
-    /** Directorio de salas limitado a proyectos a los que pertenece la sesión. */
+    /** Directorio global para administración y asesoría empresarial activa. */
     @GetMapping("/reuniones")
     public ResponseEntity<Map<String, Object>> misSalas(
             @RequestHeader(value = "X-Usuario-Id", required = false) Integer idUsuario
@@ -132,8 +134,9 @@ public class ReunionController {
                     .forEach(m -> asignados.add(m.getIdProyecto()));
         }
         boolean administrador = esAdministrador(usuario);
+        boolean asesor = PermisosService.esAsesorEmpresarial(usuario);
         List<Proyecto> proyectos = com.jjm.oficina.servicio.SeparacionProyectosService.visibles(proyectoRepository.findAll().stream()
-                .filter(p -> administrador || asignados.contains(p.getId()))
+                .filter(p -> administrador || asesor || asignados.contains(p.getId()))
                 .sorted(Comparator.comparing(p -> textoSeguro(p.getNombre(), "Proyecto")))
                 .toList());
         List<Map<String, Object>> reuniones = proyectos.isEmpty() ? List.of() : jdbc.queryForList(
@@ -149,7 +152,7 @@ public class ReunionController {
             Map<String, Object> sala = new LinkedHashMap<>();
             sala.put("id", proyecto.getId());
             sala.put("nombre", proyecto.getNombre());
-            sala.put("puedeCrear", true);
+            sala.put("puedeCrear", puedeCrear(usuario, proyecto));
             sala.put("reunionActiva", historial.stream().filter(r -> "Activa".equalsIgnoreCase(String.valueOf(r.get("estado"))))
                     .findFirst().orElse(null));
             sala.put("reuniones", historial);
@@ -195,7 +198,7 @@ public class ReunionController {
         if (usuario == null) return error(HttpStatus.UNAUTHORIZED, "La sesión no existe o venció. Inicia sesión nuevamente.");
         Proyecto proyecto = proyectoRepository.findById(idProyecto).orElse(null);
         if (proyecto == null) return error(HttpStatus.NOT_FOUND, "No se encontró el proyecto.");
-        if (!puedeCrear(usuario, proyecto)) return error(HttpStatus.FORBIDDEN, "Solo la administración y los miembros asignados pueden iniciar una reunión.");
+        if (!puedeCrear(usuario, proyecto)) return error(HttpStatus.FORBIDDEN, "Solo administración, asesoría empresarial y miembros asignados pueden iniciar una reunión.");
 
         Map<String,Object> activa = obtenerActiva(idProyecto);
         if (activa == null) {
@@ -406,7 +409,12 @@ public class ReunionController {
     }
 
     private boolean tieneAcceso(Usuario usuario, Proyecto proyecto) {
-        if (usuario == null || proyecto == null) return false;
+        if (usuario == null || proyecto == null || !"Activo".equalsIgnoreCase(usuario.getEstado())) return false;
+        return PermisosService.esAsesorEmpresarial(usuario) || tieneAccesoAsignado(usuario, proyecto);
+    }
+
+    private boolean tieneAccesoAsignado(Usuario usuario, Proyecto proyecto) {
+        if (usuario == null || proyecto == null || !"Activo".equalsIgnoreCase(usuario.getEstado())) return false;
         if (esAdministrador(usuario)) return true;
         MiembroEquipo miembro = miembroEquipoRepository.findByUsuarioId(usuario.getId()).orElse(null);
         if (miembro == null) return false;
@@ -418,6 +426,7 @@ public class ReunionController {
     }
 
     private boolean puedeFinalizar(Usuario usuario, Proyecto proyecto, Map<String,Object> reunion) {
+        if (!tieneAccesoAsignado(usuario, proyecto)) return false;
         if (esAdministrador(usuario)) return true;
         if (Objects.equals(numero(reunion.get("idCreador")), usuario.getId())) return true;
         MiembroEquipo miembro = miembroEquipoRepository.findByUsuarioId(usuario.getId()).orElse(null);
@@ -436,7 +445,7 @@ public class ReunionController {
         return u != null && "Activo".equalsIgnoreCase(u.getEstado()) ? u : null;
     }
 
-    /** El canal de audio/video revalida la asignación en cada solicitud. */
+    /** El canal de audio/video revalida el rol activo o la asignación en cada solicitud. */
     public boolean puedeAccederVideollamada(Integer idUsuario, long idReunion) {
         Usuario u = obtenerUsuario(idUsuario);
         if (u == null) return false;
@@ -451,6 +460,14 @@ public class ReunionController {
         if (u == null) return false;
         Map<String,Object> r = obtenerReunion(idReunion);
         return r != null && tieneAcceso(u, proyectoRepository.findById(numero(r.get("idProyecto"))).orElse(null));
+    }
+
+    /** La consulta global no concede permiso para publicar grabaciones en proyectos ajenos. */
+    public boolean puedeGuardarGrabacion(Integer idUsuario, long idReunion) {
+        Usuario u = obtenerUsuario(idUsuario);
+        if (u == null) return false;
+        Map<String,Object> r = obtenerReunion(idReunion);
+        return r != null && tieneAccesoAsignado(u, proyectoRepository.findById(numero(r.get("idProyecto"))).orElse(null));
     }
 
     private Integer numero(Object value) {

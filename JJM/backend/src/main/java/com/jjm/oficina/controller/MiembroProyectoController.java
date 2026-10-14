@@ -10,6 +10,7 @@ import com.jjm.oficina.repositorio.MiembroProyectoRepository;
 import com.jjm.oficina.repositorio.ProyectoRepository;
 import com.jjm.oficina.repositorio.UsuarioRepository;
 import com.jjm.oficina.servicio.CatalogoProyectosSepDic2026Service;
+import com.jjm.oficina.servicio.PermisosService;
 
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
@@ -92,7 +93,7 @@ public class MiembroProyectoController {
                     .body(respuesta);
         }
 
-        if (!tieneAccesoAlProyecto(usuario, idProyecto)) {
+        if (!puedeConsultarProyecto(usuario, idProyecto)) {
             respuesta.put("estado", "error");
             respuesta.put(
                     "mensaje",
@@ -153,11 +154,12 @@ public class MiembroProyectoController {
                     .body(respuesta);
         }
 
-        if (esAdministrador(usuario)) {
+        boolean asesorEmpresarial = PermisosService.esAsesorEmpresarial(usuario);
+        if (esAdministrador(usuario) || asesorEmpresarial) {
             List<Proyecto> proyectos = proyectoRepository.findAll();
 
             respuesta.put("estado", "correcto");
-            respuesta.put("tipoAcceso", "administrador");
+            respuesta.put("tipoAcceso", asesorEmpresarial ? "asesor_empresarial" : "administrador");
             respuesta.put("total", proyectos.size());
 
             respuesta.put(
@@ -551,7 +553,7 @@ public class MiembroProyectoController {
         return null;
     }
 
-    private boolean tieneAccesoAlProyecto(
+    private boolean puedeConsultarProyecto(
             Usuario usuario,
             Integer idProyecto
     ) {
@@ -559,7 +561,7 @@ public class MiembroProyectoController {
             return false;
         }
 
-        if (esAdministrador(usuario)) {
+        if (esAdministrador(usuario) || PermisosService.esAsesorEmpresarial(usuario)) {
             return true;
         }
 
@@ -600,6 +602,7 @@ public class MiembroProyectoController {
         }
 
         return usuarioRepository.findById(idUsuarioActivo)
+                .filter(usuario -> "Activo".equalsIgnoreCase(usuario.getEstado()))
                 .orElse(null);
     }
 

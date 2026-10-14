@@ -31,4 +31,30 @@ class CanalProyectoTest {
     @Test void rechazaExtensionEjecutableYPdfDisfrazado()throws Exception{for(String nombre:List.of("evidencia.exe","evidencia.pdf"))mvc.perform(post("/api/canales/proyectos/2/archivos").header("Authorization","Bearer prueba").contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\""+nombre+"\",\"carpeta\":\"Proyecto\",\"base64\":\"aG9sYQ==\"}")).andExpect(status().isBadRequest());verify(jdbc,never()).update(anyString(),any(Object[].class));}
     @Test void formularioNoPuedeEntregarseAntesDe16ConPeticionDirecta()throws Exception{when(asistencia.habilitacionReporte(anyInt(),any())).thenReturn(Map.of("habilitado",false,"mensaje","El reporte se habilita a las 16:00."));mvc.perform(post("/api/canales/proyectos/2/reportes-diarios").header("Authorization","Bearer prueba").contentType(MediaType.APPLICATION_JSON).content("{\"fecha\":\"2026-10-14\",\"actividad\":\"Actividad suficiente\",\"resultado\":\"Resultado suficiente\",\"fase\":\"Diseño\",\"horas\":10,\"evidencia\":\"https://example.org\"}")).andExpect(status().isConflict()).andExpect(jsonPath("$.mensaje").value("El reporte se habilita a las 16:00."));verifyNoInteractions(diarios);}
     @Test void consultaDeHabilitacionUsaCuentaDelTokenYRechazaFechaInvalida()throws Exception{mvc.perform(get("/api/canales/proyectos/2/habilitacion-reporte?fecha=2026-10-14").header("Authorization","Bearer prueba").header("X-Usuario-Id","99")).andExpect(status().isOk());verify(asistencia).habilitacionReporte(eq(7),eq(java.time.LocalDate.of(2026,10,14)));mvc.perform(get("/api/canales/proyectos/2/habilitacion-reporte?fecha=invalida").header("Authorization","Bearer prueba")).andExpect(status().isBadRequest());}
+    @Test void asesorActivoSinAsignacionConsultaCanalArchivosYReportesSinGestionarlos()throws Exception{
+        u.getRol().setNombre("  Asesór   Empresariál  ");when(miembros.findByUsuarioId(7)).thenReturn(Optional.empty());
+        mvc.perform(get("/api/canales/proyectos/2").header("Authorization","Bearer prueba"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.puedeConsultarTodos").value(true))
+                .andExpect(jsonPath("$.puedeGestionar").value(false)).andExpect(jsonPath("$.puedeSubir").value(false)).andExpect(jsonPath("$.puedeRevisar").value(false));
+        mvc.perform(get("/api/canales/proyectos/2/archivos").header("Authorization","Bearer prueba")).andExpect(status().isOk());
+        when(jdbc.queryForList(contains("SELECT nombre,mime,contenido"),eq(9L),eq(2)))
+                .thenReturn(List.of(Map.of("nombre","a.pdf","mime","application/pdf","contenido","%PDF-archivo".getBytes())));
+        mvc.perform(get("/api/canales/proyectos/2/archivos/9").header("Authorization","Bearer prueba")).andExpect(status().isOk());
+        when(diarios.listar(eq(2),eq(7),eq(true),any())).thenReturn(List.of());
+        mvc.perform(get("/api/canales/proyectos/2/reportes-diarios?mes=2026-10").header("Authorization","Bearer prueba")).andExpect(status().isOk());
+        verify(diarios).listar(eq(2),eq(7),eq(true),any());
+        mvc.perform(post("/api/canales/proyectos/2/carpetas").header("Authorization","Bearer prueba").contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Nueva\"}")).andExpect(status().isForbidden());
+        mvc.perform(post("/api/canales/proyectos/2/archivos").header("Authorization","Bearer prueba").contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"a.pdf\",\"carpeta\":\"Proyecto\",\"base64\":\"JVBERi0=\"}")).andExpect(status().isForbidden());
+        mvc.perform(delete("/api/canales/proyectos/2/archivos/9").header("Authorization","Bearer prueba")).andExpect(status().isForbidden());
+        mvc.perform(put("/api/canales/proyectos/2/reportes-diarios/9").header("Authorization","Bearer prueba").contentType(MediaType.APPLICATION_JSON).content("{\"estado\":\"Aprobado\"}")).andExpect(status().isForbidden());
+        verify(jdbc,never()).update(anyString(),any(Object[].class));
+    }
+    @Test void asesorAsignadoConservaEntregasPropiasPeroInactivoNoAccede()throws Exception{
+        u.getRol().setNombre("Asesor Empresarial");
+        when(diarios.guardar(eq(2),eq(7),any())).thenReturn(Map.of("estado","correcto"));
+        mvc.perform(post("/api/canales/proyectos/2/reportes-diarios").header("Authorization","Bearer prueba").contentType(MediaType.APPLICATION_JSON).content("{\"fecha\":\"2026-10-13\",\"actividad\":\"Actividad de asesor\",\"resultado\":\"Revisión\",\"fase\":\"Ejecución\",\"horas\":1}")).andExpect(status().isOk());
+        verify(diarios).guardar(eq(2),eq(7),any());
+        u.setEstado("Inactivo");
+        mvc.perform(get("/api/canales/proyectos/2").header("Authorization","Bearer prueba")).andExpect(status().isUnauthorized());
+    }
 }

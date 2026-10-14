@@ -51,14 +51,25 @@ public class PlanTareasAsignadasService implements ApplicationRunner {
             FROM proyectos p JOIN miembros_proyecto mp ON mp.id_proyecto=p.id_proyecto
             JOIN miembros_equipo m ON m.id_miembro=mp.id_miembro JOIN usuarios u ON u.id_usuario=m.id_usuario JOIN roles r ON r.id_rol=u.id_rol
             WHERE p.codigo LIKE 'JJM-SD26-%' AND p.estado NOT IN ('Cerrado','Cancelado') AND m.estado='Activo' AND u.estado='Activo'
-              AND LOWER(r.nombre) IN ('colaborador','alumno','alumna','estudiante','estudiante pmo')
+              AND LOWER(TRIM(r.nombre)) IN ('colaborador','alumno','alumna','estudiante','estudiante pmo')
+              AND LOWER(TRIM(COALESCE(mp.rol_proyecto,''))) NOT LIKE 'asesor%'
               AND NOT (p.codigo IN ('JJM-SD26-02','JJM-SD26-03','JJM-SD26-04','JJM-SD26-05') AND EXISTS(SELECT 1 FROM proyectos s WHERE s.codigo=CONCAT(p.codigo,'-A')))
               AND (SELECT COUNT(*) FROM pmo_tareas_plan2026 x WHERE x.id_proyecto=p.id_proyecto AND x.id_miembro=mp.id_miembro)<21
             """))try{crear(((Number)a.get("proyecto")).intValue(),((Number)a.get("miembro")).intValue(),String.valueOf(a.get("nombre")));}catch(RuntimeException e){java.util.logging.Logger.getLogger(getClass().getName()).warning("No se pudo preparar el plan de tareas; se reintentará conservando los avances.");}
     }
     public void crear(Integer proyecto,Integer miembro,String nombre){tx.executeWithoutResult(t->{
         // El bloqueo del proyecto serializa el alta de tareas y fases entre instancias.
-        if(jdbc.queryForList("SELECT id_proyecto FROM proyectos WHERE id_proyecto=? FOR UPDATE",proyecto).isEmpty())return;
+        if(jdbc.queryForList("""
+            SELECT p.id_proyecto FROM proyectos p
+            JOIN miembros_proyecto mp ON mp.id_proyecto=p.id_proyecto
+            JOIN miembros_equipo m ON m.id_miembro=mp.id_miembro
+            JOIN usuarios u ON u.id_usuario=m.id_usuario JOIN roles r ON r.id_rol=u.id_rol
+            WHERE p.id_proyecto=? AND mp.id_miembro=? AND p.codigo LIKE 'JJM-SD26-%'
+              AND p.estado NOT IN ('Cerrado','Cancelado') AND m.estado='Activo' AND u.estado='Activo'
+              AND LOWER(TRIM(r.nombre)) IN ('colaborador','alumno','alumna','estudiante','estudiante pmo')
+              AND LOWER(TRIM(COALESCE(mp.rol_proyecto,''))) NOT LIKE 'asesor%'
+            FOR UPDATE
+            """,proyecto,miembro).isEmpty())return;
         List<FaseProyecto> existentes=new ArrayList<>(fases.findByIdProyectoOrderByNumeroOrdenAsc(proyecto));
         LocalDate inicio=reloj.instant().atZone(AsistenciaAutomaticaService.ZONA).toLocalDate().plusDays(1),fin=LocalDate.of(2026,12,14);if(fin.isBefore(inicio))fin=inicio.plusDays(60);
         long plazo=Math.max(1,java.time.temporal.ChronoUnit.DAYS.between(inicio,fin));

@@ -25,9 +25,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 /**
  * Catálogo oficial de proyectos del periodo Septiembre - Diciembre 2026.
@@ -256,17 +254,22 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
 
     /** Repara la asignación al entrar, incluyendo cuentas registradas después del despliegue. */
     public synchronized void sincronizarCuenta(Integer idUsuario) {
+        if(idUsuario==null)return;
         MiembroEquipo propia=miembroEquipoRepository.findByUsuarioId(idUsuario).orElse(null);
-        if(!cuentaActiva(propia))return;
+        if(!cuentaAlumnoActiva(propia))return;
         for(ProyectoCatalogo item:CATALOGO){
             if(item.alumnoFuente()==null)continue;
-            Set<String> esperados=tokens(normalizar(item.alumnoFuente()));
+            List<String> esperados=tokens(normalizar(item.alumnoFuente()));
             if(esperados.size()<3||!esperados.equals(tokens(normalizar(propia.getNombreCompleto()))))continue;
             List<MiembroEquipo> iguales=buscarMiembros(item.alumnoFuente());
             if(iguales.size()!=1||!iguales.getFirst().getId().equals(propia.getId()))continue;
             Proyecto p=proyectoRepository.findByCodigo(item.codigo()).orElse(null);
             if(p!=null){MiembroEquipo alumno=sincronizarAlumno(p,item);sincronizarTareasBase(p,item,alumno);}
         }
+    }
+
+    public boolean estaHabilitado() {
+        return habilitado;
     }
 
     private MiembroEquipo sincronizarAlumno(
@@ -299,10 +302,10 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
 
         MiembroEquipo alumno = coincidencias.get(0);
 
-        if (!cuentaActiva(alumno)) {
+        if (!cuentaAlumnoActiva(alumno)) {
             LOGGER.info(
                     "Equipo " + item.equipo()
-                            + ": el alumno localizado está inactivo; no se asignó."
+                            + ": la cuenta localizada no es un alumno activo; no se asignó."
             );
             return null;
         }
@@ -311,7 +314,8 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
                 proyecto.getId(),
                 alumno.getId()
         )) {
-            return alumno;
+            return miembroProyectoRepository.findByIdProyectoAndIdMiembro(proyecto.getId(), alumno.getId())
+                    .filter(a -> !esAsignacionAsesor(a)).map(a -> alumno).orElse(null);
         }
 
         MiembroProyecto asignacion = new MiembroProyecto();
@@ -435,25 +439,33 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
 
     private List<MiembroEquipo> buscarMiembros(String nombreFuente) {
         String normalizadoFuente = normalizar(nombreFuente);
-        Set<String> tokensFuente = tokens(normalizadoFuente);
+        List<String> tokensFuente = tokens(normalizadoFuente);
         // Los nombres parciales del PDF requieren confirmación del administrador.
         if (tokensFuente.size() < 3) return List.of();
         List<MiembroEquipo> miembros = miembroEquipoRepository.findAll();
         return miembros.stream().filter(m -> tokens(normalizar(m.getNombreCompleto())).equals(tokensFuente)).toList();
     }
 
-    private boolean cuentaActiva(MiembroEquipo miembro) {
+    private boolean cuentaAlumnoActiva(MiembroEquipo miembro) {
         return miembro != null && "Activo".equalsIgnoreCase(miembro.getEstado())
-                && miembro.getUsuario() != null && "Activo".equalsIgnoreCase(miembro.getUsuario().getEstado());
+                && miembro.getUsuario() != null && "Activo".equalsIgnoreCase(miembro.getUsuario().getEstado())
+                && miembro.getUsuario().getRol() != null
+                && List.of("colaborador", "alumno", "alumna", "estudiante", "estudiante pmo")
+                .contains(normalizar(miembro.getUsuario().getRol().getNombre()));
+    }
+
+    private boolean esAsignacionAsesor(MiembroProyecto asignacion) {
+        return normalizar(asignacion.getRolProyecto()).matches("asesor(?: .*)?");
     }
 
     private List<MiembroEquipo> alumnosAsignados(Integer idProyecto) {
         return miembroProyectoRepository.findByIdProyectoOrderByFechaAsignacionDesc(idProyecto).stream()
+                .filter(a -> !esAsignacionAsesor(a))
                 .filter(a -> "Estudiante".equalsIgnoreCase(a.getRolProyecto())
                         || "Colaborador".equalsIgnoreCase(a.getRolProyecto())
                         || String.valueOf(a.getNotas()).contains("Alumno confirmado por Administración para el catálogo"))
                 .map(a -> miembroEquipoRepository.findById(a.getIdMiembro()).orElse(null))
-                .filter(this::cuentaActiva).toList();
+                .filter(this::cuentaAlumnoActiva).toList();
     }
 
     private void asignarTareasPendientes(List<Tarea> tareas, MiembroEquipo alumno) {
@@ -471,7 +483,7 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
         ProyectoCatalogo item = obtenerPorCodigo(codigo).orElseThrow(() -> new IllegalArgumentException("El código no pertenece al catálogo."));
         Proyecto proyecto = proyectoRepository.findByCodigo(item.codigo()).orElseThrow(() -> new IllegalArgumentException("Primero sincroniza el catálogo."));
         MiembroEquipo miembro = miembroEquipoRepository.findById(idMiembro).orElseThrow(() -> new IllegalArgumentException("El alumno no existe."));
-        if (!cuentaActiva(miembro)) throw new IllegalArgumentException("El alumno necesita una cuenta activa vinculada desde Equipo.");
+        if (!cuentaAlumnoActiva(miembro)) throw new IllegalArgumentException("El alumno necesita una cuenta activa con rol de estudiante o colaborador vinculada desde Equipo.");
         if (!miembroProyectoRepository.existsByIdProyectoAndIdMiembro(proyecto.getId(), idMiembro)) {
             MiembroProyecto asignacion = new MiembroProyecto();
             asignacion.setIdProyecto(proyecto.getId()); asignacion.setIdMiembro(idMiembro);
@@ -480,6 +492,7 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
             miembroProyectoRepository.save(asignacion);
         } else {
             MiembroProyecto asignacion = miembroProyectoRepository.findByIdProyectoAndIdMiembro(proyecto.getId(), idMiembro).orElseThrow();
+            if (esAsignacionAsesor(asignacion)) throw new IllegalArgumentException("La vinculación existente es de asesor; no se puede confirmar como alumno.");
             if (!String.valueOf(asignacion.getNotas()).contains("Alumno confirmado por Administración para el catálogo")) {
                 asignacion.setNotas((asignacion.getNotas() == null ? "" : asignacion.getNotas() + "\n")
                         + "Alumno confirmado por Administración para el catálogo Septiembre - Diciembre 2026.");
@@ -509,7 +522,7 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
         Map<String, Object> respuesta = new LinkedHashMap<>();
         respuesta.put("estado", "correcto"); respuesta.put("periodo", "Septiembre - Diciembre 2026");
         respuesta.put("proyectos", filas);
-        respuesta.put("alumnosDisponibles", miembroEquipoRepository.findAll().stream().filter(this::cuentaActiva)
+        respuesta.put("alumnosDisponibles", miembroEquipoRepository.findAll().stream().filter(this::cuentaAlumnoActiva)
                 .map(m -> Map.of("id", m.getId(), "nombre", m.getNombreCompleto())).toList());
         return respuesta;
     }
@@ -549,12 +562,12 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
         }
 
         String nombreNormalizado = normalizar(nombreAlumno);
-        Set<String> tokensNombre = tokens(nombreNormalizado);
+        List<String> tokensNombre = tokens(nombreNormalizado);
         if (tokensNombre.size() < 3) return Optional.empty();
         List<ProyectoCatalogo> coincidencias = CATALOGO.stream()
                 .filter(item -> item.alumnoFuente() != null)
                 .filter(item -> {
-                    Set<String> tokensCatalogo = tokens(normalizar(item.alumnoFuente()));
+                    List<String> tokensCatalogo = tokens(normalizar(item.alumnoFuente()));
                     return tokensCatalogo.size() >= 3 && tokensNombre.equals(tokensCatalogo);
                 })
                 .toList();
@@ -591,10 +604,13 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
         return CATALOGO;
     }
 
-    private Set<String> tokens(String normalizado) {
+    private List<String> tokens(String normalizado) {
+        // El PDF alterna nombres y apellidos primero. Se exige el nombre completo,
+        // conservando también las palabras repetidas, sin aproximar ni abreviar.
         return Arrays.stream(normalizado.split("\\s+"))
                 .filter(token -> !token.isBlank())
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+                .sorted()
+                .toList();
     }
 
     private String normalizar(String valor) {

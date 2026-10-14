@@ -4,6 +4,8 @@ import com.jjm.oficina.config.AutenticacionTokenFilter;
 import com.jjm.oficina.modelo.*;
 import com.jjm.oficina.repositorio.*;
 import com.jjm.oficina.servicio.SesionService;
+import org.springframework.mock.env.MockEnvironment;
+import org.springframework.web.server.ResponseStatusException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -11,6 +13,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import tools.jackson.databind.ObjectMapper;
 import java.util.*;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -65,6 +68,42 @@ class DirectorioReunionesTest {
         when(proyectos.findAll()).thenReturn(List.of(proyecto(1,42,"A"),proyecto(3,50,"B")));
         mvc.perform(get("/api/reuniones").header("Authorization", "Bearer sesion-prueba"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.proyectos.length()").value(2));
+    }
+
+    @Test void asesorSinMiembroVeTodasLasSalasEntraEnWebrtcYNoPuedeFinalizarAjena() throws Exception {
+        usuario.getRol().setNombre("  Asesór   Empresariál  ");
+        when(proyectos.findAll()).thenReturn(List.of(proyecto(1,42,"A"),proyecto(2,50,"B")));
+        when(proyectos.findById(2)).thenReturn(Optional.of(proyecto(2,50,"B")));
+        Map<String,Object> reunion=Map.of("id",9L,"idProyecto",2,"estado","Activa","idCreador",8);
+        when(jdbc.queryForList(anyString(),any(Object[].class))).thenReturn(List.of(reunion));
+        mvc.perform(get("/api/reuniones").header("Authorization","Bearer sesion-prueba"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.proyectos.length()").value(2))
+                .andExpect(jsonPath("$.proyectos[1].puedeCrear").value(true))
+                .andExpect(jsonPath("$.proyectos[1].reunionActiva.puedeFinalizar").value(false));
+        for(String ruta:List.of("/api/proyectos/2/reuniones","/api/proyectos/2/reuniones/activa","/api/reuniones/9","/api/reuniones/9/grabaciones"))
+            mvc.perform(get(ruta).header("Authorization","Bearer sesion-prueba")).andExpect(status().isOk());
+        mvc.perform(post("/api/reuniones/9/unirse").header("Authorization","Bearer sesion-prueba")).andExpect(status().isOk());
+        mvc.perform(post("/api/reuniones/9/finalizar").header("Authorization","Bearer sesion-prueba")).andExpect(status().isForbidden());
+        assertTrue(controller.puedeAccederGrabacion(7,9));assertFalse(controller.puedeGuardarGrabacion(7,9));
+        VideollamadaController video=new VideollamadaController(usuarios,controller,new MockEnvironment());
+        String conexion=(String)video.entrar("9",7).get("conexion");
+        assertEquals(1,((List<?>)video.eventos("9",conexion,0,7).get("participantes")).size());
+        usuario.getRol().setNombre("Colaborador");
+        assertEquals(403,assertThrows(ResponseStatusException.class,()->video.eventos("9",conexion,0,7)).getStatusCode().value());
+        verify(jdbc,never()).update(contains("SET estado='Finalizada'"),any(Object[].class));
+    }
+
+    @Test void asesorPuedeIniciarSalaAjenaSinCrearAsignacionYCuentaInactivaNoEntra() throws Exception {
+        usuario.getRol().setNombre("Asesor Empresarial");
+        when(proyectos.findById(2)).thenReturn(Optional.of(proyecto(2,50,"Proyecto")));
+        Map<String,Object> reunion=Map.of("id",9L,"idProyecto",2,"estado","Activa","idCreador",7);
+        when(jdbc.queryForList(contains("LOWER(estado)"),any(Object[].class))).thenReturn(List.of(),List.of(reunion));
+        mvc.perform(post("/api/proyectos/2/reuniones").header("Authorization","Bearer sesion-prueba"))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.reunion.puedeFinalizar").value(false));
+        verify(jdbc).update(contains("INSERT INTO reuniones_proyecto"),any(Object[].class));
+        verify(asignaciones,never()).save(any());
+        usuario.setEstado("Inactivo");assertFalse(controller.puedeAccederVideollamada(7,9));assertFalse(controller.puedeAccederGrabacion(7,9));
+        mvc.perform(get("/api/reuniones").header("Authorization","Bearer sesion-prueba")).andExpect(status().isUnauthorized());
     }
 
     @Test void sinMiembroNoListaProyectosAjenosNiConsultaReuniones() throws Exception {

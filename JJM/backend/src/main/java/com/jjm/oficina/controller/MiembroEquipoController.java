@@ -6,6 +6,7 @@ import com.jjm.oficina.modelo.Usuario;
 import com.jjm.oficina.repositorio.MiembroEquipoRepository;
 import com.jjm.oficina.repositorio.UsuarioRepository;
 import com.jjm.oficina.servicio.BitacoraService;
+import com.jjm.oficina.servicio.PermisosService;
 
 import jakarta.validation.Valid;
 
@@ -54,7 +55,7 @@ public class MiembroEquipoController {
 
     /*
      * Equipo global:
-     * - Solo Administrador puede consultar todo el equipo.
+     * - Administrador y Asesor Empresarial pueden consultar todo el equipo.
      * - Responsable y colaborador deben consultar integrantes desde
      *   /api/miembros-proyecto/proyecto/{idProyecto}.
      */
@@ -79,11 +80,11 @@ public class MiembroEquipoController {
                     .body(respuesta);
         }
 
-        if (!esAdministrador(usuario)) {
+        if (!esAdministrador(usuario) && !PermisosService.esAsesorEmpresarial(usuario)) {
             respuesta.put("estado", "error");
             respuesta.put(
                     "mensaje",
-                    "Solo un administrador puede consultar el equipo completo."
+                    "No tienes permiso para consultar el equipo completo."
             );
 
             return ResponseEntity
@@ -200,7 +201,8 @@ public class MiembroEquipoController {
                     .body(respuesta);
         }
 
-        if (!esAdministrador(usuario) && !esMiembroPropio(usuario, miembro)) {
+        if (!esAdministrador(usuario) && !PermisosService.esAsesorEmpresarial(usuario)
+                && !esMiembroPropio(usuario, miembro)) {
             respuesta.put("estado", "error");
             respuesta.put(
                     "mensaje",
@@ -422,7 +424,8 @@ public class MiembroEquipoController {
         Optional<Usuario> usuarioEncontrado =
                 usuarioRepository.findById(idUsuarioActivo);
 
-        return usuarioEncontrado.orElse(null);
+        return usuarioEncontrado.filter(usuario -> "Activo".equalsIgnoreCase(usuario.getEstado()))
+                .orElse(null);
     }
 
     private boolean tieneTexto(String valor) {

@@ -12,6 +12,7 @@ import com.jjm.oficina.repositorio.MiembroEquipoRepository;
 import com.jjm.oficina.repositorio.OrganizacionRepository;
 import com.jjm.oficina.repositorio.ProyectoRepository;
 import com.jjm.oficina.repositorio.UsuarioRepository;
+import com.jjm.oficina.servicio.PermisosService;
 
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
@@ -160,7 +161,7 @@ public class ProyectoAvanzadoController {
 
     /*
      * Consultar proyecto avanzado:
-     * - Solo Administrador.
+     * - Administrador o Asesor Empresarial activo.
      */
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> obtenerProyectoAvanzado(
@@ -181,11 +182,11 @@ public class ProyectoAvanzadoController {
             );
         }
 
-        if (!esAdministrador(usuario)) {
+        if (!esAdministrador(usuario) && !PermisosService.esAsesorEmpresarial(usuario)) {
             return respuestaError(
                     respuesta,
                     HttpStatus.FORBIDDEN,
-                    "Solo un administrador puede consultar proyectos avanzados."
+                    "No tienes permiso para consultar proyectos avanzados."
             );
         }
 
@@ -743,6 +744,7 @@ public class ProyectoAvanzadoController {
 
         return usuarioRepository
                 .findById(idUsuarioActivo)
+                .filter(usuario -> "Activo".equalsIgnoreCase(usuario.getEstado()))
                 .orElse(null);
     }
 

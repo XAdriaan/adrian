@@ -40,7 +40,8 @@ class CatalogoAsignacionesTest {
         when(tareas.save(any())).thenAnswer(i -> { Tarea t = i.getArgument(0); if (t.getId() == null) { t.setId(1000 + actividades.values().stream().mapToInt(List::size).sum()); actividades.get(t.getIdProyecto()).add(t); } return t; });
     }
     MiembroEquipo alumno(int id, String nombre) {
-        Usuario u = new Usuario(); u.setId(id + 100); u.setEstado("Activo");
+        Rol rol = new Rol(); rol.setNombre("Colaborador");
+        Usuario u = new Usuario(); u.setId(id + 100); u.setEstado("Activo"); u.setRol(rol);
         MiembroEquipo m = new MiembroEquipo(); m.setId(id); m.setNombreCompleto(nombre); m.setEstado("Activo"); m.setUsuario(u); alumnos.add(m); return m;
     }
     void enlace(int proyecto, int miembro) {
@@ -125,6 +126,71 @@ class CatalogoAsignacionesTest {
         MiembroEquipo propia=alumno(8,"Emily Jojany Flores");
         when(miembros.findByUsuarioId(108)).thenReturn(Optional.of(propia));
         servicio.sincronizarCuenta(108);assertTrue(enlaces.isEmpty());
+    }
+
+    @Test void unaPalabraRepetidaNoSeDescartaAlCompararElNombreCompleto() {
+        alumno(1, "Rodrigo Pérez Tapia Tapia");
+        servicio.sincronizarCatalogo();
+        assertTrue(enlaces.isEmpty());
+        assertTrue(servicio.obtenerPorAlumno("Rodrigo Pérez Tapia Tapia").isEmpty());
+    }
+
+    @Test void asesorNoRecibeVinculacionDeAlumnoAunqueCoincidaElNombre() {
+        MiembroEquipo asesor = alumno(1, "Rodrigo Pérez Tapia");
+        asesor.getUsuario().getRol().setNombre("Asesor empresarial");
+        when(miembros.findByUsuarioId(101)).thenReturn(Optional.of(asesor));
+        servicio.sincronizarCatalogo(); servicio.sincronizarCuenta(101);
+        assertTrue(enlaces.isEmpty()); assertNull(actividades.get(1).getFirst().getIdMiembroAsignado());
+        assertThrows(IllegalArgumentException.class, () -> servicio.asignarAlumnoConfirmado("JJM-SD26-01", 1));
+        assertTrue(((List<?>) servicio.obtenerAsignaciones().get("alumnosDisponibles")).isEmpty());
+    }
+
+    @Test void asesorExistenteSeConservaSinTareasDeAlumnoNiConfirmacionForzada() {
+        alumno(1, "Rodrigo Pérez Tapia"); enlace(1, 1);
+        MiembroProyecto asesor = enlaces.getFirst(); asesor.setRolProyecto("Asesor universitario");
+        asesor.setHorasAsignadas(BigDecimal.valueOf(17)); asesor.setNotas("Vinculación manual de asesor");
+        servicio.sincronizarCatalogo();
+        assertEquals(1, enlaces.size()); assertEquals("Asesor universitario", asesor.getRolProyecto());
+        assertEquals(BigDecimal.valueOf(17), asesor.getHorasAsignadas());
+        assertNull(actividades.get(1).getFirst().getIdMiembroAsignado());
+        assertThrows(IllegalArgumentException.class, () -> servicio.asignarAlumnoConfirmado("JJM-SD26-01", 1));
+        assertEquals("Vinculación manual de asesor", asesor.getNotas());
+    }
+
+    @Test void programacionAsignaNuevasCuentasYSusPartesSinEntrarEnProyectos() {
+        org.springframework.test.util.ReflectionTestUtils.setField(servicio, "habilitado", true);
+        when(proyectos.save(any())).thenAnswer(i -> {
+            Proyecto p = i.getArgument(0); p.setId(100 + catalogo.size()); catalogo.put(p.getCodigo(), p);
+            actividades.put(p.getId(), new ArrayList<>()); return p;
+        });
+        SeparacionProyectosService separacion = new SeparacionProyectosService(proyectos, asignaciones, miembros, servicio);
+        separacion.sincronizarNuevasCuentas();
+        assertTrue(enlaces.isEmpty());
+        alumno(2, "Karla Guadalupe Jiménez Villegas"); alumno(3, "Metzli Citlalli Gamero Gaytan");
+        alumno(4, "Jonathan Adrián Flores Morales"); alumno(5, "Leonardo Maximiliano Carmona García");
+        alumno(9, "Kevin Uriel Remigio Elizalde"); alumno(10, "Edgr Ivan Castañeda Juarez");
+        alumno(11, "Dana Erandi Hernández Franco"); alumno(13, "Diana Paola Cesar Hernández");
+        alumno(14, "David Mondragón Cardoso"); alumno(15, "Adrián Vilegas Sierra");
+        alumno(7, "Martell García López"); alumno(8, "Emily Hernández López");
+        separacion.sincronizarNuevasCuentas();
+        assertEquals(21, enlaces.size());
+        for (int id : List.of(2, 3, 4, 5, 9, 10, 11, 13, 14, 15))
+            assertTrue(enlaces.stream().anyMatch(a -> a.getIdProyecto() == id && a.getIdMiembro() == id));
+        assertEquals(3, SeparacionProyectosService.visibles(catalogo.values().stream()
+                .filter(p -> enlaces.stream().anyMatch(a -> a.getIdProyecto().equals(p.getId()) && a.getIdMiembro() == 4)).toList()).size());
+        assertTrue(enlaces.stream().allMatch(a -> a.getHorasAsignadas().signum() == 0));
+        assertTrue(enlaces.stream().noneMatch(a -> a.getIdMiembro() == 7 || a.getIdMiembro() == 8));
+        clearInvocations(proyectos, asignaciones, tareas);
+        separacion.sincronizarNuevasCuentas();
+        assertEquals(21, enlaces.size()); verify(asignaciones, never()).save(any());
+        verify(tareas, never()).save(any()); verify(proyectos, never()).save(any());
+    }
+
+    @Test void programacionRespetaCatalogoDeshabilitado() {
+        alumno(4, "Jonathan Adrian Flores Morales");
+        SeparacionProyectosService separacion = new SeparacionProyectosService(proyectos, asignaciones, miembros, servicio);
+        separacion.sincronizarNuevasCuentas();
+        assertTrue(enlaces.isEmpty()); verifyNoInteractions(proyectos, asignaciones, tareas);
     }
 
 }

@@ -48,7 +48,7 @@ class GrabacionTest {
         estado(400,()->api.finalizar(id,new GrabacionController.Fin(1),7));estado(413,()->api.parte(id,0,new byte[4*1024*1024+1],7));
     }
     @Test void asignacionRetiradaOcultaYBloqueaArchivoAunqueConozcaSuId() throws Exception {
-        when(reuniones.puedeAccederGrabacion(7,9)).thenReturn(true);String id=guardar("9");
+        when(reuniones.puedeAccederGrabacion(7,9)).thenReturn(true);when(reuniones.puedeGuardarGrabacion(7,9)).thenReturn(true);String id=guardar("9");
         estado(403,()->api.video(id,8));when(reuniones.puedeAccederGrabacion(7,9)).thenReturn(false);
         estado(403,()->api.video(id,7));assertTrue(((List<?>)api.listar(null,7).get("grabaciones")).isEmpty());
     }
@@ -57,8 +57,19 @@ class GrabacionTest {
         estado(401,()->api.listar(null,7));assertEquals(0,Files.list(carpeta).count());
     }
     @Test void listaFechaDescendenteYFiltraLaSala() throws Exception {
-        when(reuniones.puedeAccederGrabacion(7,9)).thenReturn(true);String primero=guardar("general"),segundo=guardar("9");
+        when(reuniones.puedeAccederGrabacion(7,9)).thenReturn(true);when(reuniones.puedeGuardarGrabacion(7,9)).thenReturn(true);String primero=guardar("general"),segundo=guardar("9");
         List<?> todos=(List<?>)api.listar(null,7).get("grabaciones");assertEquals(segundo,((Map<?,?>)todos.get(0)).get("id"));
         assertEquals(1,((List<?>)api.listar("general",7).get("grabaciones")).size());assertNotEquals(primero,segundo);
+    }
+    @Test void consultaGlobalPermiteLeerVideoPeroNoPublicarGrabacionEnProyectoAjeno() throws Exception {
+        when(reuniones.puedeGuardarGrabacion(7,9)).thenReturn(true);when(reuniones.puedeAccederGrabacion(7,9)).thenReturn(true);
+        String id=guardar("9");
+        when(reuniones.puedeAccederGrabacion(8,9)).thenReturn(true);
+        assertEquals(1,((List<?>)api.listar("9",8).get("grabaciones")).size());
+        try(var video=api.video(id,8).getBody().getInputStream()){assertArrayEquals(webm,video.readAllBytes());}
+        estado(403,()->api.iniciar(new GrabacionController.Inicio("9","Ajena"),8));
+        // Retirar la asignación no permite acabar una carga gracias al acceso de consulta global.
+        String pendiente=inicio("9");when(reuniones.puedeGuardarGrabacion(7,9)).thenReturn(false);
+        estado(403,()->api.parte(pendiente,0,webm,7));
     }
 }

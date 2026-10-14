@@ -198,10 +198,18 @@ function obtenerNombreRolUsuario() {
 }
 
 function esAdministrador() {
-    if (window.PMOPermisos && window.PMOPermisos.tiene("proyectos.ver_todos")) return true;
-
     const rol = normalizarTextoCompatibilidadPermisos(obtenerRolCompatibilidadPermisos());
     return rol === "superadministrador" || rol === "administrador" || rol === "admin pmo" || rol === "admin_pmo" || rol === "administrador pmo";
+}
+
+function esAsesorEmpresarial() {
+    const rol = normalizarTextoCompatibilidadPermisos(obtenerRolCompatibilidadPermisos());
+    return rol === "asesor empresarial" || rol === "asesor de empresa";
+}
+
+function puedeConsultarTodosProyectos() {
+    return esAdministrador() || esAsesorEmpresarial() ||
+        !!window.PMOPermisos?.tiene("proyectos.ver_todos");
 }
 function esAdministradorRealDashboard() {
     return !!(window.PMOPermisos && typeof window.PMOPermisos.esAdministradorReal === "function" && window.PMOPermisos.esAdministradorReal());
@@ -215,7 +223,7 @@ function obtenerRolCompatibilidadPermisos() {
 }
 
 function normalizarTextoCompatibilidadPermisos(valor) {
-    return String(valor || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return String(valor || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
 }
 
 
@@ -316,7 +324,9 @@ function configurarEncabezadoDashboard() {
 
     if (descripcionDashboard) {
         descripcionDashboard.textContent =
-            "Consulta tus proyectos, tareas y registro de horas.";
+            esAsesorEmpresarial()
+                ? "Supervisa todos los proyectos y sus tareas. Entra a las videollamadas de cualquier proyecto."
+                : "Consulta tus proyectos, tareas y registro de horas.";
     }
 
     if (indicadorRolDashboard) {
@@ -335,7 +345,7 @@ function configurarEncabezadoDashboard() {
 
     if (etiquetaTareas) {
         etiquetaTareas.textContent =
-            "Mis tareas";
+            esAsesorEmpresarial() ? "Tareas del equipo" : "Mis tareas";
     }
 
     if (etiquetaAlertas) {
@@ -350,7 +360,7 @@ function configurarEncabezadoDashboard() {
 
     if (tituloTareasRecientes) {
         tituloTareasRecientes.textContent =
-            "Mis tareas recientes";
+            esAsesorEmpresarial() ? "Tareas recientes del equipo" : "Mis tareas recientes";
     }
 
     if (descripcionTareasRecientes) {
@@ -473,10 +483,7 @@ async function cargarDashboard() {
 ========================================================= */
 
 async function obtenerMiembrosParaDashboard() {
-    // Este endpoint del backend admite solo los roles administrativos base.
-    // Tener acceso global a proyectos no autoriza consultar el equipo completo.
-    const rol = normalizarTextoCompatibilidadPermisos(obtenerNombreRolUsuario());
-    const puedeConsultarEquipo = ["administrador", "admin pmo", "admin_pmo", "administrador pmo"].includes(rol);
+    const puedeConsultarEquipo = esAdministrador() || esAsesorEmpresarial();
     if (puedeConsultarEquipo) {
         return obtenerDatosDesdeAPI(API_MIEMBROS, ["miembros", "data"]);
     }
@@ -819,7 +826,7 @@ function obtenerIdMiembroUsuarioActivo() {
 }
 
 function obtenerTareasVisibles() {
-    if (esAdministrador()) {
+    if (puedeConsultarTodosProyectos()) {
         return tareasDashboard.slice();
     }
 
