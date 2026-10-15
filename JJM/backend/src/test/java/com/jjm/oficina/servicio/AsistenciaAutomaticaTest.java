@@ -130,8 +130,110 @@ class AsistenciaAutomaticaTest {
     @Test void suspensionDeDiezHorasCierraA17SinNecesitarPulsos(){hora("2026-10-14T07:00:00");servicio.iniciar(10);hora("2026-10-15T06:00:00");servicio.actualizar(10,false);JornadaAutomatica j=almacen.get(LocalDate.of(2026,10,14));assertEquals(36000,j.getTotalSegundos());assertTrue(j.isFinalizada());assertEquals(LocalTime.of(17,0),historial.get(1).getHoraSalida());assertEquals(1,historial.size());}
     @Test void reporteSeHabilitaExactamenteA16AunqueElAlumnoHayaEmpezadoA8(){hora("2026-10-14T08:00:00");servicio.iniciar(10);hora("2026-10-14T15:59:59");assertEquals(false,servicio.habilitacionReporte(10,LocalDate.of(2026,10,14)).get("habilitado"));hora("2026-10-14T16:00:00");assertEquals(true,servicio.habilitacionReporte(10,LocalDate.of(2026,10,14)).get("habilitado"));assertEquals(28800,segundos());}
     @Test void entradaA8AvisaFaltaUnaHoraYReposicionSeDetieneAlCubrirla(){hora("2026-10-16T08:00:00");servicio.iniciar(10);verify(jdbc,atLeastOnce()).update(contains("pmo_recordatorios"),any(Object[].class));hora("2026-10-16T17:00:00");assertEquals(32400,segundos());assertEquals(3600L,servicio.actualizar(10,false).get("reposicionPendienteSegundos"));hora("2026-10-17T07:00:00");servicio.iniciar(10);hora("2026-10-17T10:00:00");assertEquals(3600,segundos());assertEquals(LocalTime.of(8,0),historial.get(2).getHoraSalida());assertEquals(0L,servicio.actualizar(10,false).get("reposicionPendienteSegundos"));}
-    @Test void noIniciaFinDeSemanaSinSaldoNiReabreJornadaFinalizada(){hora("2026-10-17T07:00:00");assertThrows(org.springframework.web.server.ResponseStatusException.class,()->servicio.iniciar(10));hora("2026-10-19T07:00:00");servicio.iniciar(10);servicio.finalizar(10);assertThrows(org.springframework.web.server.ResponseStatusException.class,()->servicio.iniciar(10));}
+    @Test void noIniciaFinDeSemanaSinSaldoNiReabreJornadaDespuesDelHorario(){hora("2026-10-17T07:00:00");assertThrows(org.springframework.web.server.ResponseStatusException.class,()->servicio.iniciar(10));hora("2026-10-19T07:00:00");servicio.iniciar(10);hora("2026-10-19T17:00:00");assertThrows(org.springframework.web.server.ResponseStatusException.class,()->servicio.iniciar(10));}
     @Test void reporteDeDiaIncompletoPermaneceDisponibleDespuesDe17YSinReponerPrimero(){hora("2026-10-16T10:00:00");servicio.iniciar(10);hora("2026-10-16T17:30:00");assertEquals(true,servicio.habilitacionReporte(10,LocalDate.of(2026,10,16)).get("habilitado"));assertEquals(25200,almacen.get(LocalDate.of(2026,10,16)).getTotalSegundos());hora("2026-10-17T08:00:00");assertEquals(true,servicio.habilitacionReporte(10,LocalDate.of(2026,10,16)).get("habilitado"));}
     @Test void elHorarioDeReporteNoDependeDeHaberAcumuladoHoras(){hora("2026-10-14T15:59:59");assertEquals(false,servicio.actualizar(10,false).get("reporteHabilitado"));assertEquals(1L,servicio.habilitacionReporte(10,LocalDate.of(2026,10,14)).get("faltanSegundos"));hora("2026-10-14T16:00:00");assertEquals(true,servicio.actualizar(10,false).get("reporteHabilitado"));assertEquals(true,servicio.habilitacionReporte(10,LocalDate.of(2026,10,14)).get("habilitado"));assertTrue(historial.isEmpty());}
     @Test void profesorNoPuedeIniciarNiFinalizarJornadaAlumno(){hora("2026-10-14T07:00:00");alumno.getRol().setNombre("Superadministrador");assertThrows(org.springframework.web.server.ResponseStatusException.class,()->servicio.iniciar(10));assertTrue(historial.isEmpty());}
+
+    @Test void regresarDeAsesorAColaboradorPermiteContinuarHoyConElMismoRegistro() {
+        alumno.setContrasena("hash-conservado");
+        RegistroHoras anterior = new RegistroHoras(); anterior.setId(99); anterior.setIdMiembro(11);
+        anterior.setFecha(LocalDate.of(2026,10,13)); anterior.setHorasTrabajadas(new java.math.BigDecimal("7.25"));
+        anterior.setEstadoValidacion("Aprobado"); historial.put(99,anterior);
+        hora("2026-10-14T07:00:00"); servicio.iniciar(10);
+        JornadaAutomatica jornada = almacen.get(LocalDate.of(2026,10,14));
+        RegistroHoras registro = historial.get(jornada.getIdRegistro());
+        Integer idRegistro = registro.getId();
+        hora("2026-10-14T08:00:00"); alumno.getRol().setNombre("Asesor Empresarial");
+        assertEquals(false,servicio.actualizar(10,false).get("perfilAlumno"));
+        assertEquals("CAMBIO_PERFIL",jornada.getMotivoCierre()); assertTrue(jornada.isFinalizada());
+        assertEquals(3600,jornada.getTotalSegundos());
+        hora("2026-10-14T10:00:00"); alumno.getRol().setNombre("Colaborador");
+        Map<String,Object> estado = servicio.actualizar(10,false);
+        assertEquals(true,estado.get("puedeReanudar")); assertEquals(true,estado.get("perfilAlumno"));
+        assertEquals(false,estado.get("contando")); assertEquals(3600L,estado.get("segundos"));
+        assertTrue(jornada.isFinalizada(),"Consultar no reinicia el reloj por sí solo");
+        servicio.iniciar(10);
+        assertEquals(idRegistro,jornada.getIdRegistro()); assertEquals(3600,jornada.getTotalSegundos());
+        assertNull(registro.getHoraSalida()); assertEquals(LocalTime.of(7,0),registro.getHoraEntrada());
+        hora("2026-10-14T11:00:00"); assertEquals(7200,segundos());
+        assertEquals(new java.math.BigDecimal("2.00"),registro.getHorasTrabajadas());
+        assertEquals(new java.math.BigDecimal("7.25"),anterior.getHorasTrabajadas());
+        assertEquals("hash-conservado",alumno.getContrasena()); assertEquals(2,historial.size());
+        verify(usuarios,never()).save(any());
+    }
+
+    @Test void jornadaCerradaAntesDeV25PuedeContinuarseSinAcreditarElIntervaloCerrado() {
+        hora("2026-10-14T07:00:00"); servicio.iniciar(10);
+        hora("2026-10-14T08:00:00"); servicio.finalizar(10);
+        JornadaAutomatica jornada = almacen.get(LocalDate.of(2026,10,14));
+        jornada.setMotivoCierre(""); // V24 no guardaba la causa del cierre por cambio de rol.
+        hora("2026-10-14T11:00:00");
+        assertEquals(true,servicio.actualizar(10,false).get("puedeReanudar"));
+        assertEquals(3600L,servicio.iniciar(10).get("segundos"));
+        servicio.iniciar(10); assertEquals(1,historial.size());
+        hora("2026-10-14T11:01:00"); assertEquals(3660,segundos());
+    }
+
+    @Test void continuarTrasFinalizarVoluntariamenteNoBorraLasHorasNiDuplicaJornada() {
+        hora("2026-10-14T07:00:00"); servicio.iniciar(10);
+        hora("2026-10-14T09:00:00"); servicio.finalizar(10);
+        assertEquals("FINALIZACION_ALUMNO",almacen.get(LocalDate.of(2026,10,14)).getMotivoCierre());
+        hora("2026-10-14T10:00:00"); assertEquals(7200L,servicio.iniciar(10).get("segundos"));
+        hora("2026-10-14T10:01:00"); assertEquals(7260,segundos()); assertEquals(1,historial.size());
+    }
+
+    @Test void asesorNoPuedeReanudarLaJornadaAunqueSuRegistroSigaPendiente() {
+        hora("2026-10-14T07:00:00"); servicio.iniciar(10);
+        hora("2026-10-14T08:00:00"); alumno.getRol().setNombre("Asesor Empresarial"); servicio.actualizar(10,false);
+        hora("2026-10-14T09:00:00");
+        assertEquals(false,servicio.actualizar(10,false).get("puedeReanudar"));
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,()->servicio.iniciar(10));
+        assertEquals(3600,almacen.get(LocalDate.of(2026,10,14)).getTotalSegundos());
+    }
+
+    @Test void noReabreRegistroAprobadoRechazadoAjenoONoCorrespondienteAlDia() {
+        hora("2026-10-14T07:00:00"); servicio.iniciar(10);
+        hora("2026-10-14T08:00:00"); servicio.finalizar(10);
+        RegistroHoras registro = historial.get(1);
+        for (String validacion : List.of("Aprobado","Rechazado")) {
+            registro.setEstadoValidacion(validacion);
+            assertEquals(false,servicio.actualizar(10,false).get("puedeReanudar"));
+            assertThrows(org.springframework.web.server.ResponseStatusException.class,()->servicio.iniciar(10));
+        }
+        registro.setEstadoValidacion("Pendiente"); registro.setIdMiembro(12);
+        assertEquals(false,servicio.actualizar(10,false).get("puedeReanudar"));
+        registro.setIdMiembro(11); registro.setFecha(LocalDate.of(2026,10,13));
+        assertEquals(false,servicio.actualizar(10,false).get("puedeReanudar"));
+        assertEquals(new java.math.BigDecimal("1.00"),registro.getHorasTrabajadas());
+        assertEquals(1,historial.size());
+    }
+
+    @Test void cierresDefinitivosNoSeReabrenNiSuperanLaMetaDiaria() {
+        hora("2026-10-14T07:00:00"); servicio.iniciar(10);
+        hora("2026-10-14T08:00:00"); servicio.finalizar(10);
+        JornadaAutomatica jornada = almacen.get(LocalDate.of(2026,10,14));
+        for (String motivo : List.of("FIN_HORARIO","META_CUBIERTA","REGISTRO_VALIDADO")) {
+            jornada.setMotivoCierre(motivo);
+            assertEquals(false,servicio.actualizar(10,false).get("puedeReanudar"));
+            assertThrows(org.springframework.web.server.ResponseStatusException.class,()->servicio.iniciar(10));
+        }
+        jornada.setMotivoCierre(""); jornada.setTotalSegundos(36000);
+        assertEquals(false,servicio.actualizar(10,false).get("puedeReanudar"));
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,()->servicio.iniciar(10));
+        hora("2026-10-15T07:00:00");
+        assertEquals(false,servicio.actualizar(10,false).get("puedeReanudar"));
+        assertEquals(36000,jornada.getTotalSegundos());
+    }
+
+    @Test void jornadaReanudadaSigueRespetandoElCierreDe17YLasDiezHorasTotales() {
+        hora("2026-10-14T07:00:00"); servicio.iniciar(10);
+        hora("2026-10-14T09:00:00"); servicio.finalizar(10);
+        hora("2026-10-14T10:00:00"); servicio.iniciar(10);
+        hora("2026-10-14T18:00:00"); assertEquals(32400,segundos());
+        JornadaAutomatica jornada = almacen.get(LocalDate.of(2026,10,14));
+        assertEquals("FIN_HORARIO",jornada.getMotivoCierre());
+        assertEquals(LocalTime.of(17,0),historial.get(1).getHoraSalida());
+        assertEquals(false,servicio.actualizar(10,false).get("puedeReanudar"));
+    }
 }

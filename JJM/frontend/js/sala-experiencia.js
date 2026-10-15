@@ -19,7 +19,7 @@
     }
     class ExperienciaSala {
         constructor({rtc,alFotoCamara}){
-            this.rtc=rtc;this.alFotoCamara=alFotoCamara;this.analizadores=new Map();this.mensajes=new Set();this.noLeidos=0;this.cambio=0;this.galeria=false;this.minimizada=false;
+            this.rtc=rtc;this.alFotoCamara=alFotoCamara;this.analizadores=new Map();this.mensajes=new Set();this.noLeidos=0;this.cambio=0;this.minimizada=false;
             this.video=el('videoPrincipal');this.avatar=el('avatarPrincipal');
             this.zoomPresentacion=1;this.limpiarVista=[];this.identidadVista=null;
             this.enlazar();this.vigilar();
@@ -96,7 +96,7 @@
                 if(document.fullscreenElement===panel)await document.exitFullscreen?.();
                 else{
                     if(!panel?.requestFullscreen)throw new Error('Este navegador no permite la pantalla completa. Puedes ampliar con +.');
-                    this.galeria=false;document.body.classList.remove('sala-galeria');await panel.requestFullscreen();
+                    await panel.requestFullscreen();
                 }
                 this.actualizarTamanoVista();
             }catch(e){this.error(e);}
@@ -117,7 +117,6 @@
                 e.preventDefault();const boton=el('btnEnviarChat'),campo=el('textoChatSala'),texto=campo.value.trim();if(!texto||boton.disabled)return;
                 boton.disabled=true;try{const r=await this.rtc.interaccion('chat',{texto});this.mensaje(r.datos,false);campo.value='';}catch(error){this.error(error);}finally{boton.disabled=false;}
             });
-            el('btnVistaGaleria').addEventListener('click',()=>{this.galeria=!this.galeria;this.actualizar();});
             el('btnRestaurarSala').addEventListener('click',()=>this.restaurar());
             el('btnSalirMini').addEventListener('click',()=>el('btnColgarReunion').click());
             el('btnFotoCamara').addEventListener('click',()=>this.foto('camara'));el('btnFotoReunion').addEventListener('click',()=>this.foto('reunion'));
@@ -213,8 +212,6 @@
             const visible=!!(pistas.some(t=>t.readyState==='live') && (presenta || destacada.video));this.video.hidden=!visible;this.avatar.hidden=visible;this.avatar.textContent=String(destacada.nombre||'JJM').slice(0,1).toUpperCase();
             el('nombrePrincipal').textContent=`${destacada.nombre||'Participante'}${presenta?' · Compartiendo pantalla':destacada.id===this.hablante?' · Hablando':''}`;
             el('tituloPresentacion').textContent=presenta?'Pantalla compartida':this.hablante?'Participante que habla':'Vista principal';
-            const galeria=this.galeria&&!presenta;document.body.classList.toggle('sala-galeria',galeria);el('btnVistaGaleria').setAttribute('aria-pressed',String(galeria));
-            el('btnVistaGaleria').textContent=galeria?'Ver participante':'Galería';el('btnVistaGaleria').disabled=!!presenta;
             this.actualizarTamanoVista();
         }
         minimizar(url,navegar=false){

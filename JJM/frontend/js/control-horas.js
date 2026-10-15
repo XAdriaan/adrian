@@ -816,10 +816,10 @@ function limpiarSelectTareas(mensaje) {
 
 function actualizarEstadoJornada() {
     if (window.asistenciaAutomaticaPMO?.esAlumno()) {
-        if (btnCheckIn) {btnCheckIn.hidden=false;btnCheckIn.textContent='Iniciar mi jornada';btnCheckIn.disabled=!window.asistenciaAutomaticaPMO.estado()?.puedeIniciar;}
-        if (btnCheckOut) {btnCheckOut.hidden=false;btnCheckOut.disabled=!window.asistenciaAutomaticaPMO.estado()?.puedeFinalizar;}
-        if (btnRegistrarHoras) btnRegistrarHoras.hidden = true;
         const asistencia = window.asistenciaAutomaticaPMO.estado();
+        if (btnCheckIn) {btnCheckIn.hidden=false;btnCheckIn.textContent=asistencia?.puedeReanudar?'Continuar mi jornada':'Iniciar mi jornada';btnCheckIn.disabled=!(asistencia?.puedeIniciar||asistencia?.puedeReanudar);}
+        if (btnCheckOut) {btnCheckOut.hidden=false;btnCheckOut.disabled=!asistencia?.puedeFinalizar;}
+        if (btnRegistrarHoras) btnRegistrarHoras.hidden = true;
         if (textoJornada) textoJornada.textContent = asistencia?.mensaje || "Confirmando tu asistencia automática...";
         if (jornadaStatus) jornadaStatus.className = "jornada-status " +
                 (asistencia?.contando ? "jornada-abierta" : "jornada-cerrada");

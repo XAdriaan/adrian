@@ -144,7 +144,7 @@
         const contraste=document.createElement('link');contraste.rel='stylesheet';contraste.href='css/contraste-v21.css?v=20261013-v21';document.head.appendChild(contraste);
         window.PMOArdiaVozPromesa=new Promise(resolve=>{const v=document.createElement('script');v.src='js/ardia-voz.js?v=20261013-v21';v.onload=()=>resolve(true);v.onerror=()=>resolve(false);document.head.appendChild(v);});
         const asistencia = document.createElement("script");
-        asistencia.src = "js/asistencia-automatica.js?v=20261014-v24";
+        asistencia.src = "js/asistencia-automatica.js?v=20261014-v25";
         document.head.appendChild(asistencia);
         const estiloAsistencia = document.createElement("link");
         estiloAsistencia.rel = "stylesheet";

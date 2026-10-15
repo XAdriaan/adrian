@@ -66,6 +66,7 @@ public class AsistenciaAutomaticaService {
         columna("modo_continuo", "BOOLEAN NOT NULL DEFAULT FALSE");
         columna("reposicion", "BOOLEAN NOT NULL DEFAULT FALSE");
         columna("limite_segundos", "BIGINT NOT NULL DEFAULT 36000");
+        columna("motivo_cierre", "VARCHAR(40) NOT NULL DEFAULT ''");
         jdbc.execute("CREATE TABLE IF NOT EXISTS pmo_jornada_config(id INT PRIMARY KEY,inicio DATE NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
         jdbc.update("INSERT IGNORE INTO pmo_jornada_config(id,inicio) VALUES(1,?)", reloj.instant().atZone(ZONA).toLocalDate());
     }
@@ -99,7 +100,10 @@ public class AsistenciaAutomaticaService {
         aplicable = aplicable && miembro != null && "Activo".equalsIgnoreCase(miembro.getEstado());
         for (JornadaAutomatica pendiente : jornadas.findByIdUsuarioAndFinalizadaFalse(idUsuario)) {
             liquidar(pendiente, ahora);
-            if (!aplicable && !pendiente.isFinalizada()) { pendiente.setFinalizada(true); cerrarRegistro(pendiente, ahora); jornadas.save(pendiente); }
+            if (!aplicable && !pendiente.isFinalizada()) {
+                pendiente.setFinalizada(true); pendiente.setMotivoCierre("CAMBIO_PERFIL");
+                cerrarRegistro(pendiente, ahora); jornadas.save(pendiente);
+            }
         }
         JornadaAutomatica jornada = jornadas.findByIdUsuarioAndFecha(idUsuario, fecha).orElse(null);
         long otrosSegundos = miembro == null ? 0 : segundosOtros(miembro.getId(),fecha,jornada==null?null:jornada.getIdRegistro());
@@ -109,8 +113,20 @@ public class AsistenciaAutomaticaService {
         boolean enHorario = (esDiaHabil(fecha) || reposicionPendiente>0 || jornada!=null&&jornada.isReposicion()) && !ahora.isBefore(inicio(fecha)) && ahora.isBefore(fin(fecha));
         if((iniciar||finalizar)&&!aplicable)throw new ResponseStatusException(HttpStatus.FORBIDDEN,"La jornada corresponde a alumnos y miembros activos.");
         if(iniciar&&!enHorario)throw new ResponseStatusException(HttpStatus.CONFLICT,finSemana?"Solo puedes iniciar reposición si tienes horas pendientes, entre 07:00 y 17:00.":"Inicia tu jornada entre 07:00 y 17:00, hora de México.");
-        if(iniciar&&jornada!=null&&jornada.isFinalizada())throw new ResponseStatusException(HttpStatus.CONFLICT,"La jornada de hoy ya terminó. No se puede reiniciar.");
+        boolean reanudable = aplicable && enHorario && !metaCumplida
+                && puedeReanudar(jornada, miembro, fecha, otrosSegundos);
+        if(iniciar&&jornada!=null&&jornada.isFinalizada()&&!reanudable)throw new ResponseStatusException(HttpStatus.CONFLICT,"La jornada de hoy no se puede continuar. Revisa el horario, la meta y la validación del registro.");
         String aviso = "";
+        if (iniciar && reanudable) {
+            // Reanudar es una acción explícita. Conserva el registro y evita acreditar el intervalo cerrado.
+            RegistroHoras registro = registros.findById(jornada.getIdRegistro()).orElseThrow();
+            if (!jornada.isModoContinuo()) registro.setDescripcion(CONTINUA);
+            jornada.setFinalizada(false); jornada.setMotivoCierre(""); jornada.setModoContinuo(true);
+            jornada.setLiquidado(ahora.getEpochSecond()); jornada.setUltimaSenal(ahora.getEpochSecond());
+            jornada.setConexiones(""); registro.setHoraSalida(null);
+            registros.save(registro); jornadas.save(jornada);
+            aviso = "Tu jornada continúa desde ahora, conservando las horas de hoy que ya tenías registradas.";
+        }
         if (iniciar && aplicable && enHorario && jornada == null && !metaCumplida) {
             // Una jornada manual abierta debe resolverse antes de empezar otra: no se duplican tiempos.
             List<RegistroHoras> abiertas = registros.buscarJornadasPendientesAbiertas(miembro.getId()).stream()
@@ -154,9 +170,10 @@ public class AsistenciaAutomaticaService {
         if (retirar && jornada != null && !jornada.isFinalizada()) {
             renovarConexion(jornada, pagina, ahora, true); jornadas.save(jornada);
         }
-        if(finalizar && jornada!=null && !jornada.isFinalizada()) {jornada.setFinalizada(true);cerrarRegistro(jornada,ahora.isAfter(fin(fecha))?fin(fecha):ahora);jornadas.save(jornada);alertarFaltante(jornada);}
+        if(finalizar && jornada!=null && !jornada.isFinalizada()) {jornada.setFinalizada(true);jornada.setMotivoCierre("FINALIZACION_ALUMNO");cerrarRegistro(jornada,ahora.isAfter(fin(fecha))?fin(fecha):ahora);jornadas.save(jornada);alertarFaltante(jornada);}
         Map<String, Object> salida = new LinkedHashMap<>();
         salida.put("estado", "correcto"); salida.put("aplicable", aplicable);
+        salida.put("perfilAlumno", esAlumno(alumno));
         salida.put("fecha", fecha.toString()); salida.put("zonaHoraria", ZONA.getId());
         salida.put("horario", "Lunes a viernes, 07:00 a 17:00"); salida.put("metaHoras", 10);
         salida.put("servidorEpoch", ahora.getEpochSecond());
@@ -165,8 +182,10 @@ public class AsistenciaAutomaticaService {
         salida.put("modoContinuo",continua);salida.put("reposicion",jornada!=null&&jornada.isReposicion());
         salida.put("limiteSegundos",limiteHoy);salida.put("reposicionPendienteSegundos",saldoReposicion(idUsuario));
         salida.put("puedeIniciar",aplicable&&enHorario&&!metaCumplida&&(jornada==null||!jornada.isFinalizada()&&!continua));
+        salida.put("puedeReanudar",aplicable&&enHorario&&!metaCumplida&&puedeReanudar(jornada,miembro,fecha,otrosSegundos));
         salida.put("puedeFinalizar",aplicable&&continua&&!jornada.isFinalizada());
         salida.put("finalizada",jornada!=null&&jornada.isFinalizada());
+        salida.put("motivoCierre",jornada==null?"":Objects.toString(jornada.getMotivoCierre(),""));
         salida.put("segundosJornada",jornada==null?0:jornada.getTotalSegundos());
         salida.put("reporteHabilitado",!ahora.isBefore(fecha.atTime(16,0).atZone(ZONA).toInstant()));
         salida.put("segundosHastaReporte",Math.max(0,Duration.between(ahora,fecha.atTime(16,0).atZone(ZONA).toInstant()).getSeconds()));
@@ -193,10 +212,23 @@ public class AsistenciaAutomaticaService {
                 : "Tu conexión queda registrada. Las horas de estadía corresponden a alumnos activos."
                 : !esDiaHabil(fecha) && (jornada==null||!jornada.isReposicion()) ? reposicionPendiente>0?"Puedes reponer tus horas pendientes el fin de semana, de 07:00 a 17:00.":"No tienes horas pendientes para iniciar una reposición."
                 : !enHorario ? "El horario de asistencia es de 07:00 a 17:00."
-                : jornada!=null&&jornada.isFinalizada()?"La jornada terminó. Revisa tus reportes y el saldo de reposición."
+                : jornada!=null&&jornada.isFinalizada()? reanudable
+                ? "Puedes continuar tu jornada de hoy. Se conservarán las horas registradas y el conteo seguirá desde que pulses Continuar mi jornada."
+                : "La jornada terminó. Revisa tus reportes y el saldo de reposición."
                 : continua ? "El servidor cuenta tu jornada aunque cierres o suspendas la laptop. Finaliza al terminar; cierre automático a las 17:00. La conexión y las actividades se revisan por separado."
                 : "Pulsa Iniciar mi jornada para trabajar en tus proyectos. El reporte diario se habilita a las 16:00, hora de Ciudad de México.");
         return salida;
+    }
+
+    private boolean puedeReanudar(JornadaAutomatica jornada, MiembroEquipo miembro, LocalDate fecha, long otrosSegundos) {
+        if (jornada == null || miembro == null || !jornada.isFinalizada() || !fecha.equals(jornada.getFecha())) return false;
+        String motivo = Objects.toString(jornada.getMotivoCierre(), "");
+        if (!Set.of("", "CAMBIO_PERFIL", "FINALIZACION_ALUMNO").contains(motivo)) return false;
+        long limite = Math.max(0, Math.min(jornada.getLimiteSegundos(), 36000 - otrosSegundos));
+        if (jornada.getTotalSegundos() >= limite || jornada.isReposicion() && saldoReposicion(jornada.getIdUsuario()) == 0) return false;
+        return registros.findById(jornada.getIdRegistro()).filter(r ->
+                miembro.getId().equals(r.getIdMiembro()) && fecha.equals(r.getFecha())
+                        && "Pendiente".equalsIgnoreCase(r.getEstadoValidacion())).isPresent();
     }
 
     private void renovarConexion(JornadaAutomatica jornada, String pagina, Instant ahora, boolean retirar) {
@@ -224,7 +256,7 @@ public class AsistenciaAutomaticaService {
         long incremento = esDiaHabil(jornada.getFecha())||jornada.isReposicion() ? Math.max(0, hasta - desde) : 0;
         RegistroHoras registro = registros.findById(jornada.getIdRegistro()).orElseThrow(
                 () -> new IllegalStateException("No se encontró el registro de la asistencia automática."));
-        if(jornada.isModoContinuo()&&!"Pendiente".equalsIgnoreCase(registro.getEstadoValidacion())){jornada.setFinalizada(true);jornadas.save(jornada);return;}
+        if(jornada.isModoContinuo()&&!"Pendiente".equalsIgnoreCase(registro.getEstadoValidacion())){jornada.setFinalizada(true);jornada.setMotivoCierre("REGISTRO_VALIDADO");jornadas.save(jornada);return;}
         long limite = Math.max(0,Math.min(jornada.getLimiteSegundos(),36000-segundosOtros(registro.getIdMiembro(),jornada.getFecha(),registro.getId())));
         if(jornada.isReposicion())limite=Math.min(limite,jornada.getTotalSegundos()+saldoReposicion(jornada.getIdUsuario()));
         incremento = Math.min(incremento,Math.max(0,limite-jornada.getTotalSegundos()));
@@ -234,6 +266,7 @@ public class AsistenciaAutomaticaService {
         registro.setHorasTrabajadas(horas(jornada.getTotalSegundos()));
         if (!ahora.isBefore(fin(jornada.getFecha())) || jornada.isModoContinuo()&&jornada.getTotalSegundos()>=limite) {
             jornada.setFinalizada(true);
+            jornada.setMotivoCierre(!ahora.isBefore(fin(jornada.getFecha())) ? "FIN_HORARIO" : "META_CUBIERTA");
             long cierre=jornada.isModoContinuo()?desde+incremento:Math.max(desde,hasta);
             registro.setHoraSalida(Instant.ofEpochSecond(Math.min(fin(jornada.getFecha()).getEpochSecond(),cierre)).atZone(ZONA).toLocalTime().withNano(0));
         }

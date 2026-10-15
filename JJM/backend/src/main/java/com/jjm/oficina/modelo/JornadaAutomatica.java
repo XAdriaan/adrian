@@ -16,6 +16,7 @@ public class JornadaAutomatica {
     @Column(name = "ultima_senal_epoch", nullable = false) private long ultimaSenal;
     @Column(name = "liquidado_epoch", nullable = false) private long liquidado;
     @Column(nullable = false) private boolean finalizada;
+    @Column(name = "motivo_cierre", nullable = false, length = 40) private String motivoCierre = "";
     @Column(name = "modo_continuo", nullable = false) private boolean modoContinuo;
     @Column(nullable = false) private boolean reposicion;
     @Column(name = "limite_segundos", nullable = false) private long limiteSegundos = 36000;
@@ -36,6 +37,8 @@ public class JornadaAutomatica {
     public void setLiquidado(long value) { liquidado = value; }
     public boolean isFinalizada() { return finalizada; }
     public void setFinalizada(boolean value) { finalizada = value; }
+    public String getMotivoCierre() { return motivoCierre; }
+    public void setMotivoCierre(String value) { motivoCierre = value == null ? "" : value; }
     public boolean isModoContinuo() { return modoContinuo; }
     public void setModoContinuo(boolean value) { modoContinuo = value; }
     public boolean isReposicion() { return reposicion; }
