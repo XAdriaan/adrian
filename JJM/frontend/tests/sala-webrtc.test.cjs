@@ -92,9 +92,9 @@ test('el audio remoto se reproduce en una salida independiente aunque su cámara
  const track={kind:'audio',readyState:'live'};p.pc.ontrack({track,transceiver:p.pc.trans[0]});
  assert.equal(reproducciones,1);assert.equal(p.video.hidden,true);assert.equal(p.audioSalida.srcObject.getTracks()[0],track);assert.equal(p.audioSalida.muted,false);assert.equal(p.etiqueta.textContent,'PWEB · Alumno');
 });
-test('el segundo dispositivo propio transmite pero no reproduce su propia voz como eco',async()=>{
+test('el segundo dispositivo de la misma cuenta también se escucha',async()=>{
  const {sala}=entorno();sala.id='a';sala.enviar=async()=>{};
  await sala.sincronizar([{id:'a',usuario:7},{id:'b',usuario:7,nombre:'Misma cuenta'}]);const p=sala.peers.get('b');
- p.pc.ontrack({track:{kind:'audio',readyState:'live'},transceiver:p.pc.trans[0]});assert.equal(p.audioSalida.muted,true);
+ p.pc.ontrack({track:{kind:'audio',readyState:'live'},transceiver:p.pc.trans[0]});assert.equal(p.audioSalida.muted,false);
  const micro={kind:'audio',enabled:true};await sala.cambiar('audio',micro);assert.equal(p.pc.trans[0].pista,micro);
 });

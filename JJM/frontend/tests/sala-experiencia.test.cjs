@@ -88,5 +88,16 @@ test('la escucha Web Audio conecta solo participantes remotos y silencia la sali
  e.rtc.peers.set('otro',{persona:{usuario:8},audioSalida:{muted:false},stream:{getAudioTracks:()=>[{readyState:'live'}]}});
  e.rtc.peers.set('mi-celular',{persona:{usuario:7},audioSalida:{muted:false},stream:{getAudioTracks:()=>[{readyState:'live'}]}});
  e.experiencia.audio={state:'running',destination:{},createMediaStreamSource:()=>({connect(){},disconnect(){}}),createAnalyser:()=>({connect(){salidas++;},disconnect(){}})};
- e.experiencia.actualizarAnalizadores();assert.equal(salidas,1);assert.equal(e.rtc.peers.get('otro').audioSalida.muted,true);assert.equal(e.rtc.usaWebAudio,true);
+ e.experiencia.actualizarAnalizadores();assert.equal(salidas,2);assert.equal(e.rtc.peers.get('otro').audioSalida.muted,true);assert.equal(e.rtc.usaWebAudio,true);
+});
+
+test('si falla Web Audio o se suspende, la salida HTML permanece audible',()=>{
+ const e=entorno(),pista={readyState:'live'},p={audioSalida:{muted:true},stream:{getAudioTracks:()=>[pista]}};e.rtc.peers.set('otro',p);
+ e.experiencia.audio={state:'running',createMediaStreamSource(){throw Error('No disponible');}};
+ assert.doesNotThrow(()=>e.experiencia.actualizarAnalizadores());assert.equal(p.audioSalida.muted,false);
+ e.experiencia.audio.state='suspended';p.audioSalida.muted=true;e.experiencia.actualizarAnalizadores();assert.equal(p.audioSalida.muted,false);
+});
+test('compartir la propia pantalla conserva transmisión sin mostrar una vista recursiva',()=>{
+ const e=entorno(),pista={kind:'video',readyState:'live'};e.rtc.medios.pantalla=pista;e.rtc.lista=[{id:'yo',nombre:'Yo',pantalla:true}];
+ e.experiencia.actualizar();assert.equal(e.el('videoPrincipal').hidden,true);assert.match(e.el('avatarPrincipal').textContent,/vista previa se oculta/);assert.equal(e.rtc.medios.pantalla,pista);
 });

@@ -183,15 +183,24 @@
             }
         }
         actualizarAnalizadores(){
-            if(!this.audio||this.audio.state!=='running')return;
-            this.rtc.usaWebAudio=true;for(const p of this.rtc.peers.values())if(p.audioSalida)p.audioSalida.muted=true;
+            const funcionando=this.audio?.state==='running';
+            this.rtc.usaWebAudio=!!funcionando;
             const pistas=new Map();if(this.rtc.medios.audio?.readyState==='live')pistas.set(this.rtc.id,this.rtc.medios.audio);
             for(const [id,p] of this.rtc.peers){const t=p.stream.getAudioTracks?.()[0];if(t?.readyState==='live')pistas.set(id,t);}
-            for(const [id,a] of this.analizadores)if(pistas.get(id)!==a.pista){a.fuente.disconnect();a.analizador.disconnect();this.analizadores.delete(id);}
-            for(const [id,pista] of pistas)if(!this.analizadores.has(id)){
-                const fuente=this.audio.createMediaStreamSource(new MediaStream([pista])),analizador=this.audio.createAnalyser();analizador.fftSize=512;fuente.connect(analizador);const persona=this.rtc.peers.get(id)?.persona;if(id!==this.rtc.id&&!(this.rtc.usuario&&persona?.usuario===this.rtc.usuario))analizador.connect(this.audio.destination);this.analizadores.set(id,{pista,fuente,analizador,datos:new Float32Array(512)});
+            for(const [id,a] of this.analizadores)if(pistas.get(id)!==a.pista||!funcionando){a.fuente.disconnect();a.analizador.disconnect();this.analizadores.delete(id);}
+            for(const [id,pista] of pistas)if(funcionando&&!this.analizadores.has(id)){
+                let fuente,analizador;
+                try{
+                    fuente=this.audio.createMediaStreamSource(new MediaStream([pista]));analizador=this.audio.createAnalyser();analizador.fftSize=512;fuente.connect(analizador);
+                    // Cada conexión remota debe oírse, incluso si comparte la cuenta.
+                    const salida=id!==this.rtc.id;if(salida)analizador.connect(this.audio.destination);
+                    this.analizadores.set(id,{pista,fuente,analizador,salida,datos:new Float32Array(512)});
+                }catch(_){fuente?.disconnect();analizador?.disconnect();}
             }
+            // Silenciar la salida HTML solo después de conectar una alternativa funcional.
+            for(const [id,p] of this.rtc.peers)if(p.audioSalida)p.audioSalida.muted=!!(funcionando&&this.analizadores.get(id)?.salida);
         }
+
         vigilar(){
             this.timer=setInterval(()=>{
                 if(!this.rtc.activa){for(const a of this.analizadores.values())a.fuente.disconnect();this.analizadores.clear();return;}
@@ -211,14 +220,15 @@
             const lista=this.rtc.lista,propia={id:this.rtc.id,nombre:'Tú',...this.rtc.estadoLocal};
             const presenta=lista.find(p=>p.pantalla),destacada=presenta || lista.find(p=>p.id===this.hablante) || lista.find(p=>p.id!==this.rtc.id&&p.video) || lista.find(p=>p.video) || propia;
             const peer=this.rtc.peers.get(destacada.id);let fuente;
-            if(presenta)fuente=presenta.id===this.rtc.id?(this.rtc.medios.pantalla?new MediaStream([this.rtc.medios.pantalla]):null):peer?.pantallaVideo.srcObject;
+            if(presenta)fuente=presenta.id===this.rtc.id?null:peer?.pantallaVideo.srcObject;
             else fuente=destacada.id===this.rtc.id?this.rtc.videoLocal?.srcObject:peer?.video.srcObject;
             // Mantener el mismo objeto evita reiniciar el video cada 250 ms.
             const pistas=fuente?.getVideoTracks?.() || [];const actuales=this.video.srcObject?.getVideoTracks?.() || [];
             const cambiaPistas=pistas.length!==actuales.length || pistas.some(t=>!actuales.includes(t));
             if(cambiaPistas || this.identidadVista!==destacada.id){this.identidadVista=destacada.id;this.ajustarVista();}
             if(cambiaPistas){this.video.srcObject=fuente || null;this.video.play().catch(()=>{});}
-            const visible=!!(pistas.some(t=>t.readyState==='live') && (presenta || destacada.video));this.video.hidden=!visible;this.avatar.hidden=visible;this.avatar.textContent=String(destacada.nombre||'JJM').slice(0,1).toUpperCase();
+            const visible=!!(pistas.some(t=>t.readyState==='live') && (presenta || destacada.video));this.video.hidden=!visible;this.avatar.hidden=visible;this.avatar.textContent=presenta?.id===this.rtc.id?'Estás compartiendo pantalla. Abre el documento o la ventana que vas a presentar. La vista previa se oculta aquí para evitar el efecto espejo.':String(destacada.nombre||'JJM').slice(0,1).toUpperCase();
+            this.avatar.classList.toggle('sala-compartiendo-propia',presenta?.id===this.rtc.id);
             el('nombrePrincipal').textContent=`${destacada.proyectos?destacada.proyectos+' · ':''}${destacada.nombre||'Participante'}${presenta?' · Compartiendo pantalla':destacada.id===this.hablante?' · Hablando':''}`;
             el('tituloPresentacion').textContent=presenta?'Pantalla compartida':this.hablante?'Participante que habla':'Vista principal';
             this.actualizarTamanoVista();

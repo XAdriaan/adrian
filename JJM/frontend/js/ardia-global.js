@@ -152,7 +152,7 @@
 
         mensaje(`Hola, ${usuario.nombreCompleto||usuario.nombre||'bienvenido'}. Soy Ard.IA. Ya estás dentro de JJM. Puedo consultar tus horas, tu seguimiento y tus salas, o llevarte al apartado que necesitas. Pulsa Escuchar respuesta para oírme.`);enlaces(buscar(''));estado.textContent='Lista para ayudarte';
         window.PMOArdia={abrir,cerrar,preguntar};
-        if(sessionStorage.getItem('ardia-bienvenida')===String(usuario.id)){sessionStorage.removeItem('ardia-bienvenida');abrir(false);}
+        if(sessionStorage.getItem('ardia-bienvenida')===String(usuario.id)){sessionStorage.removeItem('ardia-bienvenida');}
     }
     async function iniciar(){token=localStorage.getItem('sesionTokenPMO');if(!token||typeof window.restaurarSesionPMO!=='function')return;usuario=await window.restaurarSesionPMO();if(!usuario?.id||localStorage.getItem('sesionTokenPMO')!==token)return;montar();}
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',iniciar,{once:true});else iniciar();

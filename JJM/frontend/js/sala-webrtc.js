@@ -75,7 +75,7 @@
                     if (!flujo.getTracks().includes(e.track)) flujo.addTrack(e.track); video.srcObject=flujo;
                     if(e.track.kind==='audio'){
                         p.audioSalida.srcObject=new MediaStream([e.track]);
-                        p.audioSalida.muted=!!this.usaWebAudio||(!!this.usuario&&persona.usuario===this.usuario);
+                        p.audioSalida.muted=false;
                         p.audioSalida.play().catch(()=>{this.estado.textContent='Toca Entrar o cualquier control de la sala para habilitar la escucha.';});
                     }
                     video.play().catch(()=>{});

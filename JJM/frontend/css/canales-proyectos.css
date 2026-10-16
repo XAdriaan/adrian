@@ -3,3 +3,5 @@
 @media(max-width:1000px){.canales-layout{grid-template-columns:220px minmax(0,1fr)}.canal-calendario{grid-template-columns:repeat(4,minmax(0,1fr))}.canal-dia{padding:9px}.canal-cabecera{padding:16px}.canal-espacio>section{padding:16px}.proyectos-canales-layout{grid-template-columns:180px minmax(0,1fr)}}
 @media(max-width:650px){.canales-layout{display:block}.canales-listado{border-right:0;border-bottom:1px solid #344e71}.canales-listado nav{max-height:220px}.canal-form{grid-template-columns:1fr}.canal-calendario{grid-template-columns:repeat(3,minmax(0,1fr))}.canal-toolbar{gap:8px}.canal-item{align-items:flex-start;flex-direction:column}.canal-cabecera h2{font-size:17px}}
 @media(max-width:650px){.proyectos-canales-layout{display:block}.proyectos-canales-layout .canales-listado{margin-bottom:16px;max-height:260px;overflow:auto}} .canal-form[hidden]{display:none!important}
+
+.canales-listado a{min-width:0}.canales-listado a span:last-child{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
