@@ -846,6 +846,7 @@ public class ProyectoController {
 
         respuesta.put("id", proyecto.getId());
         respuesta.put("historialIntegradoId",separacion.origenDe(proyecto));
+        respuesta.put("claveAsignada",catalogoProyectosSepDic2026Service.obtenerClaveAsignada(proyecto));
         respuesta.put("etiquetaCorta",catalogoProyectosSepDic2026Service.obtenerEtiquetaCorta(proyecto));
         respuesta.put("idOrganizacion", proyecto.getIdOrganizacion());
         respuesta.put("idResponsable", proyecto.getIdResponsable());

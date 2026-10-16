@@ -72,7 +72,7 @@ function errorMediosSala(e, tipo) {
     const dispositivo = (tipo === 'audio' ? 'el ' : 'la ') + nombre;
     if (e.name === 'NotAllowedError' || e.name === 'SecurityError') return tipo === 'pantalla'
         ? 'No se compartió la pantalla. Vuelve a pulsar Compartir pantalla y elige una pestaña, ventana o pantalla.'
-        : `El permiso para usar ${dispositivo} está bloqueado. Abre el candado junto a la dirección, permite ${dispositivo} y pulsa el botón otra vez.`;
+        : `El permiso para usar ${dispositivo} está bloqueado. Abre el candado junto a la dirección, permite ${dispositivo} y pulsa el botón otra vez. En Android, cierra las burbujas y superposiciones de otras aplicaciones si impiden solicitar el permiso.`;
     if (e.name === 'NotFoundError') return `No se encontró ${nombre}. Conecta el dispositivo y vuelve a intentarlo.`;
     if (e.name === 'TimeoutError') return `La espera para activar ${dispositivo} terminó. Revisa el aviso de permiso junto a la dirección y pulsa el botón otra vez. Si ya diste permiso, cierra otras aplicaciones que usen el dispositivo.`;
     if (e.name === 'NotReadableError' || e.name === 'AbortError') return `No se pudo abrir ${dispositivo}. Cierra otras aplicaciones que usen el dispositivo y revisa los permisos de Windows.`;
@@ -131,7 +131,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         };
         fondosSala=new window.PMOFondosSala({alCambiar:async pista=>{if(rtc?.activa){await rtc.cambiar('video',pista);actualizarMediosSala();}},alError:e=>{avisoMediosSala(e.message);document.getElementById('fondoSala').value='ninguno';}});
         meetingLoadingMessage.textContent = (esSalaGeneral ? "Todos los usuarios con sesión pueden entrar." : "Acceso exclusivo para administración y miembros asignados al proyecto.")
-            + " Entras con cámara y micrófono apagados. Después actívalos desde la barra de controles.";
+            + " Pulsa Entrar para habilitar la escucha. Entras con micrófono y cámara apagados; los alumnos tienen cinco minutos para encender la cámara. Si usas dos dispositivos cercanos, utiliza audífonos para evitar eco.";
         btnEntrarSala.hidden = false; estadoReunion.textContent = "Sala lista. Pulsa Entrar a la sala.";
         configurarEventos(); iniciarTemporizador(); renderizarGrabacionesLocales();
         document.querySelector("[data-grabaciones-sala]").dataset.grabacionesSala=esSalaGeneral?"general":String(idReunion);
@@ -155,6 +155,7 @@ async function cargarProyecto() {
 }
 function restablecerControles() {
     detenerPruebaMicro();
+    const avisoCamara=document.getElementById('avisoCamaraObligatoria');if(avisoCamara)avisoCamara.hidden=true;
     experienciaSala?.restaurar();meetingLoading?.classList.remove('hidden');
     if(meetingLoadingMessage)meetingLoadingMessage.textContent='La llamada se cerró. Pulsa Entrar a la sala para volver a intentarlo.';
     const mano=document.getElementById('btnManoSala');if(mano){mano.setAttribute('aria-pressed','false');mano.textContent='✋ Levantar la mano';}
@@ -179,6 +180,7 @@ function configurarEventos() {
     });
     btnMicrofono.addEventListener('click',()=>activarMedio('audio',btnMicrofono));
     btnCamara.addEventListener('click',()=>activarMedio('video',btnCamara));
+    document.getElementById('btnCamaraAviso')?.addEventListener('click',()=>{if(!camaraPropia?.enabled)activarMedio('video',btnCamara);});
     const selectorCamara=document.getElementById('selectorCamara');
     selectorCamara?.addEventListener('change',async()=>{
         if(!rtc?.activa||mediosPendientes.has('video'))return;
@@ -245,7 +247,7 @@ async function activarMedio(tipo, boton) {
             const dispositivo=document.getElementById('selectorCamara')?.value;
             const video={width:{ideal:640},height:{ideal:360},...(dispositivo?{deviceId:{exact:dispositivo}}:{})};
             try { flujo=tipo==='audio'&&window.PMOMicrofono?await window.PMOMicrofono.obtener(document.getElementById('selectorMicrofono')?.value||''):await solicitarDispositivo(tipo==='audio'?{audio:{echoCancellation:true,noiseSuppression:true},video:false}:{video,audio:false}); }
-            catch(e) { if (tipo!=='video'||dispositivo||!['OverconstrainedError','NotFoundError'].includes(e.name)) throw e; flujo=await solicitarDispositivo({video:true,audio:false}); }
+            catch(e) { if (tipo!=='video'||!['OverconstrainedError','NotFoundError'].includes(e.name)) throw e;const selector=document.getElementById('selectorCamara');if(selector)selector.value=''; flujo=await solicitarDispositivo({video:true,audio:false}); }
             if (!sala.activa || sala.generacion!==epoca) { flujo.getTracks().forEach(t=>t.stop()); return; }
             const pista=tipo==='audio'?flujo.getAudioTracks()[0]:flujo.getVideoTracks()[0];
             if(!pista){flujo.getTracks().forEach(t=>t.stop());throw new Error('El dispositivo no entregó una señal. Vuelve a intentarlo.');}

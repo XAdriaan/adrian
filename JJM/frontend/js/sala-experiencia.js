@@ -128,7 +128,8 @@
                 this.restaurar();this.rtc.estado.textContent='Tu llamada sigue activa. Para cambiar de sala, sal de esta llamada primero.';
             });
             window.addEventListener('storage',e=>{if(e.key==='sesionTokenPMO'&&!e.newValue){this.rtc.salir();window.location.replace('login.html');}});
-            document.addEventListener('keydown',e=>{if(e.key==='Escape')this.cerrarOpciones();});
+            document.addEventListener('keydown',e=>{if(e.key==='Escape'){this.cerrarOpciones();const menu=el('masOpcionesSala');if(menu?.open){menu.open=false;menu.querySelector('summary')?.focus();}}});
+            el('masOpcionesSala')?.addEventListener('click',e=>{if(e.target.closest('button'))el('masOpcionesSala').open=false;});
             // La interacción habitual con la sala permite reintentar el audio
             // bloqueado por el navegador sin encender el micrófono del usuario.
             this.gestoAudio=e=>{
@@ -153,6 +154,13 @@
             if(contar&&el('panelChatSala').hidden&&dato.origen!==this.rtc.id){el('chatNoLeidos').textContent=String(++this.noLeidos);}
         }
         interaccion(e){
+            if(e.tipo==='camara-control'){
+                const aviso=el('avisoCamaraObligatoria');if(!aviso)return;
+                aviso.hidden=!e.datos.obligatoria||!e.datos.aviso;
+                if(!aviso.hidden){const n=e.datos.aviso,resto=Number(e.datos.segundosRestantes)||0;
+                    el('textoAvisoCamara').textContent=`Aviso ${n} de 3: enciende tu cámara. La llamada se cerrará en ${Math.floor(resto/60)}:${String(resto%60).padStart(2,'0')} si sigue apagada. Basta encenderla en uno de tus dos dispositivos.`;
+                }return;
+            }
             if(e.tipo==='historial'){for(const dato of e.datos)this.mensaje(dato,false);return;}
             if(e.tipo==='chat'){this.mensaje(e.datos);return;}
             const capa=el('reaccionesSala'),aviso=document.createElement('div');aviso.className='sala-reaccion';
@@ -169,18 +177,19 @@
         reproducirAudioRemoto(){
             if(!this.rtc.activa)return;
             for(const p of this.rtc.peers.values()){
-                if(p.video?.paused && p.stream?.getAudioTracks?.().some(t=>t.readyState==='live')){
-                    try{p.video.play().catch(()=>{});}catch(_){}
+                if(p.audioSalida?.paused && p.stream?.getAudioTracks?.().some(t=>t.readyState==='live')){
+                    try{p.audioSalida.play().catch(()=>{});}catch(_){}
                 }
             }
         }
         actualizarAnalizadores(){
             if(!this.audio||this.audio.state!=='running')return;
+            this.rtc.usaWebAudio=true;for(const p of this.rtc.peers.values())if(p.audioSalida)p.audioSalida.muted=true;
             const pistas=new Map();if(this.rtc.medios.audio?.readyState==='live')pistas.set(this.rtc.id,this.rtc.medios.audio);
             for(const [id,p] of this.rtc.peers){const t=p.stream.getAudioTracks?.()[0];if(t?.readyState==='live')pistas.set(id,t);}
             for(const [id,a] of this.analizadores)if(pistas.get(id)!==a.pista){a.fuente.disconnect();a.analizador.disconnect();this.analizadores.delete(id);}
             for(const [id,pista] of pistas)if(!this.analizadores.has(id)){
-                const fuente=this.audio.createMediaStreamSource(new MediaStream([pista])),analizador=this.audio.createAnalyser();analizador.fftSize=512;fuente.connect(analizador);this.analizadores.set(id,{pista,fuente,analizador,datos:new Float32Array(512)});
+                const fuente=this.audio.createMediaStreamSource(new MediaStream([pista])),analizador=this.audio.createAnalyser();analizador.fftSize=512;fuente.connect(analizador);const persona=this.rtc.peers.get(id)?.persona;if(id!==this.rtc.id&&!(this.rtc.usuario&&persona?.usuario===this.rtc.usuario))analizador.connect(this.audio.destination);this.analizadores.set(id,{pista,fuente,analizador,datos:new Float32Array(512)});
             }
         }
         vigilar(){
@@ -210,7 +219,7 @@
             if(cambiaPistas || this.identidadVista!==destacada.id){this.identidadVista=destacada.id;this.ajustarVista();}
             if(cambiaPistas){this.video.srcObject=fuente || null;this.video.play().catch(()=>{});}
             const visible=!!(pistas.some(t=>t.readyState==='live') && (presenta || destacada.video));this.video.hidden=!visible;this.avatar.hidden=visible;this.avatar.textContent=String(destacada.nombre||'JJM').slice(0,1).toUpperCase();
-            el('nombrePrincipal').textContent=`${destacada.nombre||'Participante'}${presenta?' · Compartiendo pantalla':destacada.id===this.hablante?' · Hablando':''}`;
+            el('nombrePrincipal').textContent=`${destacada.proyectos?destacada.proyectos+' · ':''}${destacada.nombre||'Participante'}${presenta?' · Compartiendo pantalla':destacada.id===this.hablante?' · Hablando':''}`;
             el('tituloPresentacion').textContent=presenta?'Pantalla compartida':this.hablante?'Participante que habla':'Vista principal';
             this.actualizarTamanoVista();
         }

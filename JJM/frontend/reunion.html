@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="css/sala-v10.css?v=20261012-v16">
 <link rel="stylesheet" href="css/sala-v20.css?v=20261014-v24">
 <link rel="stylesheet" href="css/sala-v24.css?v=20261014-v24">
+    <link rel="stylesheet" href="css/sala-v26.css?v=20261015-v26">
 </head>
 <body>
 <div class="meeting-app">
@@ -43,6 +44,7 @@
     </header>
 
     <p class="meeting-device-alert" id="avisoMedios" role="alert" hidden></p>
+    <aside id="avisoCamaraObligatoria" role="status" hidden><span id="textoAvisoCamara"></span><button id="btnCamaraAviso" type="button" class="meeting-btn">Encender cámara</button></aside>
     <main class="meeting-main">
         <section class="meeting-stage" aria-label="Videollamada de proyecto">
             <div class="sala-distribucion">
@@ -104,18 +106,11 @@
             <button id="btnPantalla" class="call-control" type="button" aria-pressed="false" disabled>Compartir pantalla</button>
         </div>
         <div class="meeting-controls-tools">
-            <button type="button" class="meeting-btn secondary" id="btnAbrirPruebaMicrofono" aria-expanded="false" aria-controls="dispositivosSala">Probar micrófono</button>
             <button type="button" class="meeting-btn secondary" id="btnManoSala" aria-pressed="false">✋ Levantar la mano</button>
             <button type="button" class="meeting-btn secondary" id="btnChatSala" aria-expanded="false" aria-controls="panelChatSala">Chat <span id="chatNoLeidos"></span></button>
-            <button type="button" class="meeting-btn secondary" id="btnReaccionesSala" aria-expanded="false" aria-controls="opcionesReacciones">Reacciones</button>
-            <button type="button" class="meeting-btn secondary" id="btnFondosSala" aria-expanded="false" aria-controls="opcionesFondos">Fondos</button>
-            <button type="button" class="meeting-btn secondary" id="btnCapturasSala" aria-expanded="false" aria-controls="opcionesCapturas">📷 Fotos y capturas</button>
-            <button type="button" class="meeting-btn record" id="btnGrabar">● Grabar</button>
             <button type="button" class="meeting-btn warning" id="btnDetenerGrabacion" hidden>■ Detener grabación</button>
-            <button type="button" class="meeting-btn secondary" id="btnPanelGrabaciones" aria-expanded="false" aria-controls="panelGrabaciones">Grabaciones</button>
-            <button type="button" class="meeting-btn secondary" id="btnCopiarEnlace">Invitar</button>
+            <details id="masOpcionesSala" class="sala-mas-opciones"><summary>⋯ Más</summary><div class="sala-menu-herramientas"><button type="button" class="meeting-btn secondary" id="btnAbrirPruebaMicrofono" aria-expanded="false" aria-controls="dispositivosSala">Probar micrófono</button><button type="button" class="meeting-btn secondary" id="btnReaccionesSala" aria-expanded="false" aria-controls="opcionesReacciones">Reacciones</button><button type="button" class="meeting-btn secondary" id="btnFondosSala" aria-expanded="false" aria-controls="opcionesFondos">Fondos</button><button type="button" class="meeting-btn secondary" id="btnCapturasSala" aria-expanded="false" aria-controls="opcionesCapturas">📷 Fotos y capturas</button><button type="button" class="meeting-btn record" id="btnGrabar">● Grabar</button><button type="button" class="meeting-btn secondary" id="btnPanelGrabaciones" aria-expanded="false" aria-controls="panelGrabaciones">Grabaciones</button><button type="button" class="meeting-btn secondary" id="btnCopiarEnlace">Invitar</button><button type="button" class="meeting-btn danger" id="btnFinalizarReunion" hidden>Finalizar para todos</button></div></details>
             <button type="button" class="meeting-btn hangup" id="btnColgarReunion">Salir de la llamada</button>
-            <button type="button" class="meeting-btn danger" id="btnFinalizarReunion" hidden>Finalizar para todos</button>
         </div>
         <button id="btnSalirMini" type="button" class="meeting-btn hangup" hidden>Colgar</button>
     </nav>
@@ -125,13 +120,13 @@
 <div id="opcionesCapturas" class="sala-opciones" hidden><h2>Fotos y capturas</h2><p>La imagen se descarga en tu equipo. Al capturar la reunión se avisa a todos los participantes.</p><button id="btnFotoCamara" class="meeting-btn" type="button">Tomar foto con mi cámara</button><button id="btnFotoReunion" class="meeting-btn secondary" type="button">Capturar reunión y presentación</button><p id="estadoCapturaSala" role="status"></p></div>
 <iframe id="oficinaDuranteLlamada" title="Oficina de Proyectos durante la llamada" hidden></iframe>
 
-<script src="js/microfono.js?v=20261013-v21"></script>
-<script src="js/api-config.js?v=20261014-v25"></script>
-<script src="js/sala-webrtc.js?v=20261014-v24"></script>
+<script src="js/microfono.js?v=20261015-v26"></script>
+<script src="js/api-config.js?v=20261015-v26"></script>
+<script src="js/sala-webrtc.js?v=20261015-v26"></script>
 <script src="js/sala-fondos.js?v=20261013-v20"></script>
-<script src="js/sala-experiencia.js?v=20261014-v25"></script>
+<script src="js/sala-experiencia.js?v=20261015-v26"></script>
 <script src="js/grabaciones.js?v=20261005-v10"></script>
-<script src="js/reunion.js?v=20261014-v24"></script>
+<script src="js/reunion.js?v=20261015-v26"></script>
 <script src="js/ardia-global.js?v=20261014-v24"></script>
 </body>
 </html>

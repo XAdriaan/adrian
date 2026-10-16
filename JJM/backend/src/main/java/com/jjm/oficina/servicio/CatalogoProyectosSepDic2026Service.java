@@ -537,6 +537,19 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
                 .orElse(proyecto.getNombre());
     }
 
+    /** Clave de la columna Proyecto Asignado del PDF, independiente del ID interno. */
+    public String obtenerClaveAsignada(Proyecto proyecto) {
+        if(proyecto==null)return "";
+        String codigo=java.util.Objects.toString(proyecto.getCodigo(),"");
+        Map<String,String> partes=Map.ofEntries(
+            Map.entry("JJM-SD26-02-A","E-Learning"),Map.entry("JJM-SD26-02-B","PWEB"),Map.entry("JJM-SD26-02-C","PPCV"),
+            Map.entry("JJM-SD26-03-A","JJM"),Map.entry("JJM-SD26-03-B","PCP"),
+            Map.entry("JJM-SD26-04-A","Compranet"),Map.entry("JJM-SD26-04-B","Proyectos"),Map.entry("JJM-SD26-04-C","Publicidad"),
+            Map.entry("JJM-SD26-05-A","Otorrino (OTO)"),Map.entry("JJM-SD26-05-B","Compite"),Map.entry("JJM-SD26-05-C","Brocas"),
+            Map.entry("JJM-SD26-AIKOI","Ai-Koi"));
+        return partes.getOrDefault(codigo,obtenerPorCodigo(codigo).map(ProyectoCatalogo::clavesFuente).orElse(proyecto.getNombre()));
+    }
+
     public String obtenerEtiquetaCorta(Proyecto proyecto) {
         if (proyecto == null) {
             return null;

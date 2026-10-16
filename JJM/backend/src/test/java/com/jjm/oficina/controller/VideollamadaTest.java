@@ -74,10 +74,10 @@ class VideollamadaTest {
         assertThrows(ResponseStatusException.class,()->entrar("general",7));
         assertThrows(ResponseStatusException.class,()->entrar("otro",8));
     }
-    @Test void segundaPestanaSustituyeConexionAnterior() {
+    @Test void segundaConexionConservaLaAnterior() {
         String primera=entrar("general",7),segunda=entrar("general",7);
-        assertNotEquals(primera,segunda);assertThrows(ResponseStatusException.class,()->video.eventos("general",primera,0,7));
-        assertEquals(1,((List<?>)video.eventos("general",segunda,0,7).get("participantes")).size());
+        assertNotEquals(primera,segunda);assertDoesNotThrow(()->video.eventos("general",primera,0,7));
+        assertEquals(2,((List<?>)video.eventos("general",segunda,0,7).get("participantes")).size());
     }
     @Test void acuseNoRepiteSenalesYRechazaContenidoInvalido() {
         String a=entrar("general",7),b=entrar("general",8);
@@ -133,5 +133,35 @@ class VideollamadaTest {
         video.senal("10",new VideollamadaController.Senal(a,b,"reiniciar",Map.of()),7);
         assertEquals(1,((List<?>)video.eventos("10",b,0,8).get("eventos")).size());
         assertThrows(ResponseStatusException.class,()->video.senal("10",new VideollamadaController.Senal(a,otra,"reiniciar",Map.of()),7));
+    }
+
+    @Test void dosDispositivosConservanConexionesYElTerceroNoLasSustituye(){
+        String a=entrar("general",7),b=entrar("general",7);
+        assertNotEquals(a,b);
+        assertEquals(2,((List<?>)video.eventos("general",a,0,7).get("participantes")).size());
+        assertEquals(409,assertThrows(ResponseStatusException.class,()->entrar("general",7)).getStatusCode().value());
+        video.salir("general",new VideollamadaController.Entrada(b),7);
+        assertEquals(1,((List<?>)video.eventos("general",a,0,7).get("participantes")).size());
+    }
+    @Test void tresAvisosEnCincoMinutosYExpulsionSinRecuperacionAutomatica(){
+        java.util.concurrent.atomic.AtomicLong tiempo=new java.util.concurrent.atomic.AtomicLong(1_000_000);
+        java.time.Clock reloj=new java.time.Clock(){public java.time.ZoneId getZone(){return java.time.ZoneOffset.UTC;}public java.time.Clock withZone(java.time.ZoneId z){return this;}public java.time.Instant instant(){return java.time.Instant.ofEpochMilli(tiempo.get());}};
+        video=new VideollamadaController(usuarios,reuniones,entorno,reloj);
+        com.jjm.oficina.modelo.Rol rol=new com.jjm.oficina.modelo.Rol();rol.setNombre("Colaborador");usuarios.findById(7).orElseThrow().setRol(rol);
+        String a=entrar("general",7);
+        for(int i=1;i<=3;i++){
+            if(i>1)tiempo.addAndGet(120_000);
+            Map<?,?> control=(Map<?,?>)video.eventos("general",a,0,7).get("camaraControl");assertEquals(i,control.get("aviso"));
+        }
+        tiempo.addAndGet(60_000);
+        assertEquals(403,assertThrows(ResponseStatusException.class,()->video.eventos("general",a,0,7)).getStatusCode().value());
+        assertEquals(403,assertThrows(ResponseStatusException.class,()->video.eventos("general",a,0,7)).getStatusCode().value());
+    }
+    @Test void camaraDeUnDispositivoCubreLosDosYNoObligaAlAsesor(){
+        com.jjm.oficina.modelo.Rol rol=new com.jjm.oficina.modelo.Rol();rol.setNombre("Colaborador");usuarios.findById(7).orElseThrow().setRol(rol);
+        String a=entrar("general",7),b=entrar("general",7),asesor=entrar("general",8);
+        video.interaccion("general",new VideollamadaController.Interaccion(b,"estado",Map.of("video",true,"audio",false,"mano",false,"pantalla",false)),7);
+        assertEquals(0,((Map<?,?>)video.eventos("general",a,0,7).get("camaraControl")).get("aviso"));
+        assertEquals(false,((Map<?,?>)video.eventos("general",asesor,0,8).get("camaraControl")).get("obligatoria"));
     }
 }

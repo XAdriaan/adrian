@@ -55,9 +55,9 @@ test('captura de reunión avisa a los presentes antes de descargar',async()=>{co
 test('un gesto en la sala reanuda el audio remoto y conserva el micrófono silenciado',async()=>{
  const e=entorno();let reproducciones=0,reanudaciones=0,permisos=0;
  e.ctx.navigator={mediaDevices:{getUserMedia(){permisos++;throw Error('No debe solicitar micrófono para escuchar');}}};
- e.ctx.window.AudioContext=class{constructor(){this.state='suspended';}resume(){reanudaciones++;this.state='running';return Promise.resolve();}createMediaStreamSource(){return{connect(){},disconnect(){}};}createAnalyser(){return{disconnect(){}};}close(){return Promise.resolve();}};
+ e.ctx.window.AudioContext=class{constructor(){this.state='suspended';}resume(){reanudaciones++;this.state='running';return Promise.resolve();}createMediaStreamSource(){return{connect(){},disconnect(){}};}createAnalyser(){return{connect(){},disconnect(){}};}close(){return Promise.resolve();}};
  const micro={kind:'audio',readyState:'live',enabled:false},remoto={kind:'audio',readyState:'live',enabled:true};
- e.rtc.medios.audio=micro;e.rtc.peers.set('otro',{stream:{getAudioTracks:()=>[remoto]},video:{paused:true,play(){reproducciones++;return Promise.resolve();}}});
+ e.rtc.medios.audio=micro;e.rtc.peers.set('otro',{stream:{getAudioTracks:()=>[remoto]},audioSalida:{paused:true,play(){reproducciones++;return Promise.resolve();}}});
  e.documentHandlers.pointerdown.forEach(fn=>fn({type:'pointerdown',button:0,target:{closest:()=>e.el('sala')}}));
  // La reproducción se solicita dentro del gesto, sin esperar un permiso.
  assert.equal(reproducciones,1);assert.equal(reanudaciones,1);
@@ -67,7 +67,7 @@ test('un gesto en la sala reanuda el audio remoto y conserva el micrófono silen
 
 test('el teclado también reintenta audio bloqueado y la recuperación conserva pausas ajenas',async()=>{
  const e=entorno();let intentos=0;const video={paused:true,play(){intentos++;return intentos===1?Promise.reject(Object.assign(Error('Autoplay bloqueado'),{name:'NotAllowedError'})):Promise.resolve();}};
- e.rtc.peers.set('otro',{stream:{getAudioTracks:()=>[{readyState:'live'}]},video});
+ e.rtc.peers.set('otro',{stream:{getAudioTracks:()=>[{readyState:'live'}]},audioSalida:video});
  e.documentHandlers.keydown.forEach(fn=>fn({type:'keydown',key:'Enter',target:{closest:()=>e.el('sala')}}));
  await Promise.resolve();assert.equal(intentos,1);
  e.intervalos.find(i=>i.ms===5000).fn();assert.equal(intentos,2);
@@ -81,4 +81,12 @@ test('los gestos fuera de la sala o teclas de escritura no reanudan el audio',()
  e.documentHandlers.keydown.forEach(fn=>fn({type:'keydown',key:'a',target:{closest:()=>e.el('sala')}}));
  e.documentHandlers.keydown.forEach(fn=>fn({type:'keydown',key:'Enter',repeat:true,target:{closest:()=>e.el('sala')}}));
  assert.equal(intentos,0);
+});
+
+test('la escucha Web Audio conecta solo participantes remotos y silencia la salida duplicada',()=>{
+ const e=entorno();let salidas=0;e.rtc.id='yo';e.rtc.usuario=7;e.rtc.medios.audio={readyState:'live'};
+ e.rtc.peers.set('otro',{persona:{usuario:8},audioSalida:{muted:false},stream:{getAudioTracks:()=>[{readyState:'live'}]}});
+ e.rtc.peers.set('mi-celular',{persona:{usuario:7},audioSalida:{muted:false},stream:{getAudioTracks:()=>[{readyState:'live'}]}});
+ e.experiencia.audio={state:'running',destination:{},createMediaStreamSource:()=>({connect(){},disconnect(){}}),createAnalyser:()=>({connect(){salidas++;},disconnect(){}})};
+ e.experiencia.actualizarAnalizadores();assert.equal(salidas,1);assert.equal(e.rtc.peers.get('otro').audioSalida.muted,true);assert.equal(e.rtc.usaWebAudio,true);
 });

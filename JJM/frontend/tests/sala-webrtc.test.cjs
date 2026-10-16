@@ -8,10 +8,10 @@ function entorno(fetch=async()=>new Response('{}')) {
   async setRemoteDescription(d){this.remoteDescription=d;if(!this.trans.length){this.addTransceiver('audio');this.addTransceiver('video');this.addTransceiver('video');}}
   getTransceivers(){return this.trans;}async addIceCandidate(d){this.candidatos.push(d);}close(){this.cerrado=true;}
  }
- const window={apiUrl:p=>p,RTCPeerConnection:PC};const document={createElement:()=>({play:()=>Promise.resolve()})};const ctx=vm.createContext({window,document,AbortController,RTCPeerConnection:PC,MediaStream:class{constructor(tracks=[]){this.tracks=tracks;}getTracks(){return this.tracks;}addTrack(t){this.tracks.push(t);}},fetch,setTimeout:()=>1,clearTimeout(){},Response,console});
+ const window={apiUrl:p=>p,RTCPeerConnection:PC};const document={createElement:()=>({play:()=>Promise.resolve(),pause(){}})};const ctx=vm.createContext({window,document,AbortController,RTCPeerConnection:PC,MediaStream:class{constructor(tracks=[]){this.tracks=tracks;}getTracks(){return this.tracks;}addTrack(t){this.tracks.push(t);}},fetch,setTimeout:()=>1,clearTimeout(){},Response,console});
  vm.runInContext(fs.readFileSync(path.join(__dirname,'../js/sala-webrtc.js'),'utf8'),ctx);
  let cerradas=0;const estado={textContent:''};const sala=new window.PMOSalaWebRTC({sala:'general',contenedor:{querySelector:()=>null},estado,participantes:{},alCerrar:()=>cerradas++});
- sala.tarjeta=()=>({div:{remove(){}},video:{},avatar:{},conexion:{}});sala.config={iceServers:[]};sala.id='b';sala.activa=true;sala.generacion=1;
+ sala.tarjeta=()=>({div:{remove(){},append(){}},video:{play:()=>Promise.resolve()},avatar:{},conexion:{},etiqueta:{}});sala.config={iceServers:[]};sala.id='b';sala.activa=true;sala.generacion=1;
  return{sala,estado,PC,ctx,cerradas:()=>cerradas};
 }
 test('quien responde transmite sobre los canales ofrecidos sin dejar video en un solo sentido',async()=>{
@@ -34,8 +34,8 @@ test('ICE se reinicia automáticamente sin cerrar micrófono ni cámara',async()
 test('la pérdida temporal del servicio no expulsa después de cinco intentos',async()=>{
  const {sala}=entorno(async()=>new Response('{}',{status:503}));for(let i=0;i<7;i++)await sala.ciclo(1);assert.equal(sala.activa,true);assert.equal(sala.fallos,7);
 });
-test('una segunda pestaña no inicia un ciclo que robe la llamada repetidamente',async()=>{
- const {sala}=entorno(async()=>new Response(JSON.stringify({mensaje:'Tu cuenta está activa en otra pestaña.'}),{status:409}));await sala.ciclo(1);assert.equal(sala.activa,false);
+test('un tercer dispositivo no inicia un ciclo que robe la llamada repetidamente',async()=>{
+ const {sala}=entorno(async()=>new Response(JSON.stringify({mensaje:'Ya tienes dos dispositivos conectados.'}),{status:409}));await sala.ciclo(1);assert.equal(sala.activa,false);
 });
 test('una sesión de sala caducada se recupera conservando sus pistas y su estado',async()=>{
  const {sala}=entorno();sala.api=async accion=>accion==='entrar'?{conexion:'nueva',participantes:[{id:'nueva'}]}:{};sala.contenedor.replaceChildren=()=>{};sala.actualizarVistaLocal=()=>{};
@@ -83,4 +83,18 @@ test('un cambio de pista que nunca responde no deja pendientes los controles de 
  sala.peers.set('sin-respuesta',{videoSender:{replaceTrack:()=>new Promise(()=>{})}});
  const pista={kind:'video',readyState:'live',enabled:true};await sala.cambiar('video',pista);
  assert.equal(sala.medios.video,pista);assert.match(estado.textContent,/dispositivo está activo/);
+});
+
+test('el audio remoto se reproduce en una salida independiente aunque su cámara esté apagada',async()=>{
+ const {sala}=entorno();sala.id='a';sala.enviar=async()=>{};
+ await sala.sincronizar([{id:'a',usuario:7},{id:'b',usuario:8,nombre:'Alumno',proyectos:'PWEB',video:false}]);
+ const p=sala.peers.get('b');let reproducciones=0;p.audioSalida.play=async()=>{reproducciones++;};
+ const track={kind:'audio',readyState:'live'};p.pc.ontrack({track,transceiver:p.pc.trans[0]});
+ assert.equal(reproducciones,1);assert.equal(p.video.hidden,true);assert.equal(p.audioSalida.srcObject.getTracks()[0],track);assert.equal(p.audioSalida.muted,false);assert.equal(p.etiqueta.textContent,'PWEB · Alumno');
+});
+test('el segundo dispositivo propio transmite pero no reproduce su propia voz como eco',async()=>{
+ const {sala}=entorno();sala.id='a';sala.enviar=async()=>{};
+ await sala.sincronizar([{id:'a',usuario:7},{id:'b',usuario:7,nombre:'Misma cuenta'}]);const p=sala.peers.get('b');
+ p.pc.ontrack({track:{kind:'audio',readyState:'live'},transceiver:p.pc.trans[0]});assert.equal(p.audioSalida.muted,true);
+ const micro={kind:'audio',enabled:true};await sala.cambiar('audio',micro);assert.equal(p.pc.trans[0].pista,micro);
 });

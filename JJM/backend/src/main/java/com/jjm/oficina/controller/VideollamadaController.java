@@ -17,22 +17,29 @@ public class VideollamadaController {
     private final UsuarioRepository usuarios;
     private final ReunionController reuniones;
     private final Environment entorno;
+    private final java.time.Clock reloj;
+    @org.springframework.beans.factory.annotation.Autowired(required=false)
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+    @org.springframework.beans.factory.annotation.Autowired(required=false)
+    private com.jjm.oficina.servicio.CatalogoProyectosSepDic2026Service catalogo;
     private final Map<String, Sala> salas = new HashMap<>();
     private static class Sala {
         final Map<String, Conexion> conexiones = new LinkedHashMap<>();
         final Deque<Map<String,Object>> chat = new ArrayDeque<>();
         long mensaje = 0;
+        final Map<Integer,Long> sinCamara=new HashMap<>();
+        final Map<String,Long> expulsadas=new HashMap<>();
     }
     private static class Conexion {
         final String id = UUID.randomUUID().toString();
-        final int usuario; final String nombre;
-        long actividad = System.currentTimeMillis(), secuencia = 0;
+        final int usuario; final String nombre; final String proyectos; final boolean alumno;
+        long actividad, secuencia = 0;
         long ventanaChat = 0, ultimaReaccion = 0;
         int mensajes = 0;
         boolean mano = false, audio = false, video = false, pantalla = false;
         final Deque<Map<String,Object>> eventos = new ArrayDeque<>();
-        Conexion(Usuario u) { usuario = u.getId(); nombre = u.getNombre() == null ? "Participante" : u.getNombre(); }
-        Map<String,Object> resumen() { return Map.of("id", id, "nombre", nombre, "mano", mano, "audio", audio, "video", video, "pantalla", pantalla); }
+        Conexion(Usuario u,String claves,long ahora) { usuario = u.getId(); nombre = u.getNombre() == null ? "Participante" : u.getNombre(); proyectos=claves; alumno=com.jjm.oficina.servicio.AsistenciaAutomaticaService.esAlumno(u);actividad=ahora; }
+        Map<String,Object> resumen() { return Map.of("id", id, "usuario", usuario, "proyectos", proyectos, "nombre", nombre, "mano", mano, "audio", audio, "video", video, "pantalla", pantalla); }
     }
     public record Entrada(String conexion) {}
     public record Senal(String conexion, String destino, String tipo, Map<String,Object> datos) {}
@@ -42,7 +49,35 @@ public class VideollamadaController {
         while (destino.eventos.size() > 256) destino.eventos.removeFirst();
     }
     public VideollamadaController(UsuarioRepository usuarios, ReunionController reuniones, Environment entorno) {
-        this.usuarios = usuarios; this.reuniones = reuniones; this.entorno = entorno;
+        this(usuarios,reuniones,entorno,java.time.Clock.systemUTC());
+    }
+    @org.springframework.beans.factory.annotation.Autowired
+    public VideollamadaController(UsuarioRepository usuarios,ReunionController reuniones,Environment entorno,java.time.Clock reloj){
+        this.usuarios=usuarios;this.reuniones=reuniones;this.entorno=entorno;this.reloj=reloj;
+    }
+    private String clavesDe(Integer usuario){
+        if(jdbc==null||catalogo==null)return "";
+        try{return jdbc.queryForList("SELECT DISTINCT p.codigo,p.nombre FROM proyectos p JOIN miembros_proyecto mp ON mp.id_proyecto=p.id_proyecto JOIN miembros_equipo m ON m.id_miembro=mp.id_miembro WHERE m.id_usuario=?",usuario).stream().map(f->{
+            com.jjm.oficina.modelo.Proyecto p=new com.jjm.oficina.modelo.Proyecto();p.setCodigo(Objects.toString(f.get("codigo"),""));p.setNombre(Objects.toString(f.get("nombre"),""));return catalogo.obtenerClaveAsignada(p);
+        }).filter(v->!v.isBlank()).flatMap(v->Arrays.stream(v.split(" / "))).distinct().limit(6).collect(java.util.stream.Collectors.joining(" / "));}
+        catch(RuntimeException e){return "";}
+    }
+    private Map<String,Object> controlCamara(Sala sala,Conexion c){
+        if(!c.alumno)return Map.of("obligatoria",false);
+        if(sala.conexiones.values().stream().anyMatch(p->p.usuario==c.usuario&&p.video)){
+            sala.sinCamara.remove(c.usuario);return Map.of("obligatoria",true,"aviso",0,"segundosRestantes",300);
+        }
+        long inicio=sala.sinCamara.computeIfAbsent(c.usuario,k->reloj.millis());
+        long segundos=Math.max(0,(reloj.millis()-inicio)/1000);
+        return Map.of("obligatoria",true,"aviso",segundos<120?1:segundos<240?2:3,"segundosRestantes",Math.max(0,300-segundos));
+    }
+    private void revisarCamaras(Sala sala){
+        for(Conexion c:List.copyOf(sala.conexiones.values())){
+            Map<String,Object> regla=controlCamara(sala,c);
+            if(c.alumno&&((Number)regla.get("segundosRestantes")).longValue()==0){
+                sala.expulsadas.put(c.id,reloj.millis());sala.conexiones.remove(c.id);
+            }
+        }
     }
     private Usuario autorizar(String sala, Integer id) {
         Usuario u = id == null ? null : usuarios.findById(id).orElse(null);
@@ -57,17 +92,17 @@ public class VideollamadaController {
         return u;
     }
     private void limpiar() {
-        long ahora = System.currentTimeMillis();
+        long ahora = reloj.millis();
         salas.values().forEach(s -> s.conexiones.values().removeIf(c -> ahora - c.actividad > CADUCIDAD));
-        salas.values().removeIf(s -> s.conexiones.isEmpty());
+        salas.values().forEach(s->s.expulsadas.entrySet().removeIf(e->ahora-e.getValue()>600_000));
+        salas.values().removeIf(s -> s.conexiones.isEmpty()&&s.expulsadas.isEmpty());
     }
     private Conexion propia(Sala sala, String id, Usuario u) {
         Conexion c = sala == null ? null : sala.conexiones.get(id);
-        if (c == null && sala != null && sala.conexiones.values().stream().anyMatch(p -> p.usuario == u.getId()))
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Tu cuenta está activa en otra pestaña. Conserva una sola llamada abierta.");
+        if(sala!=null&&sala.expulsadas.containsKey(id))throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Saliste de la llamada por mantener la cámara apagada durante cinco minutos. Revisa los permisos antes de volver a entrar.");
         if (c == null || c.usuario != u.getId())
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Vuelve a entrar a la sala.");
-        c.actividad = System.currentTimeMillis(); return c;
+        c.actividad = reloj.millis(); return c;
     }
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String,Object>> errorSala(ResponseStatusException error) {
@@ -90,16 +125,18 @@ public class VideollamadaController {
             @RequestHeader(value="X-Usuario-Id", required=false) Integer id) {
         Usuario u = autorizar(sala, id); limpiar();
         Sala s = salas.computeIfAbsent(sala, k -> new Sala());
-        // Una conexión por cuenta y sala; una pestaña nueva sustituye la anterior.
-        s.conexiones.values().removeIf(c -> c.usuario == u.getId());
-        Conexion c = new Conexion(u); s.conexiones.put(c.id, c);
+        if(s.conexiones.values().stream().filter(c->c.usuario==u.getId()).count()>=2)
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"Ya tienes dos dispositivos conectados. Sal de uno antes de abrir otro.");
+        if(s.conexiones.values().stream().noneMatch(c->c.usuario==u.getId()))s.sinCamara.remove(u.getId());
+        Conexion c = new Conexion(u,clavesDe(u.getId()),reloj.millis()); s.conexiones.put(c.id, c);
+        controlCamara(s,c);
         return Map.of("estado", "correcto", "conexion", c.id, "participantes", s.conexiones.values().stream().map(Conexion::resumen).toList());
     }
     @GetMapping("/{sala}/eventos")
     public synchronized Map<String,Object> eventos(@PathVariable String sala, @RequestParam String conexion,
             @RequestParam(defaultValue="0") long desde,
             @RequestHeader(value="X-Usuario-Id", required=false) Integer id) {
-        Usuario u = autorizar(sala, id); limpiar(); Sala s = salas.get(sala); Conexion c = propia(s, conexion, u);
+        Usuario u = autorizar(sala, id); limpiar(); Sala s = salas.get(sala); if(s!=null)revisarCamaras(s); Conexion c = propia(s, conexion, u);
         // Expulsar asignaciones retiradas, incluso cuando el cliente no coopera.
         s.conexiones.values().removeIf(p -> {
             try { autorizar(sala, p.usuario); return false; } catch (ResponseStatusException e) { return true; }
@@ -109,7 +146,7 @@ public class VideollamadaController {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Las señales vencieron. Vuelve a conectar.");
         c.eventos.removeIf(e -> ((Number)e.get("secuencia")).longValue() <= desde);
         return Map.of("estado", "correcto", "participantes", s.conexiones.values().stream().map(Conexion::resumen).toList(),
-                "eventos", List.copyOf(c.eventos), "secuencia", c.secuencia, "chat", List.copyOf(s.chat));
+                "eventos", List.copyOf(c.eventos), "secuencia", c.secuencia, "chat", List.copyOf(s.chat), "camaraControl", controlCamara(s,c));
     }
     @PostMapping("/{sala}/senal")
     public synchronized ResponseEntity<Map<String,Object>> senal(@PathVariable String sala, @RequestBody Senal entrada,
@@ -143,7 +180,7 @@ public class VideollamadaController {
             @RequestHeader(value="X-Usuario-Id", required=false) Integer id) {
         Usuario u = autorizar(sala, id); limpiar(); Sala s = salas.get(sala); Conexion c = propia(s, entrada.conexion(), u);
         if (entrada.datos() == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Acción inválida.");
-        Map<String,Object> datos = new HashMap<>(); long ahora = System.currentTimeMillis();
+        Map<String,Object> datos = new HashMap<>(); long ahora = reloj.millis();
         switch (String.valueOf(entrada.tipo())) {
             case "estado" -> {
                 for (String clave : List.of("mano", "audio", "video", "pantalla"))
@@ -153,6 +190,7 @@ public class VideollamadaController {
                     throw new ResponseStatusException(HttpStatus.CONFLICT, "Otra persona está presentando. Espera a que deje de compartir.");
                 c.mano = (Boolean) entrada.datos().get("mano"); c.audio = (Boolean) entrada.datos().get("audio");
                 c.video = (Boolean) entrada.datos().get("video"); c.pantalla = pantalla;
+                controlCamara(s,c);
                 return Map.of("estado", "correcto", "participante", c.resumen());
             }
             case "chat" -> {

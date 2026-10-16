@@ -33,7 +33,7 @@
         }
         tarjeta(id, nombre, propia = false) {
             const div = document.createElement('article'); div.className = 'rtc-persona'; div.dataset.conexion = id;
-            const video = document.createElement('video'); video.autoplay = true; video.playsInline = true; video.muted = propia;
+            const video = document.createElement('video'); video.autoplay = true; video.playsInline = true; video.muted = true;
             const avatar = document.createElement('span'); avatar.className = 'rtc-avatar'; avatar.textContent = String(nombre || 'JJM').trim().slice(0,1).toUpperCase();
             const etiqueta = document.createElement('strong'); etiqueta.textContent = nombre || 'Participante';
             const conexion = document.createElement('small'); conexion.className = 'rtc-estado'; conexion.textContent = propia ? 'Tu conexión' : 'Conectando…';
@@ -41,19 +41,20 @@
             if (propia) { div.dataset.propia = 'true'; this.videoLocal = video; this.avatarLocal = avatar; }
             video.addEventListener('loadeddata', () => { avatar.hidden = propia
                 ? !!(this.medios.video?.enabled && this.medios.video?.readyState === 'live') : video.videoWidth > 0; });
-            return {div, video, avatar, conexion};
+            return {div, video, avatar, conexion, etiqueta};
         }
         async sincronizar(lista) {
             if (!this.activa) return;
             const epoca = this.generacion;
-            this.lista = lista;
+            this.lista = lista;this.usuario=lista.find(p=>p.id===this.id)?.usuario||this.usuario;
             const ids = new Set(lista.map(p => p.id));
-            for (const [id,p] of this.peers) if (!ids.has(id)) { clearTimeout(p.recuperacion);p.pc.close(); p.div.remove(); this.peers.delete(id); this.cadenas.delete(id); }
+            for (const [id,p] of this.peers) if (!ids.has(id)) { clearTimeout(p.recuperacion);p.pc.close();if(p.audioSalida){p.audioSalida.pause();p.audioSalida.srcObject=null;} p.div.remove(); this.peers.delete(id); this.cadenas.delete(id); }
             for (const persona of lista) {
                 if (!this.activa || this.generacion !== epoca) return;
                 if (persona.id === this.id || this.peers.has(persona.id)) continue;
                 const pc = new RTCPeerConnection({iceServers:this.config.iceServers || []});
-                const p = {...this.tarjeta(persona.id, persona.nombre), pc, pendientes:[], stream:new MediaStream()};
+                const p = {...this.tarjeta(persona.id, persona.nombre), pc, pendientes:[], stream:new MediaStream(),persona};
+                p.audioSalida=document.createElement('audio');p.audioSalida.autoplay=true;p.audioSalida.playsInline=true;p.div.append(p.audioSalida);
                 this.peers.set(persona.id, p);
                 if (this.id < persona.id) {
                     p.audio = pc.addTransceiver('audio', {direction:'sendrecv'}).sender;
@@ -72,6 +73,12 @@
                     const flujo = pantalla ? p.pantallaStream : p.stream;
                     const video = pantalla ? p.pantallaVideo : p.video;
                     if (!flujo.getTracks().includes(e.track)) flujo.addTrack(e.track); video.srcObject=flujo;
+                    if(e.track.kind==='audio'){
+                        p.audioSalida.srcObject=new MediaStream([e.track]);
+                        p.audioSalida.muted=!!this.usaWebAudio||(!!this.usuario&&persona.usuario===this.usuario);
+                        p.audioSalida.play().catch(()=>{this.estado.textContent='Toca Entrar o cualquier control de la sala para habilitar la escucha.';});
+                    }
+                    video.play().catch(()=>{});
                     e.track.onunmute = () => { video.play().catch(() => { this.estado.textContent = 'Toca la sala o usa sus controles para reanudar el audio.'; }); this.alActualizar?.(); };
                     e.track.onended = () => this.alActualizar?.(); this.alActualizar?.();
                 };
@@ -88,8 +95,11 @@
             for (const persona of lista) {
                 const p=this.peers.get(persona.id); if(!p)continue; p.persona=persona;
                 if(p.div.dataset){p.div.dataset.mano=String(!!persona.mano);p.div.dataset.audio=String(!!persona.audio);}
+                p.etiqueta.textContent=(persona.proyectos?persona.proyectos+' · ':'')+persona.nombre;p.etiqueta.title=p.etiqueta.textContent;
                 p.video.hidden=!persona.video; p.avatar.hidden=!!persona.video && p.video.videoWidth>0;
             }
+            const propia=lista.find(p=>p.id===this.id),etiqueta=this.contenedor.querySelector?.('[data-propia] strong');
+            if(propia&&etiqueta){etiqueta.textContent=(propia.proyectos?propia.proyectos+' · ':'')+propia.nombre+' (Tú)';etiqueta.title=etiqueta.textContent;}
             this.alActualizar?.();
         }
         async ofertar(id, reiniciar=false) {
@@ -144,6 +154,7 @@
                 const d = await this.api(`eventos?conexion=${encodeURIComponent(this.id)}&desde=${this.desde}`);
                 if (!this.activa || this.generacion !== epoca) return;
                 await this.sincronizar(d.participantes || []);
+                this.alInteraccion?.({tipo:'camara-control',datos:d.camaraControl||{}});
                 this.alInteraccion?.({tipo:'historial',datos:d.chat || []});
                 if (!this.activa || this.generacion !== epoca) return;
                 for (const e of d.eventos || []) {try{await this.recibir(e);}catch(_){this.programarRecuperacion(e.origen);}this.desde = e.secuencia;}
@@ -151,7 +162,7 @@
             } catch (e) {
                 if (!this.activa || this.generacion !== epoca) return;
                 this.fallos = (this.fallos || 0) + 1;
-                if ([401,403].includes(e.status) || (e.status===409&&e.message.includes('otra pestaña'))) {
+                if ([401,403].includes(e.status) || (e.status===409&&e.message.includes('dos dispositivos'))) {
                     await this.salir(); this.estado.textContent = e.message + ' Pulsa Entrar a la sala para reintentar.'; this.alCerrar?.(); return;
                 }
                 if(e.status===409){
@@ -162,9 +173,10 @@
             if (this.activa && this.generacion === epoca) this.timer = setTimeout(() => this.ciclo(epoca), Math.min(15000,1200*Math.max(1,this.fallos||0)));
         }
         async recuperarSesion(epoca){
+            await this.api('salir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({conexion:this.id})}).catch(()=>{});
             const datos=await this.api('entrar',{method:'POST'});
             if(!this.activa||this.generacion!==epoca){await this.api('salir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({conexion:datos.conexion})}).catch(()=>{});return;}
-            for(const p of this.peers.values()){clearTimeout(p.recuperacion);p.pc.close();}this.peers.clear();
+            for(const p of this.peers.values()){clearTimeout(p.recuperacion);p.pc.close();if(p.audioSalida){p.audioSalida.pause();p.audioSalida.srcObject=null;}}this.peers.clear();
             this.id=datos.conexion;this.desde=0;this.contenedor.replaceChildren();this.tarjeta(this.id,'Tú',true);this.actualizarVistaLocal();
             await this.publicarEstado();await this.sincronizar(datos.participantes.map(p=>p.id===this.id?{...p,...this.estadoLocal}:p));
         }
@@ -213,7 +225,7 @@
         }
         async salir(keepalive = false) {
             ++this.generacion; this.activa = false; clearTimeout(this.timer);
-            for (const p of this.peers.values()){clearTimeout(p.recuperacion);p.pc.close();} this.peers.clear();
+            for (const p of this.peers.values()){clearTimeout(p.recuperacion);p.pc.close();if(p.audioSalida){p.audioSalida.pause();p.audioSalida.srcObject=null;}} this.peers.clear();
             for (const t of Object.values(this.medios)) t?.stop(); this.medios = {audio:null,video:null,pantalla:null}; this.lista=[];
             const id = this.id; this.id = null;
             if (id) await this.api('salir',{method:'POST',keepalive,headers:{'Content-Type':'application/json'},body:JSON.stringify({conexion:id})}).catch(()=>{});

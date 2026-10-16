@@ -5,7 +5,7 @@
     function elegir(id){try{localStorage.setItem(clave,id||'');}catch(_){}}
     async function dispositivos(){return navigator.mediaDevices?.enumerateDevices?(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='audioinput'):[];}
     function mensaje(e){
-        if(['NotAllowedError','SecurityError'].includes(e?.name))return 'Permite el micrófono en el candado del navegador. En Windows, revisa Configuración → Privacidad y seguridad → Micrófono y permite el acceso a aplicaciones de escritorio.';
+        if(['NotAllowedError','SecurityError'].includes(e?.name))return 'Permite el micrófono en el candado del navegador. En Android, cierra las burbujas o superposiciones de otras apps y vuelve a intentarlo. En Windows, revisa Configuración → Privacidad y seguridad → Micrófono y permite el acceso a aplicaciones de escritorio.';
         if(e?.name==='NotFoundError')return 'El navegador no detecta una entrada de audio. En Windows abre Configuración → Sistema → Sonido → Entrada, selecciona tu micrófono y prueba que reciba sonido. Después pulsa Buscar micrófonos y Probar. Si no aparece allí, conecta o habilita el dispositivo.';
         if(['NotReadableError','AbortError'].includes(e?.name))return 'Windows no pudo abrir el micrófono. Cierra otras aplicaciones que lo estén usando y comprueba Sonido → Entrada y los permisos de micrófono.';
         if(e?.name==='TimeoutError')return 'Terminó la espera del micrófono. Revisa el permiso del navegador y pulsa Probar de nuevo.';
