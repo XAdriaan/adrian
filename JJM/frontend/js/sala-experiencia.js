@@ -71,6 +71,8 @@
         actualizarTamanoVista(){
             const area=el('escenarioPrincipal'),lienzo=el('lienzoPresentacion');if(!area||!lienzo?.style)return;
             const d=this.dimensionesVista();
+            const firma=[d.ancho,d.alto,d.izquierda,d.arriba,this.zoomPresentacion].join(':');
+            if(this.firmaTamanoVista===firma)return;this.firmaTamanoVista=firma;
             lienzo.style.width=d.ancho+'px';lienzo.style.height=d.alto+'px';
             lienzo.style.marginLeft=d.izquierda+'px';lienzo.style.marginTop=d.arriba+'px';
             area.classList.toggle('sala-vista-ampliada',this.zoomPresentacion>1);
@@ -130,6 +132,10 @@
             window.addEventListener('storage',e=>{if(e.key==='sesionTokenPMO'&&!e.newValue){this.rtc.salir();window.location.replace('login.html');}});
             document.addEventListener('keydown',e=>{if(e.key==='Escape'){this.cerrarOpciones();const menu=el('masOpcionesSala');if(menu?.open){menu.open=false;menu.querySelector('summary')?.focus();}}});
             el('masOpcionesSala')?.addEventListener('click',e=>{if(e.target.closest('button'))el('masOpcionesSala').open=false;});
+            el('btnCerrarFondos')?.addEventListener('click',()=>{this.cerrarOpciones();el('masOpcionesSala').open=false;el('masOpcionesSala').querySelector?.('summary')?.focus();});
+            this.cerrarPanelFuera=e=>{if(e.target?.closest?.('.sala-opciones,#masOpcionesSala'))return;this.cerrarOpciones();if(el('masOpcionesSala'))el('masOpcionesSala').open=false;};
+            document.addEventListener('pointerdown',this.cerrarPanelFuera);
+
             // La interacción habitual con la sala permite reintentar el audio
             // bloqueado por el navegador sin encender el micrófono del usuario.
             this.gestoAudio=e=>{
@@ -265,7 +271,7 @@
             c.fillStyle='#193453';c.fillRect(x,y,w,h);if(!v?.videoWidth || v.readyState<2){c.fillStyle='#aec9ef';c.font='22px sans-serif';c.fillText('JJM',x+w/2-22,y+h/2);return;}
             const escala=Math.min(w/v.videoWidth,h/v.videoHeight);c.drawImage(v,x+(w-v.videoWidth*escala)/2,y+(h-v.videoHeight*escala)/2,v.videoWidth*escala,v.videoHeight*escala);
         }
-        cerrar(){clearInterval(this.timer);clearInterval(this.reproduccion);document.removeEventListener('pointerdown',this.gestoAudio,true);document.removeEventListener('keydown',this.gestoAudio,true);this.limpiarVista.forEach(fn=>fn());this.observadorVista?.disconnect();this.panVista=null;for(const a of this.analizadores.values())a.fuente.disconnect();this.analizadores.clear();this.audio?.close().catch(()=>{});}
+        cerrar(){clearInterval(this.timer);clearInterval(this.reproduccion);document.removeEventListener('pointerdown',this.cerrarPanelFuera);document.removeEventListener('pointerdown',this.gestoAudio,true);document.removeEventListener('keydown',this.gestoAudio,true);this.limpiarVista.forEach(fn=>fn());this.observadorVista?.disconnect();this.panVista=null;for(const a of this.analizadores.values())a.fuente.disconnect();this.analizadores.clear();this.audio?.close().catch(()=>{});}
     }
     window.PMOExperienciaSala=ExperienciaSala;window.PMOElegirHablante=elegirHablante;window.PMOCalcularVistaPresentacion=calcularVistaPresentacion;
 })();

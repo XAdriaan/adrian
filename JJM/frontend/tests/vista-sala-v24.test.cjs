@@ -115,3 +115,15 @@ test('la prueba de micrófono permanece explícita y los dispositivos están ple
     assert.doesNotMatch(detalles[1], /(?:^|\s)open(?:\s|=|$)/i); assert.match(html, /id=["']btnAbrirPruebaMicrofono["']/);
     assert.doesNotMatch(html, /\bid=["']btnEscuchar[^"']*["']/i); assert.match(html, /id=["']btnAjustarVista["']/);
 });
+
+test('no reescribe las dimensiones en cada actualización de la sala',()=>{
+ const e=entorno();let cambios=0;const estilo=e.el('lienzoPresentacion').style;
+ e.el('lienzoPresentacion').style=new Proxy(estilo,{set(obj,k,v){cambios++;obj[k]=v;return true;}});
+ for(let i=0;i<20;i++)e.experiencia.actualizarTamanoVista();assert.equal(cambios,0);
+ e.el('escenarioPrincipal').clientWidth=800;e.experiencia.actualizarTamanoVista();assert.ok(cambios>0);
+});
+test('el panel de fondos se cierra con su botón y al pulsar fuera',async()=>{
+ const e=entorno();e.el('opcionesFondos').hidden=false;await e.el('btnCerrarFondos').click();assert.equal(e.el('opcionesFondos').hidden,true);
+ e.el('opcionesFondos').hidden=false;await e.document.emitir('pointerdown',{target:{closest:()=>null}});assert.equal(e.el('opcionesFondos').hidden,true);
+ e.el('opcionesFondos').hidden=false;await e.document.emitir('pointerdown',{target:{closest:()=>e.el('opcionesFondos')}});assert.equal(e.el('opcionesFondos').hidden,false);
+});

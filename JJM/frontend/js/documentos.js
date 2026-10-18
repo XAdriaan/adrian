@@ -8348,7 +8348,7 @@ function renderizarDocumentos() {
 
         actualizarEstadisticasDocumentos(
             documentosPMO.filter(
-                documentoPerteneceAlUsuarioDocumentos
+                doc => documentoPerteneceAlUsuarioDocumentos(doc) && !esCertificadoCursoDocumento(doc)
             )
         );
 
@@ -8362,9 +8362,7 @@ function renderizarDocumentos() {
     renderizarExpedientesPorPeriodo(alumnos);
 
     const documentos =
-        obtenerDocumentosFiltradosPorAlumnos(
-            alumnos
-        );
+        obtenerDocumentosFiltradosPorAlumnos(alumnos).filter(doc => !esCertificadoCursoDocumento(doc));
 
     renderizarTablaMisDocumentosAdmin(
         documentos
@@ -8489,6 +8487,10 @@ function crearFilaDocumentoAlumnoHTML(documento) {
 // RENDERIZAR MIS DOCUMENTOS
 // ==========================================================
 
+function esCertificadoCursoDocumento(doc) {
+    return /^certificado de curso(?:\s*#\s*\d+)?$/i.test(String(doc.tipoDocumento ?? doc.tipo_documento ?? '').trim());
+}
+
 function renderizarMisDocumentos() {
 
     if (!tablaMisDocumentos) {
@@ -8498,7 +8500,7 @@ function renderizarMisDocumentos() {
 
     const documentos =
         documentosPMO.filter(
-            documentoPerteneceAlUsuarioDocumentos
+            doc => documentoPerteneceAlUsuarioDocumentos(doc) && !esCertificadoCursoDocumento(doc)
         )
         .sort(
             function (a, b) {

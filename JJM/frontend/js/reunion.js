@@ -217,6 +217,7 @@ function configurarEventos() {
     actualizarCamarasDisponibles();
     btnPantalla.addEventListener('click',compartirPantalla);
     document.getElementById('fondoSala').addEventListener('change',aplicarFondoSala);
+    document.getElementById('btnQuitarFondo')?.addEventListener('click',async()=>{document.getElementById('fondoSala').value='ninguno';await aplicarFondoSala();experienciaSala?.cerrarOpciones();});
     document.getElementById('imagenFondoSala').addEventListener('change',async e=>{
         try{await fondosSala.cargarImagen(e.target.files[0]);document.getElementById('fondoSala').value='personalizado';await aplicarFondoSala();}catch(error){document.getElementById('estadoFondoSala').textContent=error.message;}
     });

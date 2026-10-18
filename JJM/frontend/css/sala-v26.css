@@ -53,3 +53,13 @@ body:not(.sala-minimizada) .meeting-title{min-width:0!important}
 }
 
 #avatarPrincipal.sala-compartiendo-propia{width:min(560px,90%);height:auto;min-height:150px;box-sizing:border-box;border-radius:16px;padding:24px;font-size:clamp(16px,2vw,24px);line-height:1.5;text-align:center}
+
+/* El tamaño de los hijos no debe modificar el área medida por ResizeObserver. */
+#escenarioPrincipal{contain:size layout;min-width:0;min-height:0;overflow:hidden}
+#escenarioPrincipal.sala-vista-ampliada{overflow:auto}
+#lienzoPresentacion{box-sizing:border-box}
+.sala-panel-cabecera{display:flex;justify-content:space-between;align-items:center;gap:14px}
+.sala-panel-cabecera h2{margin:0}
+#btnCerrarFondos,#btnQuitarFondo{background:#24466d;color:#f0f6ff;border:1px solid #6385ac;border-radius:8px;padding:9px 12px;cursor:pointer}
+#btnQuitarFondo{margin:12px 0;width:100%}
+.sala-opciones{max-height:calc(100dvh - 140px);overflow:auto;box-sizing:border-box}
