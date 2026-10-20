@@ -36,7 +36,17 @@
     const restaurar = document.createElement('button');
     restaurar.type = 'button'; restaurar.textContent = 'Restablecer';
     formulario.append(etiqueta, medida, restaurar);
-    opciones.append(resumen, formulario);
+    const dialogo = document.createElement('dialog');
+    dialogo.className = 'camaras-dialogo';
+    dialogo.setAttribute('aria-label', 'Organizar cámaras');
+    const cerrar = document.createElement('button');
+    cerrar.type = 'button'; cerrar.textContent = 'Cerrar';
+    dialogo.append(formulario, cerrar);
+    document.body.append(dialogo);
+    resumen.addEventListener('click', e => { e.preventDefault(); dialogo.showModal(); });
+    cerrar.addEventListener('click', () => dialogo.close());
+    dialogo.addEventListener('close', () => resumen.focus());
+    opciones.append(resumen);
     panel.insertBefore(opciones, panel.firstChild);
     function aplicar() {
         distribucion.dataset.camaras = preferencia.posicion;

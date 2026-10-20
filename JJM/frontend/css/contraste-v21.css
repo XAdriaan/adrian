@@ -377,3 +377,12 @@ body .main-content .kanban-column .kanban-task{background:#1a304d!important;bord
 body .main-content .kanban-column .kanban-empty{background:#14263e!important;border-color:#506b8f!important;color:#c9dbef!important}
 
 body .kanban-column.column-pendiente{--columna-color:#669ef3}body .kanban-column.column-progreso{--columna-color:#efa64b}body .kanban-column.column-bloqueada{--columna-color:#e97684}body .kanban-column.column-completada{--columna-color:#58c79e}
+
+/* V30: color en la columna completa con contraste constante para las letras. */
+body .kanban-column.column-pendiente{--columna-color:#194b80}
+body .kanban-column.column-progreso{--columna-color:#85430e}
+body .kanban-column.column-bloqueada{--columna-color:#852c42}
+body .kanban-column.column-completada{--columna-color:#14634d}
+body .main-content .kanban-column{background:var(--columna-color)!important;color:#fff!important;border-color:#ffffff50!important}
+body .main-content .kanban-column :is(.kanban-task,.kanban-empty){background:#00000020!important;border-color:#ffffff70!important;color:#fff!important}
+body .main-content .kanban-column :is(h2,h3,h4,strong,p,small,span,label){color:#fff!important}

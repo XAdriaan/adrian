@@ -1,0 +1,1 @@
+(() => {const id=Number(new URLSearchParams(location.search).get('id'));if(!Number.isInteger(id)||id<1)return;const destino=document.getElementById('reunirseCanal');if(!destino)return;const a=document.createElement('a');a.href=`plan-ia.html?id=${id}`;a.className='pmo-button secondary';a.textContent='Plan con IA';destino.before(a);})();

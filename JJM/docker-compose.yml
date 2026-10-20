@@ -6,6 +6,8 @@ services:
     restart: unless-stopped
     environment:
       SERVER_PORT: 8080
+      PMO_IA_LOCAL_URL: http://ollama:11434
+      PMO_IA_LOCAL_MODELO: qwen2.5:7b
       DB_URL: ${DB_URL}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
@@ -61,6 +63,44 @@ services:
         aliases:
           - projectsphere-web
 
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    cpus: 6
+    mem_limit: 12g
+    environment:
+      OLLAMA_NUM_PARALLEL: 1
+      OLLAMA_MAX_LOADED_MODELS: 1
+      OLLAMA_MAX_QUEUE: 2
+      OLLAMA_CONTEXT_LENGTH: 4096
+      OLLAMA_KEEP_ALIVE: 2m
+    volumes:
+      pmo_ollama:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks:
+      default:
+      pmo_api:
+        aliases:
+          - ollama
+
+  ollama-modelo:
+    image: ollama/ollama:latest
+    restart: "on-failure:3"
+    cpus: 1
+    mem_limit: 256m
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    command: ["pull", "qwen2.5:7b"]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks:
+      - pmo_api
+
 networks:
   default:
   pmo_api:
@@ -68,3 +108,4 @@ networks:
 
 volumes:
   pmo_recordings:
+  pmo_ollama:

@@ -27,3 +27,11 @@ body:not(.sala-minimizada) .sala-distribucion:is([data-camaras=arriba],[data-cam
 }
 
 #listaParticipantesSala{background:#11243e;color:#edf4ff;border:1px solid #6385ac;border-radius:12px;width:min(600px,85vw);max-height:75dvh;overflow:auto}#listaParticipantesSala::backdrop{background:#0008}#listaParticipantesSala header{display:flex;justify-content:space-between;gap:16px}#listaParticipantesSala p{padding:12px;border-bottom:1px solid #456087}#cerrarListaParticipantes{background:#24466d;color:white;border:1px solid #6385ac;border-radius:8px;padding:8px}
+
+/* Un diálogo nativo sale del recorte del panel, incluso cuando las cámaras están abajo. */
+.camaras-dialogo{box-sizing:border-box;background:#11243e;color:#edf4ff;border:1px solid #6385ac;border-radius:12px;padding:20px;width:min(360px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto}
+.camaras-dialogo::backdrop{background:#0007}
+.camaras-dialogo>div,.camaras-dialogo label{display:grid;gap:10px}
+.camaras-dialogo>div{gap:18px;margin-bottom:16px}
+.camaras-dialogo select,.camaras-dialogo button{background:#24466d;color:#edf4ff;border:1px solid #6385ac;border-radius:8px;padding:10px;min-height:42px}
+.camaras-dialogo input{width:100%;accent-color:#83b9ff}
