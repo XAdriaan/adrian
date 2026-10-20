@@ -193,4 +193,12 @@ class CatalogoAsignacionesTest {
         assertTrue(enlaces.isEmpty()); verifyNoInteractions(proyectos, asignaciones, tareas);
     }
 
+    @Test void correoConfirmadoDeEmilyVinculaPuntoDeVentaSinDuplicarNiCambiarHoras(){
+        MiembroEquipo emily=alumno(8,"Emily Nombre Registrado");emily.getUsuario().setCorreo("Emily_1323144030@uptecamac.edu.mx");
+        alumno(9,"Emily Otra Persona").getUsuario().setCorreo("otra@example.com");
+        when(miembros.findByUsuarioId(108)).thenReturn(Optional.of(emily));
+        servicio.sincronizarCatalogo();servicio.sincronizarCuenta(108);servicio.sincronizarCatalogo();
+        assertEquals(1,enlaces.size());assertEquals(8,enlaces.getFirst().getIdProyecto());assertEquals(8,enlaces.getFirst().getIdMiembro());
+        assertEquals(8,actividades.get(8).getFirst().getIdMiembroAsignado());assertEquals(BigDecimal.valueOf(5),actividades.get(8).getFirst().getHorasRegistradas());
+    }
 }

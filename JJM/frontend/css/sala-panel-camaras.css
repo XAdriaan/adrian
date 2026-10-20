@@ -1,0 +1,29 @@
+.camaras-preferencias{position:relative;flex:none;color:#edf4ff;font-size:12px}
+.camaras-preferencias summary{cursor:pointer;padding:7px;border:1px solid #5275a1;border-radius:6px;background:#193352}
+.camaras-preferencias>div{position:absolute;z-index:180;top:100%;right:0;width:200px;max-width:80vw;padding:12px;background:#11243e;border:1px solid #6385ac;border-radius:8px;box-shadow:0 8px 24px #0008;display:grid;gap:12px}
+.camaras-preferencias label{display:grid;gap:6px}
+.camaras-preferencias select,.camaras-preferencias button{padding:7px;background:#193352;color:#edf4ff;border:1px solid #6385ac;border-radius:6px}
+.camaras-preferencias input{width:100%;accent-color:#83b9ff}
+body:not(.sala-minimizada) .meeting-app .sala-distribucion[data-camaras]{display:grid;grid-template-columns:minmax(0,1fr) min(var(--ancho-camaras),35%);grid-template-rows:minmax(0,1fr)}
+body:not(.sala-minimizada) .sala-distribucion[data-camaras] .sala-alumnos{display:flex;flex-direction:column;min-height:0;height:auto}
+body:not(.sala-minimizada) .sala-distribucion[data-camaras] .rtc-grid{flex:1;min-height:0;height:auto!important;overflow:auto}
+body:not(.sala-minimizada) .sala-distribucion[data-camaras] .rtc-persona{max-height:none;min-height:0;aspect-ratio:16/9;width:100%;flex-shrink:0}
+body:not(.sala-minimizada) .meeting-app .sala-distribucion[data-camaras=izquierda]{grid-template-columns:min(var(--ancho-camaras),35%) minmax(0,1fr)}
+body:not(.sala-minimizada) .sala-distribucion[data-camaras=izquierda] .sala-alumnos{grid-column:1}
+body:not(.sala-minimizada) .sala-distribucion[data-camaras=izquierda] .sala-presentacion{grid-column:2}
+body:not(.sala-minimizada) .meeting-app .sala-distribucion:is([data-camaras=arriba],[data-camaras=abajo]){grid-template-columns:minmax(0,1fr);grid-template-rows:min(var(--alto-camaras),35%) minmax(0,1fr)}
+body:not(.sala-minimizada) .sala-distribucion:is([data-camaras=arriba],[data-camaras=abajo]) .sala-alumnos{grid-column:1;grid-row:1}
+body:not(.sala-minimizada) .sala-distribucion:is([data-camaras=arriba],[data-camaras=abajo]) .sala-presentacion{grid-column:1;grid-row:2}
+body:not(.sala-minimizada) .meeting-app .sala-distribucion[data-camaras=abajo]{grid-template-rows:minmax(0,1fr) min(var(--alto-camaras),35%)}
+body:not(.sala-minimizada) .sala-distribucion[data-camaras=abajo] .sala-alumnos{grid-row:2}
+body:not(.sala-minimizada) .sala-distribucion[data-camaras=abajo] .sala-presentacion{grid-row:1}
+body:not(.sala-minimizada) .sala-distribucion:is([data-camaras=arriba],[data-camaras=abajo]) .rtc-grid{flex-direction:row}
+body:not(.sala-minimizada) .sala-distribucion:is([data-camaras=arriba],[data-camaras=abajo]) .rtc-persona{height:100%;width:auto}
+.sala-distribucion[data-camaras=izquierda] .camaras-preferencias>div{left:0;right:auto}
+.sala-distribucion[data-camaras=abajo] .camaras-preferencias>div{top:auto;bottom:100%}
+@media(max-width:760px){
+ .camaras-preferencias>div{position:fixed;top:90px;bottom:auto!important;left:12px!important;right:12px;width:auto;max-width:none}
+ body:not(.sala-minimizada) .sala-distribucion:is([data-camaras=derecha],[data-camaras=izquierda]) .rtc-grid{flex-direction:column}
+}
+
+#listaParticipantesSala{background:#11243e;color:#edf4ff;border:1px solid #6385ac;border-radius:12px;width:min(600px,85vw);max-height:75dvh;overflow:auto}#listaParticipantesSala::backdrop{background:#0008}#listaParticipantesSala header{display:flex;justify-content:space-between;gap:16px}#listaParticipantesSala p{padding:12px;border-bottom:1px solid #456087}#cerrarListaParticipantes{background:#24466d;color:white;border:1px solid #6385ac;border-radius:8px;padding:8px}

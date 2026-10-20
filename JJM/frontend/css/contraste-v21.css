@@ -369,3 +369,11 @@ body .main-content :is(h1,h2,h3,h4,h5,h6,strong,label,legend,dt,th){color:#edf4f
 body .main-content :is(p,small,li,dd,td){color:#c9dbef!important}
 body .main-content .kanban-column{background:var(--columna-color)!important;color:var(--columna-texto)!important;border-color:#6385ac!important}
 body .main-content .kanban-column :is(.kanban-task,.kanban-empty,.kanban-column-content){background:transparent!important;color:var(--columna-texto)!important}
+
+/* V29: superficies sobrias; el estado se distingue en la cabecera y el borde. */
+body .main-content .kanban-column{background:#101f35!important;color:#edf4ff!important;border:1px solid #3d5575!important;border-top:5px solid var(--columna-color)!important}
+body .main-content .kanban-column :is(.kanban-task,.kanban-empty,.kanban-column-content){color:#edf4ff!important}
+body .main-content .kanban-column .kanban-task{background:#1a304d!important;border:1px solid #547299!important;box-shadow:0 3px 10px #0002}
+body .main-content .kanban-column .kanban-empty{background:#14263e!important;border-color:#506b8f!important;color:#c9dbef!important}
+
+body .kanban-column.column-pendiente{--columna-color:#669ef3}body .kanban-column.column-progreso{--columna-color:#efa64b}body .kanban-column.column-bloqueada{--columna-color:#e97684}body .kanban-column.column-completada{--columna-color:#58c79e}

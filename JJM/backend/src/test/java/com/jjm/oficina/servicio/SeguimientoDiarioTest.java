@@ -50,8 +50,8 @@ class SeguimientoDiarioTest {
         assertEquals(1L,resumen.get("alumnos"));assertEquals(3L,resumen.get("proyectos"));assertEquals(1L,resumen.get("reportesPendientes"));assertEquals(2L,resumen.get("reportesEntregados"));
         verify(asistencia,times(1)).habilitacionReporte(7,LocalDate.of(2026,10,14));
     }
-    @Test void antesDe16NoEnviaElAvisoAunqueExistanMuchasHorasAcumuladas() {
-        reloj("2026-10-14T21:59:59Z");filas(fila(7,2,null));when(asistencia.habilitacionReporte(anyInt(),any(LocalDate.class))).thenReturn(Map.of("habilitado",true,"segundos",36_000));servicio.recordarReportes();verify(jdbc,never()).update(contains("INSERT INTO pmo_recordatorios"),any(Object[].class));
+    @Test void antesDe7NoEnviaElAvisoAunqueExistanMuchasHorasAcumuladas() {
+        reloj("2026-10-14T12:59:59Z");filas(fila(7,2,null));when(asistencia.habilitacionReporte(anyInt(),any(LocalDate.class))).thenReturn(Map.of("habilitado",true,"segundos",36_000));servicio.recordarReportes();verify(jdbc,never()).update(contains("INSERT INTO pmo_recordatorios"),any(Object[].class));
     }
     @Test void alHabilitarseSeAvisaPorProyectoSinReabrirAvisosLeidos() {
         filas(fila(7,2,null),fila(7,3,null));when(asistencia.habilitacionReporte(7,LocalDate.of(2026,10,14))).thenReturn(Map.of("habilitado",true,"segundos",3_600));servicio.recordarReportes();

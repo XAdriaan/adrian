@@ -26,6 +26,7 @@ public class VideollamadaController {
     private static class Sala {
         final Map<String, Conexion> conexiones = new LinkedHashMap<>();
         final Deque<Map<String,Object>> chat = new ArrayDeque<>();
+        final Map<String, Adjunto> adjuntos = new HashMap<>();
         long mensaje = 0;
         final Map<Integer,Long> sinCamara=new HashMap<>();
         final Map<String,Long> expulsadas=new HashMap<>();
@@ -41,6 +42,7 @@ public class VideollamadaController {
         Conexion(Usuario u,String claves,long ahora) { usuario = u.getId(); nombre = u.getNombre() == null ? "Participante" : u.getNombre(); proyectos=claves; alumno=com.jjm.oficina.servicio.AsistenciaAutomaticaService.esAlumno(u);actividad=ahora; }
         Map<String,Object> resumen() { return Map.of("id", id, "usuario", usuario, "proyectos", proyectos, "nombre", nombre, "mano", mano, "audio", audio, "video", video, "pantalla", pantalla); }
     }
+    private record Adjunto(String nombre, byte[] contenido) {}
     public record Entrada(String conexion) {}
     public record Senal(String conexion, String destino, String tipo, Map<String,Object> datos) {}
     public record Interaccion(String conexion, String tipo, Map<String,Object> datos) {}
@@ -201,7 +203,7 @@ public class VideollamadaController {
                 if (c.mensajes >= 10) throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Espera unos segundos antes de enviar otro mensaje.");
                 c.mensajes++;
                 datos.putAll(Map.of("id", ++s.mensaje, "nombre", c.nombre, "texto", mensaje.trim(), "fecha", ahora, "origen", c.id));
-                s.chat.addLast(Map.copyOf(datos)); while (s.chat.size() > 100) s.chat.removeFirst();
+                s.chat.addLast(Map.copyOf(datos)); while (s.chat.size() > 100) { Map<String,Object> eliminado=s.chat.removeFirst(); if(eliminado.get("adjunto") instanceof Map<?,?> a)s.adjuntos.remove(a.get("id")); }
             }
             case "reaccion" -> {
                 Object emoji = entrada.datos().get("emoji");
@@ -221,6 +223,44 @@ public class VideollamadaController {
             catch (ResponseStatusException ignorada) { /* El siguiente pulso retira el acceso revocado. */ }
         }
         return Map.of("estado", "correcto", "datos", datos);
+    }
+    @PostMapping(value="/{sala}/adjuntos", consumes="multipart/form-data")
+    public synchronized Map<String,Object> adjuntar(@PathVariable String sala,
+            @RequestParam String conexion, @RequestParam org.springframework.web.multipart.MultipartFile archivo,
+            @RequestHeader(value="X-Usuario-Id", required=false) Integer id) throws java.io.IOException {
+        Usuario u=autorizar(sala,id); limpiar(); Sala s=salas.get(sala); Conexion c=propia(s,conexion,u);
+        String nombre=Objects.toString(archivo.getOriginalFilename(),"archivo").replaceAll("[\\r\\n\\p{Cntrl}\\\\/]","_");
+        if(nombre.length()>160)nombre=nombre.substring(nombre.length()-160);
+        String extension=nombre.substring(nombre.lastIndexOf('.')+1).toLowerCase(Locale.ROOT);
+        if(!Set.of("png","jpg","jpeg","webp","pdf","docx","xlsx","pptx","txt","csv","zip").contains(extension))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Usa imágenes, PDF, documentos Office, TXT, CSV o ZIP.");
+        if(archivo.isEmpty()||archivo.getSize()>4*1024*1024)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Cada archivo debe tener contenido y pesar hasta 4 MB.");
+        long totalSala=s.adjuntos.values().stream().mapToLong(a->a.contenido.length).sum();
+        long total=salas.values().stream().flatMap(v->v.adjuntos.values().stream()).mapToLong(a->a.contenido.length).sum();
+        if(totalSala+archivo.getSize()>20*1024*1024||total+archivo.getSize()>128*1024*1024)
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,"Se alcanzó el espacio temporal de archivos del chat.");
+        long ahora=reloj.millis();
+        if(ahora-c.ventanaChat>=10_000){c.ventanaChat=ahora;c.mensajes=0;}
+        if(c.mensajes>=10)throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,"Espera unos segundos antes de enviar otro archivo.");
+        byte[] contenido=archivo.getBytes();
+        String codigo=UUID.randomUUID().toString();s.adjuntos.put(codigo,new Adjunto(nombre,contenido));c.mensajes++;
+        Map<String,Object> datos=Map.of("id",++s.mensaje,"nombre",c.nombre,"texto","Archivo compartido","fecha",ahora,"origen",c.id,
+            "adjunto",Map.of("id",codigo,"nombre",nombre,"bytes",contenido.length));
+        s.chat.addLast(datos);
+        while(s.chat.size()>100){Map<String,Object> eliminado=s.chat.removeFirst();if(eliminado.get("adjunto") instanceof Map<?,?> a)s.adjuntos.remove(a.get("id"));}
+        for(Conexion destino:s.conexiones.values())emitir(destino,c.id,"chat",datos);
+        return Map.of("estado","correcto","datos",datos);
+    }
+    @GetMapping("/{sala}/adjuntos/{archivo}")
+    public synchronized ResponseEntity<byte[]> descargarAdjunto(@PathVariable String sala,@PathVariable String archivo,
+            @RequestParam String conexion,@RequestHeader(value="X-Usuario-Id",required=false) Integer id){
+        Usuario u=autorizar(sala,id);limpiar();Sala s=salas.get(sala);propia(s,conexion,u);
+        Adjunto a=s.adjuntos.get(archivo);
+        if(a==null)throw new ResponseStatusException(HttpStatus.NOT_FOUND,"El archivo ya no está disponible en esta sala.");
+        return ResponseEntity.ok().header("X-Content-Type-Options","nosniff").header("Cache-Control","no-store")
+            .header("Content-Disposition",org.springframework.http.ContentDisposition.attachment().filename(a.nombre,java.nio.charset.StandardCharsets.UTF_8).build().toString())
+            .contentType(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM).body(a.contenido);
     }
     @PostMapping("/{sala}/salir")
     public synchronized Map<String,Object> salir(@PathVariable String sala, @RequestBody Entrada entrada,

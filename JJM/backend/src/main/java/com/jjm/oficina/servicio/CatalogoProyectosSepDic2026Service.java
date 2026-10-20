@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -260,7 +261,7 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
         for(ProyectoCatalogo item:CATALOGO){
             if(item.alumnoFuente()==null)continue;
             List<String> esperados=tokens(normalizar(item.alumnoFuente()));
-            if(esperados.size()<3||!esperados.equals(tokens(normalizar(propia.getNombreCompleto()))))continue;
+            if(!"JJM-SD26-08".equals(item.codigo())&&(esperados.size()<3||!esperados.equals(tokens(normalizar(propia.getNombreCompleto())))))continue;
             List<MiembroEquipo> iguales=buscarMiembros(item.alumnoFuente());
             if(iguales.size()!=1||!iguales.getFirst().getId().equals(propia.getId()))continue;
             Proyecto p=proyectoRepository.findByCodigo(item.codigo()).orElse(null);
@@ -276,6 +277,16 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
             Proyecto proyecto,
             ProyectoCatalogo item
     ) {
+        // Cuenta confirmada expresamente por Administración; el PDF sólo indica "Emily".
+        if ("JJM-SD26-08".equals(item.codigo())) {
+            List<MiembroEquipo> confirmadas=buscarMiembros("Emily");
+            if(confirmadas.size()==1 && cuentaAlumnoActiva(confirmadas.getFirst())) {
+                MiembroEquipo emily=confirmadas.getFirst();
+                if(miembroProyectoRepository.findByIdProyectoAndIdMiembro(proyecto.getId(),emily.getId()).filter(this::esAsignacionAsesor).isPresent())return null;
+                asignarAlumnoConfirmado(item.codigo(),emily.getId());
+                return emily;
+            }
+        }
         List<MiembroEquipo> asignados = alumnosAsignados(proyecto.getId());
         if (!asignados.isEmpty()) return asignados.size() == 1 ? asignados.get(0) : null;
         if (item.alumnoFuente() == null || item.alumnoFuente().isBlank()) {
@@ -438,6 +449,10 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
     }
 
     private List<MiembroEquipo> buscarMiembros(String nombreFuente) {
+        if ("emily".equals(normalizar(nombreFuente))) {
+            return miembroEquipoRepository.findAll().stream().filter(m -> m.getUsuario()!=null
+                && "emily_1323144030@uptecamac.edu.mx".equalsIgnoreCase(Objects.toString(m.getUsuario().getCorreo(),"").trim())).toList();
+        }
         String normalizadoFuente = normalizar(nombreFuente);
         List<String> tokensFuente = tokens(normalizadoFuente);
         // Los nombres parciales del PDF requieren confirmación del administrador.

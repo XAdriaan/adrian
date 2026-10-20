@@ -164,4 +164,16 @@ class VideollamadaTest {
         assertEquals(0,((Map<?,?>)video.eventos("general",a,0,7).get("camaraControl")).get("aviso"));
         assertEquals(false,((Map<?,?>)video.eventos("general",asesor,0,8).get("camaraControl")).get("obligatoria"));
     }
+    @Test void archivosSoloDisponiblesParaParticipantesDeLaMismaSala() throws Exception {
+        String a=entrar("10",7), b=entrar("10",8), otra=entrar("20",9);
+        var archivo=new org.springframework.mock.web.MockMultipartFile("archivo","guia.txt","text/plain","Contenido".getBytes());
+        var respuesta=video.adjuntar("10",a,archivo,7);
+        var datos=(Map<?,?>)respuesta.get("datos");var adjunto=(Map<?,?>)datos.get("adjunto");String codigo=(String)adjunto.get("id");
+        assertArrayEquals("Contenido".getBytes(),video.descargarAdjunto("10",codigo,b,8).getBody());
+        assertTrue(video.descargarAdjunto("10",codigo,b,8).getHeaders().getFirst("Content-Disposition").startsWith("attachment"));
+        assertThrows(ResponseStatusException.class,()->video.descargarAdjunto("10",codigo,otra,9));
+        assertThrows(ResponseStatusException.class,()->video.descargarAdjunto("20",codigo,otra,9));
+        assertThrows(ResponseStatusException.class,()->video.adjuntar("10",a,new org.springframework.mock.web.MockMultipartFile("archivo","x.html","text/html","<script>".getBytes()),7));
+        assertThrows(ResponseStatusException.class,()->video.adjuntar("10",a,new org.springframework.mock.web.MockMultipartFile("archivo","x.txt","text/plain",new byte[4*1024*1024+1]),7));
+    }
 }

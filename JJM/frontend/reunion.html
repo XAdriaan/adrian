@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="css/sala-v20.css?v=20261014-v24">
 <link rel="stylesheet" href="css/sala-v24.css?v=20261014-v24">
     <link rel="stylesheet" href="css/sala-v26.css?v=20261017-v28">
+    <link rel="stylesheet" href="css/sala-panel-camaras.css?v=20261019-v29">
 </head>
 <body>
 <div class="meeting-app">
@@ -29,7 +30,7 @@
         <div class="meeting-actions">
             <div class="sala-asistencia-superior" aria-label="Jornada y asistencia"></div>
             <span class="meeting-pill" id="meetingTimer">00:00:00</span>
-            <span class="meeting-pill" id="contadorParticipantes">0 participantes</span>
+            <button type="button" class="meeting-pill" id="contadorParticipantes" aria-haspopup="dialog">0 participantes</button>
             <details class="sala-dispositivos" id="dispositivosSala">
                 <summary>Dispositivos</summary>
                 <div class="sala-dispositivos-contenido">
@@ -68,9 +69,9 @@
 
         <aside class="sala-chat" id="panelChatSala" hidden aria-label="Chat de la reunión">
             <header><h2>Chat de la reunión</h2><button id="btnCerrarChat" class="meeting-btn secondary" type="button" aria-label="Cerrar chat">✕</button></header>
-            <p class="sala-ayuda">Últimos 100 mensajes de esta sala. Se conservan mientras la sala está activa.</p>
+            <p class="sala-ayuda">Últimos 100 mensajes de esta sala. Mensajes y archivos son temporales y se conservan mientras la sala está activa.</p>
             <div id="mensajesSala" role="log" aria-label="Mensajes" aria-live="polite"></div>
-            <form id="formChatSala"><label for="textoChatSala">Mensaje</label><textarea id="textoChatSala" maxlength="2000" rows="3" placeholder="Escribe para todos…" required></textarea><button class="meeting-btn" id="btnEnviarChat" type="submit">Enviar</button></form>
+            <label for="archivoChatSala">Adjuntar imagen o documento (hasta 4 MB)</label><input type="file" id="archivoChatSala" accept=".png,.jpg,.jpeg,.webp,.pdf,.docx,.xlsx,.pptx,.txt,.csv,.zip"><p id="estadoArchivoChat" role="status"></p><form id="formChatSala"><label for="textoChatSala">Mensaje</label><textarea id="textoChatSala" maxlength="2000" rows="3" placeholder="Escribe para todos…" required></textarea><button class="meeting-btn" id="btnEnviarChat" type="submit">Enviar</button></form>
         </aside>
 
         <aside class="recordings-panel" id="panelGrabaciones" hidden>
@@ -118,13 +119,15 @@
 <div id="opcionesReacciones" class="sala-opciones" hidden><h2>Reaccionar</h2><div class="sala-emojis"><button data-reaccion="👍" aria-label="Me gusta">👍</button><button data-reaccion="👏" aria-label="Aplausos">👏</button><button data-reaccion="❤️" aria-label="Corazón">❤️</button><button data-reaccion="😂" aria-label="Risa">😂</button><button data-reaccion="🎉" aria-label="Celebrar">🎉</button><button data-reaccion="🤔" aria-label="Pensando">🤔</button></div></div>
 <div id="opcionesFondos" class="sala-opciones" hidden><div class="sala-panel-cabecera"><h2>Fondo de tu cámara</h2><button type="button" id="btnCerrarFondos" aria-label="Cerrar fondos">✕</button></div><button type="button" id="btnQuitarFondo">Quitar fondo</button><label for="fondoSala">Selecciona un fondo</label><select id="fondoSala"><option value="ninguno">Sin efecto</option><option value="desenfoque">Desenfocar fondo</option><option value="oficina">Oficina JJM</option><option value="azul">Azul</option><option value="bosque">Verde</option><option value="personalizado">Imagen propia</option></select><label for="imagenFondoSala">Imagen propia (JPG, PNG o WebP, hasta 5 MB)</label><input id="imagenFondoSala" type="file" accept="image/jpeg,image/png,image/webp"><p id="estadoFondoSala" role="status">Activa tu cámara para aplicar el efecto.</p></div>
 <div id="opcionesCapturas" class="sala-opciones" hidden><h2>Fotos y capturas</h2><p>La imagen se descarga en tu equipo. Al capturar la reunión se avisa a todos los participantes.</p><button id="btnFotoCamara" class="meeting-btn" type="button">Tomar foto con mi cámara</button><button id="btnFotoReunion" class="meeting-btn secondary" type="button">Capturar reunión y presentación</button><p id="estadoCapturaSala" role="status"></p></div>
+<dialog id="listaParticipantesSala" aria-labelledby="tituloListaParticipantes"><header><h2 id="tituloListaParticipantes">Participantes de la llamada</h2><button type="button" id="cerrarListaParticipantes">Cerrar</button></header><div id="contenidoListaParticipantes"></div></dialog>
 <iframe id="oficinaDuranteLlamada" title="Oficina de Proyectos durante la llamada" hidden></iframe>
 
 <script src="js/microfono.js?v=20261015-v27"></script>
-<script src="js/api-config.js?v=20261017-v28"></script>
+<script src="js/api-config.js?v=20261019-v29"></script>
 <script src="js/sala-webrtc.js?v=20261015-v27"></script>
 <script src="js/sala-fondos.js?v=20261013-v20"></script>
-<script src="js/sala-experiencia.js?v=20261017-v28"></script>
+<script src="js/sala-experiencia.js?v=20261019-v29"></script>
+<script src="js/sala-panel-camaras.js?v=20261019-v29"></script>
 <script src="js/grabaciones.js?v=20261005-v10"></script>
 <script src="js/reunion.js?v=20261017-v28"></script>
 <script src="js/ardia-global.js?v=20261016-v27"></script>

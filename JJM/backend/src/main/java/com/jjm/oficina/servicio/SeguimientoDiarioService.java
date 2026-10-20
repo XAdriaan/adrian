@@ -88,15 +88,15 @@ public class SeguimientoDiarioService {
     public void recordarReportes() {
         try {
             LocalDate hoy=LocalDate.now(reloj);LocalDateTime ahora=LocalDateTime.now(reloj);Set<String> vigentes=new HashSet<>();
-            if(hoy.getDayOfWeek().getValue()<=5&&!ahora.isBefore(hoy.atTime(16,0))&&!ahora.isAfter(hoy.atTime(17,0))) {
+            if(hoy.getDayOfWeek().getValue()<=5&&!ahora.isBefore(hoy.atTime(7,0))&&!ahora.isAfter(hoy.atTime(17,0))) {
                 for(Map<String,Object> f:filas(null))if(Boolean.TRUE.equals(f.get("puedeReportar"))) {
                     String clave="seguimiento-reporte-"+f.get("idProyecto")+"-"+f.get("idUsuario")+"-"+hoy;vigentes.add(clave);
                     jdbc.update("""
                         INSERT INTO pmo_recordatorios(clave,id_usuario,titulo,descripcion,enlace,estado,actualizado_en)
                         VALUES(?,?,?,?,?,'Abierto',?) ON DUPLICATE KEY UPDATE
                           estado=IF(estado='Resuelto','Abierto',estado),actualizado_en=VALUES(actualizado_en)
-                        """,clave,f.get("idUsuario"),"Reporte diario habilitado desde las 4:00 p. m.",
-                        "El reporte de "+hoy+" para «"+f.get("proyecto")+"» está habilitado desde las 16:00. Registra tus actividades, avances, tareas completadas y evidencia; entrega antes de las 17:00.",
+                        """,clave,f.get("idUsuario"),"Reporte diario habilitado desde las 7:00 a. m.",
+                        "El reporte de "+hoy+" para «"+f.get("proyecto")+"» está habilitado desde las 07:00. Registra tus actividades, avances, tareas completadas y evidencia; entrega antes de las 17:00.",
                         "canales-proyectos.html?id="+f.get("idProyecto")+"#diario",ahora);
                 }
             }

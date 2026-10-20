@@ -187,8 +187,8 @@ public class AsistenciaAutomaticaService {
         salida.put("finalizada",jornada!=null&&jornada.isFinalizada());
         salida.put("motivoCierre",jornada==null?"":Objects.toString(jornada.getMotivoCierre(),""));
         salida.put("segundosJornada",jornada==null?0:jornada.getTotalSegundos());
-        salida.put("reporteHabilitado",!ahora.isBefore(fecha.atTime(16,0).atZone(ZONA).toInstant()));
-        salida.put("segundosHastaReporte",Math.max(0,Duration.between(ahora,fecha.atTime(16,0).atZone(ZONA).toInstant()).getSeconds()));
+        salida.put("reporteHabilitado",!ahora.isBefore(fecha.atTime(7,0).atZone(ZONA).toInstant()));
+        salida.put("segundosHastaReporte",Math.max(0,Duration.between(ahora,fecha.atTime(7,0).atZone(ZONA).toInstant()).getSeconds()));
         salida.put("vigenciaSegundos", continua?Math.max(0,Duration.between(ahora,fin(fecha)).toSeconds()):jornada == null ? 0 : Math.max(0, jornada.getUltimaSenal() + VIGENCIA_SENAL - ahora.getEpochSecond()));
         salida.put("enHorario", enHorario); salida.put("segundos", Math.min(36000,otrosSegundos+(jornada==null?0:jornada.getTotalSegundos())));
         salida.put("segundosConexion",jornada==null?0:jornada.getTotalSegundos());
@@ -216,7 +216,7 @@ public class AsistenciaAutomaticaService {
                 ? "Puedes continuar tu jornada de hoy. Se conservarán las horas registradas y el conteo seguirá desde que pulses Continuar mi jornada."
                 : "La jornada terminó. Revisa tus reportes y el saldo de reposición."
                 : continua ? "El servidor cuenta tu jornada aunque cierres o suspendas la laptop. Finaliza al terminar; cierre automático a las 17:00. La conexión y las actividades se revisan por separado."
-                : "Pulsa Iniciar mi jornada para trabajar en tus proyectos. El reporte diario se habilita a las 16:00, hora de Ciudad de México.");
+                : "Pulsa Iniciar mi jornada para trabajar en tus proyectos. El reporte diario se habilita a las 07:00, hora de Ciudad de México.");
         return salida;
     }
 
@@ -309,11 +309,11 @@ public class AsistenciaAutomaticaService {
     public Map<String,Object> habilitacionReporte(Integer usuario,LocalDate fecha) {
         actualizar(usuario,false);
         JornadaAutomatica j=jornadas.findByIdUsuarioAndFecha(usuario,fecha).orElse(null);
-        Instant apertura=fecha.atTime(16,0).atZone(ZONA).toInstant(),ahora=reloj.instant();
+        Instant apertura=fecha.atTime(7,0).atZone(ZONA).toInstant(),ahora=reloj.instant();
         boolean habilitado=!ahora.isBefore(apertura);
         return Map.of("habilitado",habilitado,"segundos",j==null?0:j.getTotalSegundos(),
-            "faltanSegundos",Math.max(0,Duration.between(ahora,apertura).getSeconds()),"horaApertura","16:00","zona","America/Mexico_City",
-            "mensaje",habilitado?"El reporte diario está habilitado. Entrega las actividades y evidencias de cada proyecto; hora límite 17:00.":"El reporte diario se habilita a las 16:00 (4:00 p. m.), hora de Ciudad de México, independientemente de las horas acumuladas.");
+            "faltanSegundos",Math.max(0,Duration.between(ahora,apertura).getSeconds()),"horaApertura","07:00","zona","America/Mexico_City",
+            "mensaje",habilitado?"El reporte diario está habilitado. Entrega las actividades y evidencias de cada proyecto; hora límite 17:00.":"El reporte diario se habilita a las 07:00 (7:00 a. m.), hora de Ciudad de México, independientemente de las horas acumuladas.");
     }
 
     private void cerrarRegistro(JornadaAutomatica jornada, Instant ahora) {

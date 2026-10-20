@@ -103,7 +103,28 @@
                 this.actualizarTamanoVista();
             }catch(e){this.error(e);}
         }
+        mostrarParticipantes(){
+            const contenedor=el('contenidoListaParticipantes');
+            if(!contenedor?.replaceChildren)return;
+            const filas=this.rtc.lista.map(p=>{
+                const fila=document.createElement('p');
+                fila.textContent=[p.proyectos,p.nombre+(p.id===this.rtc.id?' (Tú)':''),p.audio?'Micrófono encendido':'Micrófono apagado',p.video?'Cámara encendida':'Cámara apagada'].filter(Boolean).join(' · ');
+                return fila;
+            });
+            contenedor.replaceChildren(...filas);
+        }
         enlazar(){
+            el('archivoChatSala')?.addEventListener('change',async e=>{
+                const campo=e.target,archivo=campo.files?.[0];if(!archivo)return;
+                const estado=el('estadoArchivoChat');
+                if(!archivo.size||archivo.size>4*1024*1024){estado.textContent='Selecciona un archivo de hasta 4 MB.';campo.value='';return;}
+                campo.disabled=true;estado.textContent='Subiendo archivo…';
+                try{const datos=new FormData();datos.append('conexion',this.rtc.id);datos.append('archivo',archivo);
+                    const r=await this.rtc.api('adjuntos',{method:'POST',body:datos});this.mensaje(r.datos,false);estado.textContent='Archivo compartido.';
+                }catch(error){estado.textContent=error.message;}finally{campo.disabled=false;campo.value='';}
+            });
+            el('contadorParticipantes')?.addEventListener('click',()=>{this.mostrarParticipantes();el('listaParticipantesSala').showModal();});
+            el('cerrarListaParticipantes')?.addEventListener('click',()=>{el('listaParticipantesSala').close();el('contadorParticipantes').focus();});
             el('btnChatSala').addEventListener('click',()=>this.chat());el('btnCerrarChat').addEventListener('click',()=>this.chat(false));
             for(const [boton,panel] of [['btnReaccionesSala','opcionesReacciones'],['btnFondosSala','opcionesFondos'],['btnCapturasSala','opcionesCapturas']])el(boton).addEventListener('click',()=>{
                 const abrir=el(panel).hidden;this.cerrarOpciones();el(panel).hidden=!abrir;el(boton).setAttribute('aria-expanded',String(abrir));
@@ -156,6 +177,16 @@
             if(!dato || this.mensajes.has(dato.id))return;this.mensajes.add(dato.id);
             const item=document.createElement('article');item.className='sala-mensaje';const nombre=document.createElement('strong'),texto=document.createElement('p'),hora=document.createElement('time');
             nombre.textContent=dato.nombre || 'Participante';texto.textContent=String(dato.texto||'');hora.textContent=new Date(dato.fecha).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});item.append(nombre,texto,hora);
+            if(dato.adjunto?.id){
+                const enlace=document.createElement('button');enlace.type='button';enlace.textContent='Descargar '+String(dato.adjunto.nombre||'archivo');
+                enlace.addEventListener('click',async()=>{
+                    enlace.disabled=true;
+                    try{const ruta=`/api/videollamadas/${encodeURIComponent(this.rtc.sala)}/adjuntos/${encodeURIComponent(dato.adjunto.id)}?conexion=${encodeURIComponent(this.rtc.id)}`;
+                        const r=await fetch(window.apiUrl(ruta));if(!r.ok)throw new Error('El archivo no está disponible o terminó tu acceso a la sala.');
+                        const url=URL.createObjectURL(await r.blob()),a=document.createElement('a');a.href=url;a.download=dato.adjunto.nombre||'archivo';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);
+                    }catch(error){this.error(error);}finally{enlace.disabled=false;}
+                });item.append(enlace);
+            }
             const lista=el('mensajesSala'),abajo=lista.scrollHeight-lista.scrollTop-lista.clientHeight<80;lista.append(item);while(lista.children.length>100)lista.firstElementChild.remove();if(abajo)lista.scrollTop=lista.scrollHeight;
             if(contar&&el('panelChatSala').hidden&&dato.origen!==this.rtc.id){el('chatNoLeidos').textContent=String(++this.noLeidos);}
         }
@@ -223,6 +254,7 @@
             this.reproduccion=setInterval(()=>{if(!this.rtc.activa)return;this.reproducirAudioRemoto();if(this.audio?.state==='suspended')this.audio.resume().catch(()=>{});},5000);
         }
         actualizar(){
+            if(el('listaParticipantesSala')?.open)this.mostrarParticipantes();
             const lista=this.rtc.lista,propia={id:this.rtc.id,nombre:'Tú',...this.rtc.estadoLocal};
             const presenta=lista.find(p=>p.pantalla),destacada=presenta || lista.find(p=>p.id===this.hablante) || lista.find(p=>p.id!==this.rtc.id&&p.video) || lista.find(p=>p.video) || propia;
             const peer=this.rtc.peers.get(destacada.id);let fuente;
@@ -275,3 +307,4 @@
     }
     window.PMOExperienciaSala=ExperienciaSala;window.PMOElegirHablante=elegirHablante;window.PMOCalcularVistaPresentacion=calcularVistaPresentacion;
 })();
+
