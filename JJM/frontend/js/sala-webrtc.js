@@ -65,7 +65,7 @@
                     if (this.medios.pantalla) await p.pantallaSender.replaceTrack(this.medios.pantalla);
                 }
                 if (!this.activa || this.generacion !== epoca) return;
-                pc.onicecandidate = e => { if (e.candidate && this.activa) this.enviar(persona.id,'candidate',e.candidate.toJSON()).catch(()=>{}); };
+                pc.onicecandidate = e => { if (e.candidate && this.activa) this.enviar(persona.id,'candidate',e.candidate.toJSON()).catch(()=>this.programarRecuperacion(persona.id)); };
                 p.pantallaStream = new MediaStream();
                 p.pantallaVideo = document.createElement('video'); p.pantallaVideo.autoplay=true; p.pantallaVideo.playsInline=true; p.pantallaVideo.muted=true;
                 pc.ontrack = e => {
@@ -85,11 +85,18 @@
                 pc.onconnectionstatechange = () => {
                     p.conexion.textContent = ({connected:'Conectado',connecting:'Conectando…',disconnected:'Conexión interrumpida',failed:'No se pudo conectar',closed:'Desconectado'})[pc.connectionState] || 'Preparando…';
                     if (['failed','disconnected'].includes(pc.connectionState)) this.programarRecuperacion(persona.id);
-                    if(pc.connectionState==='connected'){clearTimeout(p.recuperacion);p.recuperacion=null;p.reintentos=0;p.video.play().catch(()=>{});this.estado.textContent='Conexión activa.';}
+                    if(pc.connectionState==='connected'){clearTimeout(p.recuperacion);p.recuperacion=null;p.reintentos=0;p.video.play().catch(()=>{});}
+                    this.actualizarEstadoConexion();
                 };
                 pc.oniceconnectionstatechange=()=>{if(['failed','disconnected'].includes(pc.iceConnectionState))this.programarRecuperacion(persona.id);};
                 // Un solo iniciador por pareja evita ofertas simultáneas.
-                if (this.id < persona.id) await this.ofertar(persona.id);
+                // Una oferta perdida no debe cerrar la sala ni impedir conectar al resto.
+                // ICE puede quedarse en «new» si nunca recibió la oferta/respuesta.
+                this.programarRecuperacion(persona.id);
+                if (this.id < persona.id) {
+                    try { await this.ofertar(persona.id); }
+                    catch (_) { this.programarRecuperacion(persona.id); }
+                }
             }
             this.participantes.textContent = `${lista.length} ${lista.length === 1 ? 'participante' : 'participantes'}`;
             for (const persona of lista) {
@@ -100,9 +107,30 @@
             }
             const propia=lista.find(p=>p.id===this.id),etiqueta=this.contenedor.querySelector?.('[data-propia] strong');
             if(propia&&etiqueta){etiqueta.textContent=(propia.proyectos?propia.proyectos+' · ':'')+propia.nombre+' (Tú)';etiqueta.title=etiqueta.textContent;}
-            this.alActualizar?.();
+            this.actualizarEstadoConexion();this.alActualizar?.();
         }
-        async ofertar(id, reiniciar=false) {
+        actualizarEstadoConexion() {
+            if(!this.activa)return;
+            const todos=[...this.peers.values()],pendientes=todos.filter(p=>p.pc?.connectionState!=='connected');
+            const conectados=todos.length-pendientes.length;
+            const nombres=pendientes.map(p=>String(p.persona?.nombre||'Participante').slice(0,45)).slice(0,2).join(', ');
+            const sinRuta=pendientes.some(p=>(p.reintentos||0)>=3)&&!this.config.relayDisponible;
+            const texto=!todos.length?'Estás en la sala. Esperando a otros participantes.':!pendientes.length
+                ?`Conexión activa con los ${todos.length} participantes remotos.`
+                :`${conectados} de ${todos.length} participantes remotos conectados. ${sinRuta?'Sin conexión':'Conectando'} con ${nombres}${pendientes.length>2?' y otros':''}.${sinRuta?' Falta configurar TURN para las redes que no logran conexión directa.':''}`;
+            if(this.ultimoEstadoConexion!==texto){this.ultimoEstadoConexion=texto;this.estado.textContent=texto;}
+        }
+        serializar(id, tarea) {
+            const anterior=this.cadenas.get(id)||Promise.resolve();
+            const siguiente=anterior.catch(()=>{}).then(tarea);
+            this.cadenas.set(id,siguiente);
+            siguiente.finally(()=>{if(this.cadenas.get(id)===siguiente)this.cadenas.delete(id);}).catch(()=>{});
+            return siguiente;
+        }
+        ofertar(id, reiniciar=false) {
+            return this.serializar(id,()=>this.ofertarAhora(id,reiniciar));
+        }
+        async ofertarAhora(id, reiniciar=false) {
             const p = this.peers.get(id); if (!p)return;
             if(reiniciar && p.pc.signalingState==='have-local-offer')await p.pc.setLocalDescription({type:'rollback'});
             if(p.pc.signalingState !== 'stable')return;
@@ -110,29 +138,35 @@
             await this.enviar(id, 'offer', p.pc.localDescription.toJSON());
         }
         programarRecuperacion(id){
-            const p=this.peers.get(id);if(!p||p.recuperacion||!this.activa)return;
+            const p=this.peers.get(id);if(!p?.pc||p.recuperacion||!this.activa)return;
             p.recuperacion=setTimeout(async()=>{
                 p.recuperacion=null;if(!this.activa||this.peers.get(id)!==p||p.pc.connectionState==='connected')return;
                 p.reintentos=(p.reintentos||0)+1;
-                this.estado.textContent='Recuperando audio y video automáticamente…';
+                this.actualizarEstadoConexion();
                 try{if(this.id<id)await this.ofertar(id,true);else await this.enviar(id,'reiniciar',{});}catch(_){}
-                if(p.reintentos>=3 && !this.config.relayDisponible)this.estado.textContent='Intentando recuperar la llamada. Esta red puede necesitar un servidor TURN; revisa la conexión de Internet.';
+                this.actualizarEstadoConexion();
                 this.programarRecuperacion(id);
-            },Math.min(20000,3000*Math.max(1,p.reintentos||1)));
+            },Math.min(30000,10000*Math.max(1,p.reintentos||1)));
         }
         enviar(destino, tipo, datos) {
             if (!this.activa || !this.id) return Promise.reject(new Error('La sala está cerrada.'));
             return this.api('senal',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({conexion:this.id,destino,tipo,datos})});
         }
-        async recibir(e) {
+        recibir(e) {
+            return this.serializar(e.origen,()=>this.recibirAhora(e));
+        }
+        async recibirAhora(e) {
             if (['chat','reaccion','captura'].includes(e.tipo)) { this.alInteraccion?.(e); return; }
             const p = this.peers.get(e.origen); if (!p) return;
-            if(e.tipo==='reiniciar'){if(this.id<e.origen)await this.ofertar(e.origen,true);return;}
+            if(e.tipo==='reiniciar'){if(this.id<e.origen)await this.ofertarAhora(e.origen,true);return;}
             if (e.tipo === 'candidate') {
                 if (p.pc.remoteDescription) await p.pc.addIceCandidate(e.datos); else p.pendientes.push(e.datos);
             } else {
                 await p.pc.setRemoteDescription(e.datos);
-                for (const candidato of p.pendientes.splice(0)) await p.pc.addIceCandidate(candidato);
+                // Un candidato antiguo o rechazado no debe impedir enviar la respuesta SDP.
+                for (const candidato of p.pendientes.splice(0)) {
+                    try { await p.pc.addIceCandidate(candidato); } catch (_) {}
+                }
                 if (e.tipo === 'offer') {
                     // Responder sobre las secciones recibidas; crear otras dejaría video en un solo sentido.
                     for (const [indice, transceptor] of p.pc.getTransceivers().entries()) {
@@ -183,7 +217,7 @@
         async cambiar(tipo, pista) {
             this.medios[tipo] = pista;
             this.actualizarVistaLocal();
-            const resultados = await Promise.allSettled([...this.peers.values()].map(async p => {
+            const resultados = await Promise.allSettled([...this.peers.entries()].map(([id,p]) => this.serializar(id,async () => {
                 let tiempo;
                 try {
                     await Promise.race([(tipo === 'audio' ? p.audio : tipo === 'pantalla' ? p.pantallaSender : p.videoSender)?.replaceTrack(pista),
@@ -192,8 +226,9 @@
                     if(pista && tipo!=='audio' && sender?.getParameters && sender.setParameters){
                         const parametros=sender.getParameters();if(parametros.encodings?.length){parametros.encodings[0].maxBitrate=tipo==='pantalla'?1200000:450000;parametros.encodings[0].maxFramerate=tipo==='pantalla'?20:20;sender.setParameters(parametros).catch(()=>{});}
                     }
-                } finally { clearTimeout(tiempo); }
-            }));
+                } catch (error) { this.programarRecuperacion(id); throw error; }
+                finally { clearTimeout(tiempo); }
+            })));
             if (resultados.some(r => r.status === 'rejected')) this.estado.textContent =
                 'Tu dispositivo está activo. Un participante perdió la conexión; puede pulsar Reconectar.';
         }

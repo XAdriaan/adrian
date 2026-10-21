@@ -29,7 +29,7 @@ test('compartir pantalla utiliza otro canal y mantiene cámara y audio del parti
 });
 test('ICE se reinicia automáticamente sin cerrar micrófono ni cámara',async()=>{
  const {sala,ctx}=entorno();sala.id='a';sala.enviar=async()=>{};await sala.sincronizar([{id:'a'},{id:'b'}]);const p=sala.peers.get('b');p.pc.connectionState='failed';let callback;ctx.setTimeout=fn=>{callback=fn;return 1;};
- sala.programarRecuperacion('b');await callback();assert.equal(p.pc.opcionesOferta.iceRestart,true);assert.equal(sala.activa,true);assert.notEqual(p.pc.cerrado,true);
+ p.recuperacion=null;sala.programarRecuperacion('b');await callback();assert.equal(p.pc.opcionesOferta.iceRestart,true);assert.equal(sala.activa,true);assert.notEqual(p.pc.cerrado,true);
 });
 test('la pérdida temporal del servicio no expulsa después de cinco intentos',async()=>{
  const {sala}=entorno(async()=>new Response('{}',{status:503}));for(let i=0;i<7;i++)await sala.ciclo(1);assert.equal(sala.activa,true);assert.equal(sala.fallos,7);
@@ -97,4 +97,43 @@ test('el segundo dispositivo de la misma cuenta también se escucha',async()=>{
  await sala.sincronizar([{id:'a',usuario:7},{id:'b',usuario:7,nombre:'Misma cuenta'}]);const p=sala.peers.get('b');
  p.pc.ontrack({track:{kind:'audio',readyState:'live'},transceiver:p.pc.trans[0]});assert.equal(p.audioSalida.muted,false);
  const micro={kind:'audio',enabled:true};await sala.cambiar('audio',micro);assert.equal(p.pc.trans[0].pista,micro);
+});
+
+for(const nombreSala of ['general','8','34']) {
+ test(`${nombreSala}: una oferta fallida no impide conectar con los demás y se reintenta`,async()=>{
+  const {sala,ctx}=entorno();sala.sala=nombreSala;sala.id='a';const timers=[];ctx.setTimeout=fn=>{timers.push(fn);return timers.length;};
+  const ofertas=[];let fallo=true;sala.enviar=async(id,tipo)=>{if(tipo==='offer'){ofertas.push(id);if(id==='b'&&fallo){fallo=false;throw Error('Servicio temporalmente no disponible');}}};
+  await sala.sincronizar([{id:'a'},{id:'b'},{id:'c'}]);assert.equal(sala.activa,true);assert.equal(sala.peers.size,2);assert.deepEqual(ofertas,['b','c']);
+  await timers[0]();assert.deepEqual(ofertas,['b','c','b']);assert.equal(sala.peers.get('b').pc.opcionesOferta.iceRestart,true);
+ });
+ test(`${nombreSala}: quien espera una oferta perdida solicita recuperarla sin cerrar el micrófono`,async()=>{
+  const {sala,ctx}=entorno();sala.sala=nombreSala;const timers=[];ctx.setTimeout=fn=>{timers.push(fn);return timers.length;};
+  const enviados=[];sala.enviar=async(...args)=>enviados.push(args);const micro={kind:'audio',enabled:true};sala.medios.audio=micro;
+  await sala.sincronizar([{id:'a'},{id:'b'}]);await timers[0]();assert.equal(enviados[0][1],'reiniciar');assert.equal(sala.medios.audio,micro);
+ });
+}
+
+test('un candidato rechazado no deja a quien responde sin canal de voz',async()=>{
+ const {sala}=entorno();const enviados=[];sala.enviar=async(...args)=>enviados.push(args);await sala.sincronizar([{id:'a'},{id:'b'}]);const p=sala.peers.get('a');
+ p.pendientes.push({candidate:'viejo'});p.pc.addIceCandidate=async()=>{throw Error('Candidato de una conexión anterior');};
+ sala.medios.audio={kind:'audio',enabled:true};await sala.recibir({origen:'a',tipo:'offer',datos:{type:'offer',sdp:'oferta'}});
+ assert.equal(enviados[0][1],'answer');assert.equal(p.pc.trans[0].pista,sala.medios.audio);
+});
+
+test('cambiar micrófono durante la respuesta conserva la pista nueva en el emisor',async()=>{
+ const {sala}=entorno();sala.enviar=async()=>{};await sala.sincronizar([{id:'a'},{id:'b'}]);const p=sala.peers.get('a');
+ await sala.recibir({origen:'a',tipo:'offer',datos:{type:'offer',sdp:'primera'}});
+ const anterior={kind:'audio',id:'anterior'},nuevo={kind:'audio',id:'nuevo'};sala.medios.audio=anterior;
+ let liberar,comenzar;const inicio=new Promise(r=>comenzar=r);const sender=p.pc.trans[0].sender;
+ sender.replaceTrack=async pista=>{if(pista===anterior){comenzar();await new Promise(r=>liberar=r);}p.pc.trans[0].pista=pista;};
+ const respuesta=sala.recibir({origen:'a',tipo:'offer',datos:{type:'offer',sdp:'segunda'}});await inicio;
+ const cambio=sala.cambiar('audio',nuevo);liberar();await Promise.all([respuesta,cambio]);assert.equal(p.pc.trans[0].pista,nuevo);
+});
+
+test('una conexión correcta no oculta al participante que continúa sin conectar',async()=>{
+ const {sala,estado}=entorno();sala.id='a';sala.enviar=async()=>{};
+ await sala.sincronizar([{id:'a'},{id:'b',nombre:'Julio'},{id:'c',nombre:'Marco'}]);
+ const julio=sala.peers.get('b'),marco=sala.peers.get('c');marco.reintentos=3;julio.pc.connectionState='connected';julio.pc.onconnectionstatechange();
+ assert.match(estado.textContent,/1 de 2.*Sin conexión con Marco.*TURN/);
+ marco.pc.connectionState='connected';marco.pc.onconnectionstatechange();assert.match(estado.textContent,/Conexión activa con los 2/);assert.doesNotMatch(estado.textContent,/TURN/);
 });
