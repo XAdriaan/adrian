@@ -101,3 +101,12 @@ test('compartir la propia pantalla conserva transmisión sin mostrar una vista r
  const e=entorno(),pista={kind:'video',readyState:'live'};e.rtc.medios.pantalla=pista;e.rtc.lista=[{id:'yo',nombre:'Yo',pantalla:true}];
  e.experiencia.actualizar();assert.equal(e.el('videoPrincipal').hidden,true);assert.match(e.el('avatarPrincipal').textContent,/vista previa se oculta/);assert.equal(e.rtc.medios.pantalla,pista);
 });
+
+ test('lista de participantes muestra proyecto, nombre y rol y se cierra al pulsar fuera',()=>{
+  const e=entorno(),panel=e.el('listaParticipantesSala'),contenido=e.el('contenidoListaParticipantes');let cierres=0;
+  panel.close=()=>cierres++;panel.getBoundingClientRect=()=>({left:600,right:1000,top:0,bottom:800});contenido.replaceChildren=(...filas)=>contenido.children=filas;
+  e.rtc.lista=[{id:'otro',nombre:'Diana',proyectos:'EXAMINA',rol:'Colaborador',audio:true,video:false}];e.experiencia.mostrarParticipantes();
+  assert.match(contenido.children[0].textContent,/EXAMINA.*Colaborador.*Diana/);
+  panel.listeners.click({target:panel,clientX:300,clientY:100});assert.equal(cierres,1);
+  panel.listeners.click({target:panel,clientX:700,clientY:100});assert.equal(cierres,1);assert.equal(e.rtc.activa,true);
+ });

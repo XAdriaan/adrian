@@ -35,4 +35,12 @@ class PlanIaLocalTest {
   assertEquals(502,assertThrows(ResponseStatusException.class,()->s.proponer("Proyecto","","Planear las tareas iniciales")).getStatusCode().value());
   assertEquals(1,s.proponer("Proyecto","","Planear las tareas iniciales").tareas().size());remoto.verify();
  }
+
+ @Test void ayudaLibreUsaOllamaYRechazaTextoIncompleto(){
+  var b=RestClient.builder();var remoto=MockRestServiceServer.bindTo(b).build();var s=new PlanIaLocalService(new MockEnvironment().withProperty("PMO_IA_LOCAL_URL","http://ollama:11434"),json,b);
+  remoto.expect(requestTo("http://ollama:11434/api/chat")).andExpect(content().string(org.hamcrest.Matchers.containsString("no el audio"))).andRespond(withSuccess(json.writeValueAsString(Map.of("done",true,"message",Map.of("content","Resumen de acuerdos"))),MediaType.APPLICATION_JSON));
+  remoto.expect(requestTo("http://ollama:11434/api/chat")).andRespond(withSuccess(json.writeValueAsString(Map.of("done",false,"message",Map.of("content","Parcial"))),MediaType.APPLICATION_JSON));
+  assertEquals("Resumen de acuerdos",s.asistir("reunion","Resume el chat","Alumno: presentar diseño").get("respuesta"));
+  assertThrows(ResponseStatusException.class,()->s.asistir("reporte","Redacta mi actividad",""));remoto.verify();
+ }
 }

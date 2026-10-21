@@ -33,14 +33,14 @@ public class VideollamadaController {
     }
     private static class Conexion {
         final String id = UUID.randomUUID().toString();
-        final int usuario; final String nombre; final String proyectos; final boolean alumno;
+        final int usuario; final String nombre; final String proyectos; final String rol; final boolean alumno;
         long actividad, secuencia = 0;
         long ventanaChat = 0, ultimaReaccion = 0;
         int mensajes = 0;
         boolean mano = false, audio = false, video = false, pantalla = false;
         final Deque<Map<String,Object>> eventos = new ArrayDeque<>();
-        Conexion(Usuario u,String claves,long ahora) { usuario = u.getId(); nombre = u.getNombre() == null ? "Participante" : u.getNombre(); proyectos=claves; alumno=com.jjm.oficina.servicio.AsistenciaAutomaticaService.esAlumno(u);actividad=ahora; }
-        Map<String,Object> resumen() { return Map.of("id", id, "usuario", usuario, "proyectos", proyectos, "nombre", nombre, "mano", mano, "audio", audio, "video", video, "pantalla", pantalla); }
+        Conexion(Usuario u,String claves,long ahora) { usuario = u.getId(); nombre = u.getNombre() == null ? "Participante" : u.getNombre(); proyectos=claves; rol=u.getRol()==null?"Sin rol":Objects.toString(u.getRol().getNombre(),"Sin rol"); alumno=com.jjm.oficina.servicio.AsistenciaAutomaticaService.esAlumno(u);actividad=ahora; }
+        Map<String,Object> resumen() { return Map.of("id", id, "usuario", usuario, "proyectos", proyectos, "nombre", nombre, "rol", rol, "mano", mano, "audio", audio, "video", video, "pantalla", pantalla); }
     }
     private record Adjunto(String nombre, byte[] contenido) {}
     public record Entrada(String conexion) {}
@@ -121,6 +121,16 @@ public class VideollamadaController {
         boolean relay = !urls.isBlank() && !usuario.isBlank() && !clave.isBlank();
         if (relay) ice.add(Map.of("urls", Arrays.stream(urls.split(",")).map(String::trim).toList(), "username", usuario, "credential", clave));
         return Map.of("estado", "correcto", "iceServers", ice, "relayDisponible", relay);
+    }
+    public synchronized String contextoChat(String sala,String conexion,Integer id){
+        Usuario u=autorizar(sala,id);limpiar();Sala s=salas.get(sala);propia(s,conexion,u);
+        StringBuilder texto=new StringBuilder();
+        for(var mensaje:s.chat){
+            String linea=Objects.toString(mensaje.get("nombre"),"Participante")+": "+Objects.toString(mensaje.get("texto"),"")+"\n";
+            texto.append(linea);
+        }
+        if(texto.isEmpty())throw new ResponseStatusException(HttpStatus.CONFLICT,"Todavía no hay mensajes para resumir.");
+        return texto.substring(Math.max(0,texto.length()-10000));
     }
     @PostMapping("/{sala}/entrar")
     public synchronized Map<String,Object> entrar(@PathVariable String sala,

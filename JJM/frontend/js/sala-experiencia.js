@@ -108,12 +108,13 @@
             if(!contenedor?.replaceChildren)return;
             const filas=this.rtc.lista.map(p=>{
                 const fila=document.createElement('p');
-                fila.textContent=[p.proyectos,p.nombre+(p.id===this.rtc.id?' (Tú)':''),p.audio?'Micrófono encendido':'Micrófono apagado',p.video?'Cámara encendida':'Cámara apagada'].filter(Boolean).join(' · ');
+                fila.textContent=[p.proyectos||'Sin proyecto asignado',p.rol||'Rol no disponible',p.nombre+(p.id===this.rtc.id?' (Tú)':''),p.audio?'Micrófono encendido':'Micrófono apagado',p.video?'Cámara encendida':'Cámara apagada'].filter(Boolean).join(' · ');
                 return fila;
             });
-            contenedor.replaceChildren(...filas);
+            const firma=JSON.stringify(this.rtc.lista);if(this.firmaParticipantes===firma)return;this.firmaParticipantes=firma;contenedor.replaceChildren(...filas);
         }
         enlazar(){
+            el('resumirChatIA')?.addEventListener('click',async()=>{await window.PMOIALocalPromesa;if(window.PMOIALocal)window.PMOIALocal.abrir('reunion',{sala:this.rtc.sala,conexion:this.rtc.id});else this.error(new Error('No se pudo cargar la IA. Recarga la página.'));});
             el('archivoChatSala')?.addEventListener('change',async e=>{
                 const campo=e.target,archivo=campo.files?.[0];if(!archivo)return;
                 const estado=el('estadoArchivoChat');
@@ -124,6 +125,7 @@
                 }catch(error){estado.textContent=error.message;}finally{campo.disabled=false;campo.value='';}
             });
             el('contadorParticipantes')?.addEventListener('click',()=>{this.mostrarParticipantes();el('listaParticipantesSala').showModal();});
+            el('listaParticipantesSala')?.addEventListener('click',e=>{if(e.target!==el('listaParticipantesSala'))return;const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();});
             el('cerrarListaParticipantes')?.addEventListener('click',()=>{el('listaParticipantesSala').close();el('contadorParticipantes').focus();});
             el('btnChatSala').addEventListener('click',()=>this.chat());el('btnCerrarChat').addEventListener('click',()=>this.chat(false));
             for(const [boton,panel] of [['btnReaccionesSala','opcionesReacciones'],['btnFondosSala','opcionesFondos'],['btnCapturasSala','opcionesCapturas']])el(boton).addEventListener('click',()=>{

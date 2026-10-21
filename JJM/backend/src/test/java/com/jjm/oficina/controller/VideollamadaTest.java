@@ -176,4 +176,12 @@ class VideollamadaTest {
         assertThrows(ResponseStatusException.class,()->video.adjuntar("10",a,new org.springframework.mock.web.MockMultipartFile("archivo","x.html","text/html","<script>".getBytes()),7));
         assertThrows(ResponseStatusException.class,()->video.adjuntar("10",a,new org.springframework.mock.web.MockMultipartFile("archivo","x.txt","text/plain",new byte[4*1024*1024+1]),7));
     }
+
+    @Test void contextoIaSoloParaLaConexionPropia(){
+        String a=entrar("10",7),b=entrar("10",8);
+        video.interaccion("10",new VideollamadaController.Interaccion(a,"chat",Map.of("texto","Revisar diseño mañana")),7);
+        assertTrue(video.contextoChat("10",b,8).contains("Revisar diseño mañana"));
+        assertThrows(ResponseStatusException.class,()->video.contextoChat("10",a,8));
+        assertThrows(ResponseStatusException.class,()->video.contextoChat("20",b,8));
+    }
 }

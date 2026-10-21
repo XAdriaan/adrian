@@ -70,6 +70,12 @@
     }
     async function responder(texto) {
         const n=normalizar(texto), coincidencias=buscar(texto); enlaces(coincidencias.slice(0,5));
+        if (/redact|borrador|planifica|prop[oó]n|genera|explica|diseña|crea|idea|criterio|resum/.test(n)) {
+            await window.PMOIALocalPromesa;
+            if(!window.PMOIALocal)throw Error('No se pudo cargar la IA. Recarga la página.');
+            const d=await window.PMOIALocal.consultar({tipo:/reporte/.test(n)?'reporte':'asistente',texto});
+            return d.aviso+'\n\n'+d.respuesta;
+        }
         if (/mi proyecto|proyecto.*tareas|tareas.*proyecto/.test(n)) {
             const [p,t]=await Promise.all([obtener('/api/proyectos'),obtener('/api/tareas')]);
             const proyectos=p.proyectos||[],tareas=t.tareas||[];
@@ -115,7 +121,7 @@
             enlaces([rutas[6],rutas[7]]);return `La sala general está abierta para todos los usuarios con sesión. Tienes acceso a ${ps.length} salas de proyecto${ps.length ? ': '+ps.slice(0,4).map(p=>p.nombre).join(', ') : ''}. Las salas de proyecto permiten entrar a administración y miembros asignados.`;
         }
         if (coincidencias.length) return 'Puedes abrir esos apartados desde los accesos debajo. También puedo consultar tu asistencia del mes, el estado del FO-EST-03 y las salas disponibles.';
-        enlaces([rutas[4],rutas[5],rutas[6],rutas[7]]);return 'Puedo ayudarte a moverte por JJM y consultar tu información. Prueba «mis horas de este mes», «mi FO-EST-03» o «mis salas». Para un problema de acceso, dime qué apartado falla y qué mensaje aparece.';
+        await window.PMOIALocalPromesa;if(!window.PMOIALocal)throw Error('No se pudo cargar la IA. Recarga la página.');const d=await window.PMOIALocal.consultar({tipo:'asistente',texto});return d.aviso+'\n\n'+d.respuesta;
     }
     async function preguntar(texto) {
         if (!vigente() || ocupado || !texto.trim()) return; gesto=true;ocupado=true; enviar.disabled=true; input.value=''; mensaje(texto,true);estado.textContent='Consultando tu información…';panel.setAttribute('aria-busy','true');

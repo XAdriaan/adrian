@@ -140,8 +140,10 @@
     if (typeof document !== "undefined" && document.createElement && document.head) {
         window.PMOWidgetsMoviblesPromesa=window.PMOWidgetsMovibles?Promise.resolve(true):new Promise(resolve=>{const mover=document.createElement('script');mover.src='js/widgets-movibles.js?v=20261014-v24';mover.onload=()=>resolve(true);mover.onerror=()=>resolve(false);document.head.appendChild(mover);});
         window.PMOMicrofonoPromesa=window.PMOMicrofono?Promise.resolve(true):new Promise(resolve=>{const m=document.createElement('script');m.src='js/microfono.js?v=20261013-v21';m.onload=()=>resolve(true);m.onerror=()=>resolve(false);document.head.appendChild(m);});
+        window.PMOIALocalPromesa=new Promise(resolve=>{const ia=document.createElement('script');ia.src='js/ia-local.js?v=20261021-v32';ia.onload=()=>resolve(true);ia.onerror=()=>resolve(false);document.head.appendChild(ia);});
+        const cssIa=document.createElement('link');cssIa.rel='stylesheet';cssIa.href='css/ia-local.css?v=20261021-v32';document.head.appendChild(cssIa);
         const sesionAviso=document.createElement('script');sesionAviso.src='js/sesion-aviso.js?v=20261013-v21';document.head.appendChild(sesionAviso);
-        const contraste=document.createElement('link');contraste.rel='stylesheet';contraste.href='css/contraste-v21.css?v=20261020-v30';document.head.appendChild(contraste);
+        const contraste=document.createElement('link');contraste.rel='stylesheet';contraste.href='css/contraste-v21.css?v=20261021-v32';document.head.appendChild(contraste);
         window.PMOArdiaVozPromesa=new Promise(resolve=>{const v=document.createElement('script');v.src='js/ardia-voz.js?v=20261013-v21';v.onload=()=>resolve(true);v.onerror=()=>resolve(false);document.head.appendChild(v);});
         const asistencia = document.createElement("script");
         asistencia.src = "js/asistencia-automatica.js?v=20261019-v29";
