@@ -6,6 +6,7 @@ services:
     restart: unless-stopped
     environment:
       SERVER_PORT: 8080
+      PMO_AJUSTE_PERSONAL_OCT30: "true"
       PMO_IA_LOCAL_URL: http://ollama:11434
       PMO_IA_LOCAL_MODELO: qwen2.5:7b
       DB_URL: ${DB_URL}

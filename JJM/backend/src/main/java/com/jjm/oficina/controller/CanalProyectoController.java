@@ -69,7 +69,24 @@ public class CanalProyectoController {
     public record Dia(String fecha,Boolean laboral,String motivo){}
     @PutMapping("/calendario") public Map<String,Object> guardarDia(@PathVariable Integer proyecto,@RequestBody Dia dia,@RequestHeader(value="X-Usuario-Id",required=false) Integer id){Usuario u=acceso(proyecto,id);if(!admin(u))throw fallo(403,"Solo administración puede marcar el calendario.");LocalDate fecha;try{fecha=LocalDate.parse(dia.fecha());}catch(Exception e){throw fallo(400,"Fecha inválida.");}if(dia.laboral()==null||fecha.getYear()<2000||fecha.getYear()>2100)throw fallo(400,"Día inválido.");jdbc.update("INSERT INTO pmo_calendario_proyecto(id_proyecto,fecha,laboral,motivo,id_usuario,actualizado) VALUES(?,?,?,?,?,?) ON DUPLICATE KEY UPDATE laboral=VALUES(laboral),motivo=VALUES(motivo),id_usuario=VALUES(id_usuario),actualizado=VALUES(actualizado)",proyecto,fecha,dia.laboral(),limpiar(dia.motivo(),250),id,LocalDateTime.now(ZoneId.of("America/Mexico_City")));return Map.of("estado","correcto");}
     static YearMonth mes(String mes){try{YearMonth r=YearMonth.parse(mes);if(r.getYear()<2000||r.getYear()>2100)throw new IllegalArgumentException();return r;}catch(Exception e){throw fallo(400,"Selecciona un mes válido.");}}
-    public record Reporte(String fecha,String actividad,String resultado,String evidencia,Long idArchivo,String fase,Double horas,String bloqueos){}
+    public record Reporte(String fecha,String actividad,String resultado,String evidencia,Long idArchivo,String fase,Double horas,String bloqueos,Integer idTarea,Integer avance){
+        public Reporte(String fecha,String actividad,String resultado,String evidencia,Long idArchivo,String fase,Double horas,String bloqueos){this(fecha,actividad,resultado,evidencia,idArchivo,fase,horas,bloqueos,null,null);}
+    }
+    @GetMapping("/progreso") public Map<String,Object> progreso(@PathVariable Integer proyecto,@RequestHeader(value="X-Usuario-Id",required=false) Integer id){
+        acceso(proyecto,id);
+        var tareas=jdbc.queryForList("""
+            SELECT t.id_tarea AS id,t.titulo,t.estado,t.fecha_limite AS fechaLimite,
+              m.nombre_completo AS responsable,
+              (SELECT rt.avance FROM pmo_reporte_tarea rt JOIN pmo_reportes_actividad r ON r.id=rt.id_reporte
+               WHERE rt.id_tarea=t.id_tarea AND r.id_proyecto=t.id_proyecto ORDER BY r.fecha DESC,r.entregado_en DESC,r.id DESC LIMIT 1) AS avanceDeclarado,
+              (SELECT rt.avance FROM pmo_reporte_tarea rt JOIN pmo_reportes_actividad r ON r.id=rt.id_reporte
+               WHERE rt.id_tarea=t.id_tarea AND r.id_proyecto=t.id_proyecto AND r.estado='Aprobado' ORDER BY r.fecha DESC,r.entregado_en DESC,r.id DESC LIMIT 1) AS avanceAprobado
+            FROM tareas t LEFT JOIN miembros_equipo m ON m.id_miembro=t.id_miembro_asignado
+            WHERE t.id_proyecto=? ORDER BY t.id_tarea
+            """,proyecto);
+        var entregas=jdbc.queryForMap("SELECT COUNT(*) AS total,COALESCE(SUM(estado='Aprobado'),0) AS aprobados,COALESCE(SUM(estado='Observado'),0) AS observados,COALESCE(SUM(fuera_plazo),0) AS tardios FROM pmo_reportes_actividad WHERE id_proyecto=?",proyecto);
+        return Map.of("tareas",tareas,"reportes",entregas);
+    }
     @GetMapping("/habilitacion-reporte") public Map<String,Object> habilitacion(@PathVariable Integer proyecto,@RequestParam String fecha,@RequestHeader(value="X-Usuario-Id",required=false) Integer id){Usuario u=acceso(proyecto,id);Map<String,Object> respuesta=new java.util.LinkedHashMap<>(AsistenciaAutomaticaService.esAlumno(u)?asistencia.habilitacionReporte(id,fechaReporte(fecha)):Map.of("habilitado",true,"mensaje","Disponible para tu rol."));respuesta.put("entregaDiaria",diarios.entregaDelDia(id,fechaReporte(fecha)));return respuesta;}
     private static LocalDate fechaReporte(String fecha){try{return LocalDate.parse(fecha);}catch(Exception e){throw fallo(400,"Selecciona una fecha válida de reporte.");}}
     @PostMapping("/reportes-diarios") public Map<String,Object> enviarReporte(@PathVariable Integer proyecto,@RequestBody Reporte r,@RequestHeader(value="X-Usuario-Id",required=false) Integer id){Usuario u=acceso(proyecto,id);escritura(proyecto,u);if(AsistenciaAutomaticaService.esAlumno(u)){Map<String,Object> puerta=asistencia.habilitacionReporte(id,fechaReporte(r.fecha()));if(!Boolean.TRUE.equals(puerta.get("habilitado")))throw fallo(409,String.valueOf(puerta.get("mensaje")));}return diarios.guardar(proyecto,id,r);}

@@ -37,6 +37,7 @@ public class ReportesDiariosService {
                   accion VARCHAR(40) NOT NULL,detalle MEDIUMTEXT NOT NULL,fecha DATETIME NOT NULL,KEY idx_historial_reporte(id_reporte)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """);
+        jdbc.execute("CREATE TABLE IF NOT EXISTS pmo_reporte_tarea(id_reporte BIGINT PRIMARY KEY,id_tarea INT NOT NULL,avance INT NOT NULL,KEY idx_reporte_tarea(id_tarea)) ENGINE=InnoDB");
     }
     public String inicio(){List<Map<String,Object>> rs=jdbc.queryForList("SELECT inicio FROM pmo_reportes_diarios_config WHERE id=1");return rs.isEmpty()?LocalDate.now(reloj).toString():rs.getFirst().get("inicio").toString();}
     public static boolean tarde(LocalDate fecha,LocalDateTime momento){return momento.isAfter(fecha.atTime(17,0));}
@@ -52,6 +53,10 @@ public class ReportesDiariosService {
         if(r.idArchivo()!=null && jdbc.queryForList("SELECT id FROM pmo_proyecto_archivos WHERE id=? AND id_proyecto=? AND eliminado=FALSE",r.idArchivo(),proyecto).isEmpty())throw error("El archivo de evidencia no pertenece a este proyecto.");
         LocalDateTime momento=ahora();
         return tx.execute(estado->{
+            if(r.idTarea()!=null){
+                if(r.avance()==null||r.avance()<0||r.avance()>100)throw error("Indica un avance de 0 a 100 para la tarea.");
+                if(jdbc.queryForList("SELECT id_tarea FROM tareas WHERE id_tarea=? AND id_proyecto=? FOR UPDATE",r.idTarea(),proyecto).isEmpty())throw error("La tarea seleccionada no pertenece a este proyecto.");
+            }else if(r.avance()!=null)throw error("Selecciona la tarea antes de indicar su avance.");
             List<Map<String,Object>> anterior=jdbc.queryForList("SELECT id,estado,primera_entrega FROM pmo_reportes_actividad WHERE id_proyecto=? AND id_usuario=? AND fecha=? FOR UPDATE",proyecto,usuario,fecha);
             if(!anterior.isEmpty()&&"Aprobado".equals(anterior.getFirst().get("estado")))throw new ResponseStatusException(HttpStatus.CONFLICT,"El reporte aprobado queda protegido. Solicita a administración su revisión.");
             Object primera=anterior.isEmpty()?null:anterior.getFirst().get("primera_entrega");
@@ -62,7 +67,8 @@ public class ReportesDiariosService {
                     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE actividad=VALUES(actividad),resultado=VALUES(resultado),evidencia=VALUES(evidencia),id_archivo=VALUES(id_archivo),fase=VALUES(fase),horas=VALUES(horas),bloqueos=VALUES(bloqueos),entregado_en=VALUES(entregado_en),fuera_plazo=(primera_entrega>TIMESTAMP(fecha,'17:00:00')),estado='Pendiente',id_revisor=NULL,revisado_en=NULL
                     """,proyecto,usuario,fecha,actividad,resultado,evidencia,r.idArchivo(),fase,r.horas(),bloqueos,momento,momento,fuera);
             List<Map<String,Object>> guardado=jdbc.queryForList("SELECT id FROM pmo_reportes_actividad WHERE id_proyecto=? AND id_usuario=? AND fecha=?",proyecto,usuario,fecha);
-            if(!guardado.isEmpty())jdbc.update("INSERT INTO pmo_reporte_diario_historial(id_reporte,id_usuario,accion,detalle,fecha) VALUES(?,?,?,?,?)",guardado.getFirst().get("id"),usuario,"Entrega",actividad+"\nResultado: "+resultado+"\nEvidencia: "+evidencia+"\nArchivo: "+r.idArchivo()+"\nFase: "+fase+"\nHoras declaradas: "+r.horas()+"\nBloqueos: "+bloqueos,momento);
+            if(!guardado.isEmpty()&&r.idTarea()!=null)jdbc.update("INSERT INTO pmo_reporte_tarea(id_reporte,id_tarea,avance) VALUES(?,?,?) ON DUPLICATE KEY UPDATE id_tarea=VALUES(id_tarea),avance=VALUES(avance)",guardado.getFirst().get("id"),r.idTarea(),r.avance());
+            if(!guardado.isEmpty())jdbc.update("INSERT INTO pmo_reporte_diario_historial(id_reporte,id_usuario,accion,detalle,fecha) VALUES(?,?,?,?,?)",guardado.getFirst().get("id"),usuario,"Entrega",actividad+"\nResultado: "+resultado+"\nEvidencia: "+evidencia+"\nArchivo: "+r.idArchivo()+"\nFase: "+fase+"\nTarea: "+r.idTarea()+"\nAvance declarado: "+r.avance()+"\nHoras declaradas: "+r.horas()+"\nBloqueos: "+bloqueos,momento);
             jdbc.update("UPDATE pmo_recordatorios SET estado='Resuelto',actualizado_en=? WHERE clave LIKE ?",momento,"diario-falta-%-"+usuario+"-"+fecha+"-%");
             return Map.of("estado","correcto","fueraPlazo",fuera,"mensaje",fuera?"Reporte recibido fuera del horario. Queda pendiente de revisión.":"Reporte diario entregado: cubre la obligación de hoy en todos tus proyectos. Queda pendiente de revisión y no duplica tus horas de asistencia.");
         });
@@ -72,7 +78,7 @@ public class ReportesDiariosService {
         List<Map<String,Object>> entregas=jdbc.queryForList("SELECT id,id_proyecto,estado FROM pmo_reportes_actividad WHERE id_usuario=? AND fecha=? ORDER BY primera_entrega,id LIMIT 1",usuario,fecha);
         return entregas.isEmpty()?Map.of():entregas.getFirst();
     }
-    public List<Map<String,Object>> listar(Integer proyecto,Integer usuario,boolean todos,YearMonth mes){String condicion=todos?"":" AND r.id_usuario=?";List<Object> args=new ArrayList<>(List.of(proyecto,mes.atDay(1),mes.atEndOfMonth()));if(!todos)args.add(usuario);return jdbc.queryForList("SELECT r.*,u.nombre,CONCAT_WS(' ',u.nombre,u.apellido_paterno,u.apellido_materno) AS nombreCompleto FROM pmo_reportes_actividad r JOIN usuarios u ON u.id_usuario=r.id_usuario WHERE r.id_proyecto=? AND r.fecha BETWEEN ? AND ?"+condicion+" ORDER BY r.fecha DESC,u.nombre",args.toArray());}
+    public List<Map<String,Object>> listar(Integer proyecto,Integer usuario,boolean todos,YearMonth mes){String condicion=todos?"":" AND r.id_usuario=?";List<Object> args=new ArrayList<>(List.of(proyecto,mes.atDay(1),mes.atEndOfMonth()));if(!todos)args.add(usuario);return jdbc.queryForList("SELECT r.*,rt.id_tarea,rt.avance,u.nombre,CONCAT_WS(' ',u.nombre,u.apellido_paterno,u.apellido_materno) AS nombreCompleto FROM pmo_reportes_actividad r LEFT JOIN pmo_reporte_tarea rt ON rt.id_reporte=r.id JOIN usuarios u ON u.id_usuario=r.id_usuario WHERE r.id_proyecto=? AND r.fecha BETWEEN ? AND ?"+condicion+" ORDER BY r.fecha DESC,u.nombre",args.toArray());}
     public void revisar(Integer proyecto,Long id,Integer revisor,String estado,String observaciones){
         if(!Set.of("Aprobado","Observado").contains(Objects.toString(estado,"")))throw error("Selecciona Aprobado u Observado.");String nota=texto(observaciones,"Observado".equals(estado)?10:0,2000);
         tx.executeWithoutResult(t->{int cambios=jdbc.update("UPDATE pmo_reportes_actividad SET estado=?,observaciones=?,id_revisor=?,revisado_en=? WHERE id=? AND id_proyecto=?",estado,nota,revisor,ahora(),id,proyecto);if(cambios==0)throw new ResponseStatusException(HttpStatus.NOT_FOUND,"El reporte no pertenece a este proyecto.");jdbc.update("INSERT INTO pmo_reporte_diario_historial(id_reporte,id_usuario,accion,detalle,fecha) VALUES(?,?,?,?,?)",id,revisor,estado,nota,ahora());});

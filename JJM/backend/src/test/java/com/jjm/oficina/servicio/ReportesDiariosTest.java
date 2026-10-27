@@ -55,4 +55,7 @@ class ReportesDiariosTest {
         assertEquals(3,s.entregaDelDia(7,LocalDate.of(2026,10,13)).get("id_proyecto"));
         assertTrue(s.entregaDelDia(8,LocalDate.of(2026,10,13)).isEmpty());
     }
+    @Test void tareaAjenaNoGuardaReporte(){Reporte r=reporte("2026-10-13");assertThrows(ResponseStatusException.class,()->s.guardar(2,7,new Reporte(r.fecha(),r.actividad(),r.resultado(),r.evidencia(),null,r.fase(),r.horas(),"",999,40)));verify(jdbc,never()).update(anyString(),any(Object[].class));}
+    @Test void avanceFueraDeRangoNoGuarda(){Reporte r=reporte("2026-10-13");assertThrows(ResponseStatusException.class,()->s.guardar(2,7,new Reporte(r.fecha(),r.actividad(),r.resultado(),r.evidencia(),null,r.fase(),r.horas(),"",15,101)));verify(jdbc,never()).update(anyString(),any(Object[].class));}
+    @Test void vinculaAvanceSinAprobarNiSumarHoras(){Reporte r=reporte("2026-10-13");when(jdbc.queryForList(contains("SELECT id_tarea"),eq(15),eq(2))).thenReturn(List.of(Map.of("id_tarea",15)));when(jdbc.queryForList(contains("SELECT id FROM pmo_reportes_actividad"),any(Object[].class))).thenReturn(List.of(Map.of("id",20L)));s.guardar(2,7,new Reporte(r.fecha(),r.actividad(),r.resultado(),r.evidencia(),null,r.fase(),r.horas(),"",15,45));verify(jdbc).update(contains("INSERT INTO pmo_reporte_tarea"),eq(20L),eq(15),eq(45));verify(jdbc,never()).update(contains("registros_horas"),any(Object[].class));}
 }
