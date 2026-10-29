@@ -7,7 +7,7 @@
         for(const a of datos.alumnos||[])filas.push([a.nombre,a.periodoGrupo,a.anio,a.horasSemana,a.horasAprobadas,a.metaHoras,a.porcentajeHoras,a.tareasTerminadas,a.cursosDocumentados,a.totalCursos,(a.faltantes||[]).join('; ')]);
         return '\uFEFF'+filas.map(f=>f.map(celda).join(',')).join('\r\n');
     }
-    async function logo(){try{return await new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=reject;i.src='img/LOGO-J2M.png';});}catch(_){return null;}}
+    async function logo(){try{return await new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=reject;i.src='img/logo-jjm-v35.svg';});}catch(_){return null;}}
     function pagina(ancho,alto){const canvas=document.createElement('canvas');canvas.width=ancho;canvas.height=alto;const ctx=canvas.getContext('2d');if(!ctx)throw new Error('No se pudo generar el PDF.');ctx.fillStyle='#fff';ctx.fillRect(0,0,ancho,alto);ctx.fillStyle='#142038';
         const escribir=(v,x,y,size=26,bold=false,align='left')=>{ctx.font=`${bold?'600':'400'} ${size}px Arial`;ctx.textAlign=align;ctx.fillText(texto(v),x,y);};return{canvas,ctx,escribir};}
     function imagen(p,ancho=792,alto=612){return {ancho:p.canvas.width,alto:p.canvas.height,puntosAncho:ancho,puntosAlto:alto,bytes:Uint8Array.from(atob(p.canvas.toDataURL('image/jpeg',.94).split(',')[1]),c=>c.charCodeAt(0))};}

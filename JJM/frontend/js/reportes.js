@@ -3071,7 +3071,7 @@ function construirFilasChecklistMensual() {
 function encabezadoReporteOficial(titulo, hoja) {
     return `
         <header class="encabezado-oficial">
-            <img src="img/LOGO-J2M.png" alt="Logo JJM" class="logo-oficial">
+            <img src="img/logo-jjm-v35.svg" alt="Logo JJM" class="logo-oficial">
             <div class="encabezado-centro">
                 <h2>UNIVERSIDAD POLITÉCNICA DE TECÁMAC</h2>
                 <p>Dirección de la División de Ingeniería Mecánica,<br>Ingeniería en Tecnologías de Manufactura e Ingeniería en Software</p>

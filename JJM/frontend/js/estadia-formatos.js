@@ -101,7 +101,7 @@
         if (!filas.length) throw new Error('El mes no contiene días dentro del periodo de estadía. Selecciona otro mes.');
         const paginas=[];
         let logo=null;
-        try { logo=await new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=reject;i.src='img/LOGO-J2M.png';}); } catch (_) {}
+        try { logo=await new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=reject;i.src='img/logo-jjm-v35.svg';}); } catch (_) {}
         const cortes=[];
         for(let i=0;i<filas.length;i+=21)cortes.push(filas.slice(i,i+21));
         cortes.forEach((grupo,indice)=>{
