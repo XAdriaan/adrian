@@ -2208,3 +2208,6 @@ function escaparAtributo(valor) {
         .replace(/\\/g, "\\\\")
         .replace(/'/g, "\\'");
 }
+
+// Apply selections immediately; the existing button remains available.
+[filtroTipoAlerta,filtroSeveridadAlerta,filtroEstadoAlerta].forEach(control=>control?.addEventListener("change",aplicarFiltros));

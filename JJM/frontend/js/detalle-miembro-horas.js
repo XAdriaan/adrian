@@ -905,7 +905,7 @@ function construirFilasAsistenciaPersonal(mes, anio, nombre) {
 function encabezadoAsistenciaPersonal() {
     return `
         <header class="encabezado-asistencia">
-            <img src="img/logo-jjm-v35.svg" alt="Logo JJM" class="logo-oficial">
+            <img src="img/logo-jjm-v36.svg" alt="Logo JJM" class="logo-oficial">
             <div>
                 <h3>ÁREA: OFICINA DE PROYECTOS</h3>
                 <h3>PROPÓSITO: SEGUIMIENTO DE ASISTENCIAS DEL COLABORADOR</h3>

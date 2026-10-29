@@ -3,7 +3,7 @@
     function lineas(c,t,ancho){const lista=[];for(const bloque of String(t||'').split('\n')){let l='';for(const palabra of bloque.split(/\s+/)){if(c.measureText(l+' '+palabra).width>ancho&&l){lista.push(l);l='';}let parte='';for(const caracter of palabra){if(c.measureText(parte+caracter).width>ancho&&parte){lista.push(parte);parte='';}parte+=caracter;}l+=(l?' ':'')+parte;}lista.push(l);}return lista;}
     async function generarACT({mes,datos,proyecto,actividades=[],registros=[]}){
         if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(mes))throw Error('Selecciona un mes válido.');
-        const paginas=[];let logo;try{logo=await new Promise((r,j)=>{const i=new Image();i.onload=()=>r(i);i.onerror=j;i.src='img/logo-jjm-v35.svg';});}catch(_){}
+        const paginas=[];let logo;try{logo=await new Promise((r,j)=>{const i=new Image();i.onload=()=>r(i);i.onerror=j;i.src='img/logo-jjm-v36.svg';});}catch(_){}
         const filas=actividades.filter(a=>String(a.fecha).startsWith(mes)).sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha)));let canvas,c,y=0,n=0;
         const columnas=[75,335,1170,1650,1840,2035,2125];
         const texto=(s,x,py,size=21,bold=false,align='left')=>{c.font=`${bold?'600':'400'} ${size}px Arial`;c.fillStyle='#161616';c.textAlign=align;c.fillText(String(s??''),x,py);};

@@ -1,0 +1,46 @@
+/* Compact workspace: retain actions, errors and data; reduce repeated framing. */
+body.compacta-v36 .main-content{padding:20px 24px!important;min-width:0}
+body.compacta-v36 .page-header{margin-bottom:16px!important;padding:10px 0!important;gap:12px;flex-wrap:wrap}
+body.compacta-v36 .page-header h1{font-size:clamp(26px,2.6vw,36px)!important;margin:0 0 6px!important}
+body.compacta-v36 .page-header p{margin:0!important}
+body.compacta-v36 #pmoAsistenciaBarra{padding:14px 18px!important;gap:10px 22px!important;margin-bottom:18px!important;display:flex!important;flex-wrap:wrap;align-items:center;min-height:0!important}
+body.compacta-v36 #pmoAsistenciaBarra>div:first-child{flex:1 1 260px}
+body.compacta-v36 #pmoAsistenciaTitulo{font-size:15px!important}
+body.compacta-v36 #pmoAsistenciaMensaje{font-size:12px!important;margin:5px 0!important;line-height:1.4}
+body.compacta-v36 #pmoAsistenciaBarra .pmo-reloj{padding:8px 14px!important;min-width:145px!important;width:auto!important;border-radius:12px!important}
+body.compacta-v36 #pmoAsistenciaReloj{font-size:24px!important}
+body.compacta-v36 #pmoAsistenciaBarra .pmo-reloj small{display:none}
+body.compacta-v36 #pmoAsistenciaBarra .pmo-jornada-acciones{flex:1 1 100%;padding:8px 0 0!important;margin:0!important;gap:8px!important;display:flex;align-items:center;flex-wrap:wrap}
+body.compacta-v36 #pmoAsistenciaBarra button,body.compacta-v36 #pmoAsistenciaBarra a{padding:9px 12px!important;min-height:38px}
+body.compacta-v36 #pmoReporteEspera{max-width:650px;font-size:11px!important}
+body.compacta-v36 .sidebar-logo{padding:8px!important;min-height:0!important}
+body.compacta-v36 .sidebar-logo img{max-height:72px;object-fit:contain;background:transparent}
+body.compacta-v36 .folders-panel{padding:14px!important;margin-bottom:14px!important}
+body.compacta-v36 .folders-grid{margin-top:10px;gap:8px;grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+body.compacta-v36 .folder-card{padding:10px!important}
+body.compacta-v36 .folder-card p{display:none}
+body.compacta-v36 .filters-panel{padding:16px!important;margin-bottom:16px!important}
+body.compacta-v36 .filters-title p{margin:4px 0 10px}
+body.compacta-v36 .chat-window{background:#10213a!important;color:#e5efff!important;border:1px solid #365574;min-width:0;display:flex;flex-direction:column;height:calc(100dvh - 180px);min-height:420px}
+body.compacta-v36 .chat-header{background:#152b47!important;padding:15px!important}
+body.compacta-v36 .chat-header h2{color:#f2f7ff!important}
+body.compacta-v36 .chat-messages{flex:1;min-height:0;overflow-y:auto;background:#0d1d32!important}
+body.compacta-v36 .chat-input-area{flex-shrink:0;background:#152b47!important;margin:0!important;padding:12px!important}
+body.compacta-v36 .chatbot-layout{grid-template-columns:260px minmax(0,1fr)!important;gap:18px!important}
+body.compacta-v36 .voice-card{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:10px!important;padding:16px!important}
+body.compacta-v36 .voice-card>*{min-width:0;max-width:100%;overflow-wrap:anywhere}
+body.compacta-v36 .suggestion-btn{padding:10px!important;font-size:13px!important}
+body.compacta-v36 .ai-disclaimer{padding:8px 14px;font-size:11px;background:#152b47;color:#bed2eb}
+body.compacta-v36 .kanban-card{padding:14px!important}
+body.compacta-v36 [hidden]{display:none!important}
+@media(max-width:720px){body.compacta-v36 .main-content{padding:14px!important}body.compacta-v36 #pmoAsistenciaBarra>div:first-child{flex-basis:180px}body.compacta-v36 #pmoAsistenciaBarra .pmo-reloj{min-width:110px!important}body.compacta-v36 .chatbot-layout{display:flex!important;flex-direction:column-reverse!important}body.compacta-v36 .chat-window{height:70dvh;min-height:400px}body.compacta-v36 .chatbot-panel{display:grid;gap:12px}body.compacta-v36 #pmoReporteEspera{flex-basis:100%}}
+
+body.compacta-v36 .video-hero{display:none!important}
+body.compacta-v36 .video-general{padding:18px 22px!important;margin-bottom:18px!important}
+body.compacta-v36 .estadia-summary{padding:20px 24px!important;margin-bottom:18px!important}
+body.compacta-v36 .document-steps{gap:14px!important;margin-block:16px!important}
+body.compacta-v36 .document-steps>article{padding:18px!important;min-height:0!important}
+body.compacta-v36 .stats-grid{gap:14px!important;margin-block:16px!important}
+body.compacta-v36 .stat-card{padding:18px!important;min-height:0!important}
+body.compacta-v36 .panel-header{padding:16px 20px!important}
+body.compacta-v36 .table-wrapper{overflow-x:auto}
