@@ -117,6 +117,20 @@ public class ProyectoController {
         this.catalogoProyectosSepDic2026Service = catalogoProyectosSepDic2026Service;
     }
 
+    @DeleteMapping("/{id}")
+    @Transactional
+    public ResponseEntity<Map<String,Object>> eliminarProyecto(@PathVariable Integer id,
+            @RequestHeader(value="X-Usuario-Id",required=false) Integer activo) {
+        Usuario u=obtenerUsuario(activo);
+        if (!esAdministrador(u)) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("mensaje","Solo administración puede borrar proyectos."));
+        Proyecto proyecto=proyectoRepository.findById(id).orElse(null);
+        if (proyecto==null || proyectoRepository.retirar(id)==0)
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("mensaje","El proyecto ya no está en el portafolio."));
+        bitacoraService.registrar(activo,"PROYECTOS","BORRAR_PROYECTO","Proyecto",id,
+                "Baja del proyecto "+proyecto.getNombre(),proyecto.getNombre(),"Retirado del portafolio");
+        return ResponseEntity.ok(Map.of("mensaje","Proyecto retirado del portafolio."));
+    }
+
     @GetMapping
     public ResponseEntity<Map<String, Object>> listarProyectos(
             @RequestHeader(value = "X-Usuario-Id", required = false)

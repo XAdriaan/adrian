@@ -67,3 +67,7 @@ async function mostrarMiembrosVideo(id){
  for(const m of d.miembros||[]){const a=document.createElement('article'),n=document.createElement('strong'),p=document.createElement('small'),rol=document.createElement('small');n.textContent=m.miembroNombre||'Integrante';p.textContent='Proyecto: '+proyecto.nombre;rol.textContent='Rol: '+(m.miembroRolOperativo||m.rolProyecto||'Integrante');a.append(n,p,rol);contenido.append(a);}if(!contenido.children.length)contenido.textContent='No hay integrantes asignados a este proyecto.';
  }catch(e){if(dialogo.isConnected)contenido.textContent=e.name==='AbortError'?'La consulta tardó demasiado. Cierra y vuelve a abrir integrantes.':e.message;}finally{clearTimeout(timer);}
 }
+
+document.getElementById('nuevaPrivada')?.addEventListener('click', () => {
+    window.abrirSalaPMO('reunion.html?privada=' + crypto.randomUUID());
+});

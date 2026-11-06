@@ -14,6 +14,11 @@ import java.util.List;
 public interface RegistroHorasRepository
         extends JpaRepository<RegistroHoras, Integer> {
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM RegistroHoras r WHERE r.id IN :ids AND LOWER(r.estadoValidacion)='pendiente' " +
+           "AND (LOWER(COALESCE(r.tipoRegistro,'')) <> 'jornada' OR r.horaSalida IS NOT NULL) ORDER BY r.id")
+    List<RegistroHoras> pendientesParaAprobar(@Param("ids") List<Integer> ids);
+
     List<RegistroHoras>
     findAllByOrderByFechaDescFechaCreacionDesc();
 

@@ -53,7 +53,7 @@
                 if (!this.activa || this.generacion !== epoca) return;
                 if (persona.id === this.id || this.peers.has(persona.id)) continue;
                 const pc = new RTCPeerConnection({iceServers:this.config.iceServers || []});
-                const p = {...this.tarjeta(persona.id, persona.nombre), pc, pendientes:[], stream:new MediaStream(),persona};
+                const p = {...this.tarjeta(persona.id, persona.nombre), pc, creado:Date.now(), pendientes:[], stream:new MediaStream(),persona};
                 p.audioSalida=document.createElement('audio');p.audioSalida.autoplay=true;p.audioSalida.playsInline=true;p.div.append(p.audioSalida);
                 this.peers.set(persona.id, p);
                 if (this.id < persona.id) {
@@ -79,7 +79,8 @@
                         p.audioSalida.play().catch(()=>{this.estado.textContent='Toca Entrar o cualquier control de la sala para habilitar la escucha.';});
                     }
                     video.play().catch(()=>{});
-                    e.track.onunmute = () => { video.play().catch(() => { this.estado.textContent = 'Toca la sala o usa sus controles para reanudar el audio.'; }); this.alActualizar?.(); };
+                    e.track.onunmute = () => { if(e.track.kind==='audio')p.audioSalida.play().catch(()=>{});
+                        video.play().catch(() => { this.estado.textContent = 'Toca la sala o usa sus controles para reanudar el audio.'; }); this.alActualizar?.(); };
                     e.track.onended = () => this.alActualizar?.(); this.alActualizar?.();
                 };
                 pc.onconnectionstatechange = () => {
@@ -103,11 +104,30 @@
                 const p=this.peers.get(persona.id); if(!p)continue; p.persona=persona;
                 if(p.div.dataset){p.div.dataset.mano=String(!!persona.mano);p.div.dataset.audio=String(!!persona.audio);}
                 p.etiqueta.textContent=(persona.proyectos?persona.proyectos+' · ':'')+persona.nombre;p.etiqueta.title=p.etiqueta.textContent;
+                this.revisarMicrofono(persona.id,p);
                 p.video.hidden=!persona.video; p.avatar.hidden=!!persona.video && p.video.videoWidth>0;
             }
             const propia=lista.find(p=>p.id===this.id),etiqueta=this.contenedor.querySelector?.('[data-propia] strong');
             if(propia&&etiqueta){etiqueta.textContent=(propia.proyectos?propia.proyectos+' · ':'')+propia.nombre+' (Tú)';etiqueta.title=etiqueta.textContent;}
             this.actualizarEstadoConexion();this.alActualizar?.();
+        }
+        revisarMicrofono(id,p) {
+            const pista = this.medios.audio;
+            if (!pista?.enabled || pista.readyState !== 'live' || !p.audio ||
+                p.pc.connectionState !== 'connected' || p.audio.track === pista ||
+                p.reparandoAudio || Date.now() < (p.revisarAudioDesde || 0)) return;
+            p.reparandoAudio = true;
+            this.serializar(id,async () => {
+                if (!this.activa || this.peers.get(id)!==p || this.medios.audio!==pista || p.audio.track===pista) return;
+                try {
+                    await p.audio.replaceTrack(pista);
+                } catch (_) {
+                    // Reemplazar puede requerir otra negociación aunque ICE esté conectado.
+                    p.revisarAudioDesde = Date.now()+8000;
+                    if(this.id<id) await this.ofertarAhora(id,true);
+                    else await this.enviar(id,'reiniciar',{});
+                }
+            }).catch(()=>{}).finally(()=>{p.reparandoAudio=false;});
         }
         actualizarEstadoConexion() {
             if(!this.activa)return;
@@ -115,7 +135,8 @@
             const conectados=todos.length-pendientes.length;
             const nombres=pendientes.map(p=>String(p.persona?.nombre||'Participante').slice(0,45)).slice(0,2).join(', ');
             const sinRuta=pendientes.some(p=>(p.reintentos||0)>=3)&&!this.config.relayDisponible;
-            const texto=!todos.length?'Estás en la sala. Esperando a otros participantes.':!pendientes.length
+            const vozServidor=pendientes.filter(p=>Date.now()-(p.ultimoAudioServidor||0)<4000);
+            const texto=vozServidor.length ? 'Recibiendo voz por servidor de '+vozServidor.map(p=>p.persona.nombre).join(', ')+'. Conectando video…' : !todos.length?'Estás en la sala. Esperando a otros participantes.':!pendientes.length
                 ?`Conexión activa con los ${todos.length} participantes remotos.`
                 :`${conectados} de ${todos.length} participantes remotos conectados. ${sinRuta?'Sin conexión':'Conectando'} con ${nombres}${pendientes.length>2?' y otros':''}.${sinRuta?' Falta configurar TURN para las redes que no logran conexión directa.':''}`;
             if(this.ultimoEstadoConexion!==texto){this.ultimoEstadoConexion=texto;this.estado.textContent=texto;}
@@ -132,6 +153,10 @@
         }
         async ofertarAhora(id, reiniciar=false) {
             const p = this.peers.get(id); if (!p)return;
+            if(reiniciar){
+                if(Date.now()-(p.ultimoReinicio||0)<2500)return;
+                p.ultimoReinicio=Date.now();
+            }
             if(reiniciar && p.pc.signalingState==='have-local-offer')await p.pc.setLocalDescription({type:'rollback'});
             if(p.pc.signalingState !== 'stable')return;
             await p.pc.setLocalDescription(await p.pc.createOffer(reiniciar?{iceRestart:true}:undefined));
@@ -142,6 +167,12 @@
             p.recuperacion=setTimeout(async()=>{
                 p.recuperacion=null;if(!this.activa||this.peers.get(id)!==p||p.pc.connectionState==='connected')return;
                 p.reintentos=(p.reintentos||0)+1;
+                // Tras fallar la ruta directa, prueba TURN. Recupera todas las rutas
+                // en el siguiente intento si el servidor de retransmisión no responde.
+                if(this.config.relayDisponible && p.pc.setConfiguration && p.reintentos>=2){
+                    const policy=p.reintentos%2===0?'relay':'all';
+                    try { p.pc.setConfiguration({...p.pc.getConfiguration(),iceTransportPolicy:policy}); } catch (_) {}
+                }
                 this.actualizarEstadoConexion();
                 try{if(this.id<id)await this.ofertar(id,true);else await this.enviar(id,'reiniciar',{});}catch(_){}
                 this.actualizarEstadoConexion();
@@ -188,6 +219,8 @@
                 const d = await this.api(`eventos?conexion=${encodeURIComponent(this.id)}&desde=${this.desde}`);
                 if (!this.activa || this.generacion !== epoca) return;
                 await this.sincronizar(d.participantes || []);
+                this.respaldo?.recibir(d.voz || []);
+                this.respaldo?.actualizar();
                 this.alInteraccion?.({tipo:'camara-control',datos:d.camaraControl||{}});
                 this.alInteraccion?.({tipo:'historial',datos:d.chat || []});
                 if (!this.activa || this.generacion !== epoca) return;
@@ -204,7 +237,7 @@
                 }
                 this.estado.textContent = 'Se interrumpió la conexión. Intentando recuperar la sala…';
             }
-            if (this.activa && this.generacion === epoca) this.timer = setTimeout(() => this.ciclo(epoca), Math.min(15000,1200*Math.max(1,this.fallos||0)));
+            if (this.activa && this.generacion === epoca) this.timer = setTimeout(() => this.ciclo(epoca), Math.min(15000,(this.respaldo?.destinos().length ? 320 : 1200)*Math.max(1,this.fallos||0)));
         }
         async recuperarSesion(epoca){
             await this.api('salir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({conexion:this.id})}).catch(()=>{});
@@ -259,6 +292,7 @@
             });
         }
         async salir(keepalive = false) {
+            this.respaldo?.cerrar();
             ++this.generacion; this.activa = false; clearTimeout(this.timer);
             for (const p of this.peers.values()){clearTimeout(p.recuperacion);p.pc.close();if(p.audioSalida){p.audioSalida.pause();p.audioSalida.srcObject=null;}} this.peers.clear();
             for (const t of Object.values(this.medios)) t?.stop(); this.medios = {audio:null,video:null,pantalla:null}; this.lista=[];

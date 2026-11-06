@@ -27,12 +27,12 @@ public class CanalProyectoController {
         jdbc.execute("CREATE TABLE IF NOT EXISTS pmo_proyecto_archivos (id BIGINT AUTO_INCREMENT PRIMARY KEY,id_proyecto INT NOT NULL,carpeta VARCHAR(80) NOT NULL,nombre VARCHAR(180) NOT NULL,mime VARCHAR(120) NOT NULL,contenido MEDIUMBLOB NOT NULL,bytes INT NOT NULL,sha256 CHAR(64) NOT NULL,id_usuario INT NOT NULL,fecha DATETIME NOT NULL,eliminado BOOLEAN NOT NULL DEFAULT FALSE,KEY idx_archivos_proyecto(id_proyecto,eliminado),KEY idx_archivos_firma(id_proyecto,sha256)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
         jdbc.execute("CREATE TABLE IF NOT EXISTS pmo_calendario_proyecto (id_proyecto INT NOT NULL,fecha DATE NOT NULL,laboral BOOLEAN NOT NULL,motivo VARCHAR(250) NOT NULL,id_usuario INT NOT NULL,actualizado DATETIME NOT NULL,PRIMARY KEY(id_proyecto,fecha)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     }
-    private boolean admin(Usuario u){return permisos.esSuperadministrador(u)||permisos.esAdministradorBase(u);}
+    boolean admin(Usuario u){return permisos.esSuperadministrador(u)||permisos.esAdministradorBase(u);}
     private boolean consulta(Usuario u){String r=String.valueOf(u.getRol()==null?"":u.getRol().getNombre()).toLowerCase(Locale.ROOT);return Set.of("directivo","directivo escolar","supervisor").contains(r);}
     private boolean consultaTodos(Usuario u){return admin(u)||consulta(u)||PermisosService.esAsesorEmpresarial(u);}
     private boolean asignado(Integer proyecto,Usuario u){MiembroEquipo m=miembros.findByUsuarioId(u.getId()).orElse(null);return m!=null&&asignaciones.existsByIdProyectoAndIdMiembro(proyecto,m.getId());}
     private boolean puedeEscribir(Integer proyecto,Usuario u){return !consulta(u)&&(admin(u)||asignado(proyecto,u));}
-    private Usuario acceso(Integer proyecto,Integer id){
+    Usuario acceso(Integer proyecto,Integer id){
         Usuario u=id==null?null:usuarios.findById(id).orElse(null);if(u==null||!"Activo".equalsIgnoreCase(u.getEstado()))throw fallo(401,"Inicia sesión para abrir este canal.");
         if(u.getRol()!=null&&"Empresa".equalsIgnoreCase(u.getRol().getNombre()))throw fallo(403,"Tu cuenta utiliza el portal empresarial.");
         if(!proyectos.existsById(proyecto))throw fallo(404,"El proyecto no existe.");

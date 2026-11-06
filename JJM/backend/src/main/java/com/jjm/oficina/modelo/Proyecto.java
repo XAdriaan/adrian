@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "proyectos")
+@org.hibernate.annotations.SQLRestriction("eliminado_en IS NULL")
 public class Proyecto {
 
     @Id

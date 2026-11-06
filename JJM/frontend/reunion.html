@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="css/sala-v26.css?v=20261017-v28">
     <link rel="stylesheet" href="css/sala-panel-camaras.css?v=20261020-v30">
 <link rel="stylesheet" href="css/ia-local.css?v=20261026-v33">
-</head>
+<style>#btnGrabar[hidden],#btnDetenerGrabacion[hidden]{display:none!important}</style></head>
 <body>
 <div class="meeting-app">
     <header class="meeting-topbar">
@@ -94,7 +94,7 @@
             <div class="recording-help">
                 <strong>Tu conexión</strong><p>La sala usa tu cuenta de JJM. Activa cámara y micrófono desde la barra de controles de la llamada.</p><button id="btnReconectar" type="button" class="meeting-btn secondary">Reconectar</button></div>
 
-            <div data-grabaciones-sala="" data-grabaciones-auto="false"><button type="button" class="meeting-btn secondary" id="actualizarGrabaciones">↻ Actualizar videos</button><p id="avisoGrabaciones" role="status" hidden></p><div id="grabacionesServidor" aria-live="polite"></div></div>
+            <div data-grabaciones-sala="" data-grabaciones-auto="false"><button type="button" class="meeting-btn secondary" id="actualizarGrabaciones">↻ Actualizar videos</button><p id="avisoGrabaciones" role="status" hidden></p><div id="copiasGrabacion"></div><div id="grabacionesServidor" aria-live="polite"></div></div>
 <div id="listaGrabaciones" class="recordings-list">
                 <p class="recordings-empty">Aquí aparecerán tus grabaciones de esta sesión.</p>
             </div>
@@ -110,8 +110,9 @@
         <div class="meeting-controls-tools">
             <button type="button" class="meeting-btn secondary" id="btnManoSala" aria-pressed="false">✋ Levantar la mano</button>
             <button type="button" class="meeting-btn secondary" id="btnChatSala" aria-expanded="false" aria-controls="panelChatSala">Chat <span id="chatNoLeidos"></span></button>
+            <button type="button" class="meeting-btn record" id="btnGrabar">● Iniciar grabación</button>
             <button type="button" class="meeting-btn warning" id="btnDetenerGrabacion" hidden>■ Detener grabación</button>
-            <details id="masOpcionesSala" class="sala-mas-opciones"><summary>⋯ Más</summary><div class="sala-menu-herramientas"><button type="button" class="meeting-btn secondary" id="btnAbrirPruebaMicrofono" aria-expanded="false" aria-controls="dispositivosSala">Probar micrófono</button><button type="button" class="meeting-btn secondary" id="btnReaccionesSala" aria-expanded="false" aria-controls="opcionesReacciones">Reacciones</button><button type="button" class="meeting-btn secondary" id="btnFondosSala" aria-expanded="false" aria-controls="opcionesFondos">Fondos</button><button type="button" class="meeting-btn secondary" id="btnCapturasSala" aria-expanded="false" aria-controls="opcionesCapturas">📷 Fotos y capturas</button><button type="button" class="meeting-btn record" id="btnGrabar">● Grabar</button><button type="button" class="meeting-btn secondary" id="btnPanelGrabaciones" aria-expanded="false" aria-controls="panelGrabaciones">Grabaciones</button><button type="button" class="meeting-btn secondary" id="btnCopiarEnlace">Invitar</button><button type="button" class="meeting-btn danger" id="btnFinalizarReunion" hidden>Finalizar para todos</button></div></details>
+            <details id="masOpcionesSala" class="sala-mas-opciones"><summary>⋯ Más</summary><div class="sala-menu-herramientas"><button type="button" class="meeting-btn secondary" id="btnAbrirPruebaMicrofono" aria-expanded="false" aria-controls="dispositivosSala">Probar micrófono</button><button type="button" class="meeting-btn secondary" id="btnReaccionesSala" aria-expanded="false" aria-controls="opcionesReacciones">Reacciones</button><button type="button" class="meeting-btn secondary" id="btnFondosSala" aria-expanded="false" aria-controls="opcionesFondos">Fondos</button><button type="button" class="meeting-btn secondary" id="btnCapturasSala" aria-expanded="false" aria-controls="opcionesCapturas">📷 Fotos y capturas</button><button type="button" class="meeting-btn secondary" id="btnPanelGrabaciones" aria-expanded="false" aria-controls="panelGrabaciones">Grabaciones</button><button type="button" class="meeting-btn secondary" id="btnCopiarEnlace">Invitar</button><button type="button" class="meeting-btn danger" id="btnFinalizarReunion" hidden>Finalizar para todos</button></div></details>
             <button type="button" class="meeting-btn hangup" id="btnColgarReunion">Salir de la llamada</button>
         </div>
         <button id="btnSalirMini" type="button" class="meeting-btn hangup" hidden>Colgar</button>
@@ -125,12 +126,13 @@
 
 <script src="js/microfono.js?v=20261015-v27"></script>
 <script src="js/api-config.js?v=20261026-v33"></script>
-<script src="js/sala-webrtc.js?v=20261021-v31"></script>
+<script src="js/voz-respaldo.js?v=38"></script>
+<script src="js/sala-webrtc.js?v=38"></script>
 <script src="js/sala-fondos.js?v=20261013-v20"></script>
-<script src="js/sala-experiencia.js?v=20261026-v33"></script>
+<script src="js/sala-experiencia.js?v=38"></script>
 <script src="js/sala-panel-camaras.js?v=20261020-v30"></script>
-<script src="js/grabaciones.js?v=20261005-v10"></script>
-<script src="js/reunion.js?v=20261017-v28"></script>
+<script src="js/copias-grabacion.js?v=37"></script><script src="js/grabaciones.js?v=37"></script>
+<script src="js/reunion.js?v=37"></script>
 <script src="js/ardia-global.js?v=20261026-v33"></script>
 </body>
 </html>

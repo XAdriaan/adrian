@@ -20,6 +20,8 @@ public class GrabacionController {
     private static final long MAX_VIDEO = 512L * 1024 * 1024;
     private static final long MAX_TOTAL = 10L * 1024 * 1024 * 1024;
     private static final int MAX_PARTE = 4 * 1024 * 1024;
+    @org.springframework.beans.factory.annotation.Autowired
+    private SalasPrivadas privadas;
     private final Path raiz;
     private final UsuarioRepository usuarios;
     private final ReunionController reuniones;
@@ -29,7 +31,9 @@ public class GrabacionController {
         int siguiente; byte[] ultima; long bytes, actividad = System.currentTimeMillis();
         Carga(String id,String sala,String titulo,int usuario){this.id=id;this.sala=sala;this.titulo=titulo;this.usuario=usuario;fecha=Instant.now().toString();}
     }
-    public record Inicio(String sala,String titulo) {}
+    public record Inicio(String sala,String titulo,String idLocal) {
+        public Inicio(String sala,String titulo) { this(sala,titulo,null); }
+    }
     public record Fin(long duracionSegundos) {}
     public GrabacionController(UsuarioRepository usuarios,ReunionController reuniones,Environment env) throws IOException {
         this.usuarios=usuarios;this.reuniones=reuniones;
@@ -43,10 +47,12 @@ public class GrabacionController {
     }
     private boolean acceso(String sala,int id) {
         if("general".equals(sala))return true;
+        if(SalasPrivadas.valida(sala))return privadas.integrante(sala,id);
         try{return Long.parseLong(sala)>0&&reuniones.puedeAccederGrabacion(id,Long.parseLong(sala));}catch(NumberFormatException e){return false;}
     }
     private boolean puedeGuardar(String sala,int id) {
         if("general".equals(sala))return true;
+        if(SalasPrivadas.valida(sala))return privadas.integrante(sala,id);
         try{return Long.parseLong(sala)>0&&reuniones.puedeGuardarGrabacion(id,Long.parseLong(sala));}catch(NumberFormatException e){return false;}
     }
     private Path archivo(String id,String extension) {
@@ -65,11 +71,24 @@ public class GrabacionController {
         if(entrada.sala()==null||!puedeGuardar(entrada.sala(),u.getId()))throw fallo(HttpStatus.FORBIDDEN,"No tienes permiso para guardar grabaciones en esta sala.");
         // Solo se limpian cargas temporales abandonadas, nunca videos publicados.
         var it=cargas.values().iterator();while(it.hasNext()){Carga c=it.next();if(System.currentTimeMillis()-c.actividad>86_400_000){Files.deleteIfExists(archivo(c.id,".part"));it.remove();}}
+        String uuid = entrada.idLocal()==null ? UUID.randomUUID().toString() : entrada.idLocal();
+        Path parcial = archivo(uuid,".part");
+        if (Files.exists(archivo(uuid,".meta"))) {
+            Properties existente = leer(uuid);
+            if (!String.valueOf(id).equals(existente.getProperty("usuario")) || !entrada.sala().equals(existente.getProperty("sala")))
+                throw fallo(HttpStatus.CONFLICT, "Identificador de grabación en uso.");
+            return Map.of("id",uuid,"grabacion",vista(existente));
+        }
+        Carga previa=cargas.get(uuid);
+        if(previa!=null) {
+            if(previa.usuario!=id || !previa.sala.equals(entrada.sala())) throw fallo(HttpStatus.CONFLICT,"Identificador de carga en uso.");
+            return Map.of("id",uuid,"siguiente",previa.siguiente);
+        }
         if(cargas.values().stream().filter(c->c.usuario==u.getId()).count()>=3)throw fallo(HttpStatus.CONFLICT,"Ya tienes tres videos pendientes de guardar.");
         if(espacioUsado()>=MAX_TOTAL)throw fallo(HttpStatus.INSUFFICIENT_STORAGE,"El almacenamiento de grabaciones está lleno.");
-        String uuid=UUID.randomUUID().toString();String titulo=entrada.titulo()==null?"Videollamada":entrada.titulo().strip();
+        String titulo=entrada.titulo()==null?"Videollamada":entrada.titulo().strip();
         if(titulo.length()>220)throw fallo(HttpStatus.BAD_REQUEST,"El título es demasiado largo.");
-        Carga c=new Carga(uuid,entrada.sala(),titulo,u.getId());Files.createFile(archivo(uuid,".part"));cargas.put(uuid,c);
+        Carga c=new Carga(uuid,entrada.sala(),titulo,u.getId());try(var out=Files.newOutputStream(parcial)){ /* reiniciar carga temporal tras un reinicio */ }cargas.put(uuid,c);
         return Map.of("estado","correcto","id",uuid,"maxParte",MAX_PARTE,"maxVideo",MAX_VIDEO);
     }
     private Carga carga(String id,Integer usuario) {

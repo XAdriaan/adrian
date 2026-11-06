@@ -810,7 +810,7 @@ function renderizarProyectos() {
                 </button>
 
                 ${botonEditar}
-                ${esAdministrador() ? `<button type="button" onclick="nuevoAlcanceUI(${proyecto.id})">Nuevo alcance</button><button type="button" onclick="exportarProyectoUI(${proyecto.id})">Exportar</button>` : ""}
+                ${esAdministrador() ? `<button type="button" onclick="nuevoAlcanceUI(${proyecto.id})">Nuevo alcance</button><button type="button" onclick="exportarProyectoUI(${proyecto.id})">Exportar</button><button type="button" onclick="borrarProyectoUI(${proyecto.id},this)">Borrar proyecto</button>` : ""}
                 ${esAdministrador() ? `<select class="select-carpeta-card" onchange="moverProyectoUI(${proyecto.id},this.value)"><option value="">Sin carpeta</option>${carpetasProyecto.map(c=>`<option value="${c.id}" ${String(proyecto.idCarpeta)===String(c.id)?'selected':''}>${escaparHTML(c.nombre)}</option>`).join('')}</select>` : ""}
             </div>
         `;
@@ -1271,4 +1271,18 @@ function escaparHTML(valor) {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+}
+
+async function borrarProyectoUI(id, boton) {
+    const proyecto = proyectos.find(p => Number(p.id) === Number(id));
+    if (!esAdministrador() || !proyecto || !confirm('¿Retirar «' + proyecto.nombre + '» del portafolio? Se conservará su historial de horas y entregas.')) return;
+    boton.disabled = true;
+    try {
+        const r = await fetch(API_PROYECTOS + '/' + id, {method:'DELETE', headers:obtenerHeadersSesion()});
+        const datos = await obtenerRespuestaJSON(r);
+        if (!r.ok) throw Error(datos.mensaje || 'No se pudo borrar el proyecto.');
+        await cargarProyectos();
+        await cargarCarpetas();
+    } catch(e) { alert(e.message); }
+    finally { boton.disabled = false; }
 }

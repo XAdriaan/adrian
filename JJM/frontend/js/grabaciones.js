@@ -13,9 +13,10 @@
     }
     async function subir(blob,meta,progreso=()=>{}) {
         if(!blob.size||blob.size>MAX)throw new Error('Cada grabación admite hasta 512 MB. Conserva la copia descargada.');
-        const inicio=await (await api('/api/grabaciones/cargas',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sala:String(meta.sala),titulo:meta.titulo})})).json();
-        let parte=0;
-        for(let offset=0;offset<blob.size;offset+=PARTE,parte++){
+        const inicio=await (await api('/api/grabaciones/cargas',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sala:String(meta.sala),titulo:meta.titulo,idLocal:meta.id})})).json();
+        if(inicio.grabacion)return inicio.grabacion;
+        let parte=inicio.siguiente || 0;
+        for(let offset=parte*PARTE;offset<blob.size;offset+=PARTE,parte++){
             const trozo=blob.slice(offset,offset+PARTE);
             const enviar=()=>api(`/api/grabaciones/cargas/${encodeURIComponent(inicio.id)}?parte=${parte}`,{method:'PUT',headers:{'Content-Type':'application/octet-stream'},body:trozo});
             try{await enviar();}catch(e){if(e.status&&e.status<500)throw e;await enviar();}
@@ -28,6 +29,7 @@
     }
     function destinoSala(){const el=document.querySelector('[data-grabaciones-sala]');return el?.dataset.grabacionesSala||'';}
     async function cargar() {
+        window.PMOCopias?.mostrar(destinoSala());
         const cont=document.getElementById('grabacionesServidor');if(!cont)return;
         const actual=++version;cont.setAttribute('aria-busy','true');
         try{const sala=destinoSala(),d=await (await api('/api/grabaciones'+(sala?'?sala='+encodeURIComponent(sala):''))).json();if(actual!==version)return;datos=Array.isArray(d.grabaciones)?d.grabaciones:[];filtros();renderizar();}
@@ -42,9 +44,9 @@
     }
     function renderizar(){
         const cont=document.getElementById('grabacionesServidor');if(!cont)return;const mes=document.getElementById('mesGrabaciones')?.value||'',sala=document.getElementById('tipoGrabaciones')?.value||'';
-        const lista=datos.filter(d=>(!mes||d.fecha.startsWith(mes))&&(!sala||(sala==='general'?d.sala==='general':d.sala!=='general'))).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+        const lista=datos.filter(d=>(!mes||d.fecha.startsWith(mes))&&(!sala||(sala==='general'?d.sala==='general':/^\d+$/.test(d.sala)))).sort((a,b)=>b.fecha.localeCompare(a.fecha));
         const grupos=new Map();for(const d of lista){const dia=fecha(d.fecha);if(!grupos.has(dia))grupos.set(dia,[]);grupos.get(dia).push(d);}
-        cont.innerHTML=[...grupos].map(([dia,rs],i)=>`<details class="grabacion-fecha" ${i===0?'open':''}><summary>${texto(dia)} <span>${rs.length} ${rs.length===1?'video':'videos'}</span></summary><div class="grabacion-grid">${rs.map(d=>`<article class="grabacion-card"><span class="grabacion-icon" aria-hidden="true">▶</span><div><strong>${texto(d.titulo)}</strong><small>${d.sala==='general'?'Sala general':'Sala de proyecto'} · ${texto(new Date(d.fecha).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',timeZone:'America/Mexico_City'}))}</small><small>${(d.bytes/1024/1024).toFixed(1)} MB · ${Math.floor(d.duracionSegundos/60)} min ${d.duracionSegundos%60} s</small></div><div class="grabacion-acciones"><button class="pmo-button" type="button" data-ver-video="${texto(d.id)}">Ver video</button><button class="pmo-button secondary" type="button" data-descargar-video="${texto(d.id)}">Descargar</button></div></article>`).join('')}</div></details>`).join('')||'<div class="pmo-empty">Aquí aparecerán las grabaciones guardadas de tus salas. Inicia una videollamada y pulsa Grabar.</div>';
+        cont.innerHTML=[...grupos].map(([dia,rs],i)=>`<details class="grabacion-fecha" ${i===0?'open':''}><summary>${texto(dia)} <span>${rs.length} ${rs.length===1?'video':'videos'}</span></summary><div class="grabacion-grid">${rs.map(d=>`<article class="grabacion-card"><span class="grabacion-icon" aria-hidden="true">▶</span><div><strong>${texto(d.titulo)}</strong><small>${d.sala==='general'?'Sala general':d.sala.startsWith('privada-')?'Reunión privada':'Sala de proyecto'} · ${texto(new Date(d.fecha).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',timeZone:'America/Mexico_City'}))}</small><small>${(d.bytes/1024/1024).toFixed(1)} MB · ${Math.floor(d.duracionSegundos/60)} min ${d.duracionSegundos%60} s</small></div><div class="grabacion-acciones"><button class="pmo-button" type="button" data-ver-video="${texto(d.id)}">Ver video</button><button class="pmo-button secondary" type="button" data-descargar-video="${texto(d.id)}">Descargar</button></div></article>`).join('')}</div></details>`).join('')||'<div class="pmo-empty">Aquí aparecerán las grabaciones guardadas de tus salas. Inicia una videollamada y pulsa Grabar.</div>';
         cont.querySelectorAll('[data-ver-video]').forEach(b=>b.addEventListener('click',()=>abrir(b.dataset.verVideo,b,false)));
         cont.querySelectorAll('[data-descargar-video]').forEach(b=>b.addEventListener('click',()=>abrir(b.dataset.descargarVideo,b,true)));
     }
@@ -64,7 +66,7 @@
         document.getElementById('actualizarGrabaciones')?.addEventListener('click',cargar);document.getElementById('mesGrabaciones')?.addEventListener('change',renderizar);document.getElementById('tipoGrabaciones')?.addEventListener('change',renderizar);
         cargar();
     }
-    function limpiar(){version++;llamadas.forEach(c=>c.abort());cerrar();datos=[];document.getElementById('grabacionesServidor')?.replaceChildren();}
+    function limpiar(){document.getElementById("copiasGrabacion")?.replaceChildren();version++;llamadas.forEach(c=>c.abort());cerrar();datos=[];document.getElementById('grabacionesServidor')?.replaceChildren();}
     window.addEventListener('pagehide',limpiar);window.addEventListener('pmo:sesion-cerrada',limpiar);
     window.addEventListener('storage',e=>{if(e.key==='sesionTokenPMO'||e.key===null)limpiar();});
     window.PMOGrabaciones={subir,cargar,preparar};

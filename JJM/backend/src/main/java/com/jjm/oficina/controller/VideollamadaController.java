@@ -22,6 +22,8 @@ public class VideollamadaController {
     private org.springframework.jdbc.core.JdbcTemplate jdbc;
     @org.springframework.beans.factory.annotation.Autowired(required=false)
     private com.jjm.oficina.servicio.CatalogoProyectosSepDic2026Service catalogo;
+    @org.springframework.beans.factory.annotation.Autowired
+    private SalasPrivadas privadas;
     private final Map<String, Sala> salas = new HashMap<>();
     private static class Sala {
         final Map<String, Conexion> conexiones = new LinkedHashMap<>();
@@ -34,6 +36,8 @@ public class VideollamadaController {
     private static class Conexion {
         final String id = UUID.randomUUID().toString();
         final int usuario; final String nombre; final String proyectos; final String rol; final boolean alumno;
+        final Deque<FragmentoVoz> voz = new ArrayDeque<>();
+        long ultimaVoz;
         long actividad, secuencia = 0;
         long ventanaChat = 0, ultimaReaccion = 0;
         int mensajes = 0;
@@ -85,7 +89,7 @@ public class VideollamadaController {
         Usuario u = id == null ? null : usuarios.findById(id).orElse(null);
         if (u == null || !"Activo".equalsIgnoreCase(u.getEstado()))
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Inicia sesión para entrar a la sala.");
-        if (!"general".equals(sala)) {
+        if (!"general".equals(sala) && !SalasPrivadas.valida(sala)) {
             long reunion;
             try { reunion = Long.parseLong(sala); } catch (Exception e) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Sala inválida."); }
             if (!reuniones.puedeAccederVideollamada(id, reunion))
@@ -140,6 +144,7 @@ public class VideollamadaController {
         if(s.conexiones.values().stream().filter(c->c.usuario==u.getId()).count()>=2)
             throw new ResponseStatusException(HttpStatus.CONFLICT,"Ya tienes dos dispositivos conectados. Sal de uno antes de abrir otro.");
         if(s.conexiones.values().stream().noneMatch(c->c.usuario==u.getId()))s.sinCamara.remove(u.getId());
+        if (SalasPrivadas.valida(sala)) privadas.registrar(sala, id);
         Conexion c = new Conexion(u,clavesDe(u.getId()),reloj.millis()); s.conexiones.put(c.id, c);
         controlCamara(s,c);
         return Map.of("estado", "correcto", "conexion", c.id, "participantes", s.conexiones.values().stream().map(Conexion::resumen).toList());
@@ -158,8 +163,42 @@ public class VideollamadaController {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Las señales vencieron. Vuelve a conectar.");
         c.eventos.removeIf(e -> ((Number)e.get("secuencia")).longValue() <= desde);
         return Map.of("estado", "correcto", "participantes", s.conexiones.values().stream().map(Conexion::resumen).toList(),
-                "eventos", List.copyOf(c.eventos), "secuencia", c.secuencia, "chat", List.copyOf(s.chat), "camaraControl", controlCamara(s,c));
+                "eventos", List.copyOf(c.eventos), "voz", retirarVoz(s,c), "secuencia", c.secuencia, "chat", List.copyOf(s.chat), "camaraControl", controlCamara(s,c));
     }
+    public record EnvioVoz(String conexion, List<String> destinos, String pcm) {}
+    public record FragmentoVoz(String origen, long fecha, String pcm) {}
+
+    private List<FragmentoVoz> retirarVoz(Sala sala, Conexion destino) {
+        long limite = reloj.millis()-3000;
+        var actual = destino.voz.stream().filter(f -> f.fecha()>=limite && sala.conexiones.containsKey(f.origen())).toList();
+        destino.voz.clear();
+        return actual;
+    }
+
+    @PostMapping("/{sala}/voz")
+    public synchronized Map<String,Object> voz(@PathVariable String sala, @RequestBody EnvioVoz envio,
+            @RequestHeader(value="X-Usuario-Id",required=false) Integer id) {
+        Usuario u=autorizar(sala,id);
+        limpiar();
+        Sala s=salas.get(sala);
+        Conexion emisor=propia(s,envio.conexion(),u);
+        if(!emisor.audio) return Map.of("recibido",false);
+        if(envio.pcm()==null || envio.pcm().length()!=8192 || envio.destinos()==null ||
+                envio.destinos().size()>128 || !envio.pcm().matches("[A-Za-z0-9+/]+"))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Fragmento de voz inválido.");
+        long ahora=reloj.millis();
+        if(ahora-emisor.ultimaVoz<100) return Map.of("recibido",false);
+        emisor.ultimaVoz=ahora;
+        FragmentoVoz fragmento=new FragmentoVoz(emisor.id,ahora,envio.pcm());
+        for(String destino:new HashSet<>(envio.destinos())){
+            Conexion receptor=s.conexiones.get(destino);
+            if(receptor==null || receptor==emisor)continue;
+            while(receptor.voz.size()>=48)receptor.voz.removeFirst();
+            receptor.voz.addLast(fragmento);
+        }
+        return Map.of("recibido",true);
+    }
+
     @PostMapping("/{sala}/senal")
     public synchronized ResponseEntity<Map<String,Object>> senal(@PathVariable String sala, @RequestBody Senal entrada,
             @RequestHeader(value="X-Usuario-Id", required=false) Integer id) {

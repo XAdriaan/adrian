@@ -137,3 +137,23 @@ test('una conexión correcta no oculta al participante que continúa sin conecta
  assert.match(estado.textContent,/1 de 2.*Sin conexión con Marco.*TURN/);
  marco.pc.connectionState='connected';marco.pc.onconnectionstatechange();assert.match(estado.textContent,/Conexión activa con los 2/);assert.doesNotMatch(estado.textContent,/TURN/);
 });
+
+test('la siguiente sincronización repara el emisor del micrófono aunque ICE ya esté conectado',async()=>{
+ const {sala}=entorno();sala.id='a';sala.enviar=async()=>{};
+ const lista=[{id:'a'},{id:'b'}];await sala.sincronizar(lista);
+ const p=sala.peers.get('b'),micro={kind:'audio',enabled:true,readyState:'live'};
+ let intentos=0;p.audio.replaceTrack=async t=>{if(++intentos===1)throw Error('fallo temporal');p.audio.track=t;};
+ p.pc.connectionState='connected';await sala.cambiar('audio',micro);
+ assert.notEqual(p.audio.track,micro);await sala.sincronizar(lista);await sala.cadenas.get('b');
+ assert.equal(p.audio.track,micro);assert.equal(intentos,2);
+});
+
+test('intenta la ruta TURN después de dos intentos y vuelve a probar las demás rutas',async()=>{
+ const {sala,ctx}=entorno();sala.config.relayDisponible=true;
+ const timers=[];ctx.setTimeout=fn=>{timers.push(fn);return timers.length;};
+ sala.enviar=async()=>{};await sala.sincronizar([{id:'a'},{id:'b'}]);
+ const p=sala.peers.get('a'),politicas=[];
+ p.pc.getConfiguration=()=>({iceServers:[{urls:'turn:jjm.test'}]});
+ p.pc.setConfiguration=c=>politicas.push(c.iceTransportPolicy);
+ await timers.shift()();await timers.shift()();await timers.shift()();assert.deepEqual(politicas,['relay','all']);
+});

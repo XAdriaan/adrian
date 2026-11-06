@@ -212,6 +212,7 @@
             this.reproducirAudioRemoto();
             const Audio=window.AudioContext || window.webkitAudioContext;
             if(Audio&&!this.audio)this.audio=new Audio();await this.audio?.resume().catch(()=>{});this.actualizarAnalizadores();
+            if(this.audio && window.PMOVozRespaldo && !this.rtc.respaldo)this.rtc.respaldo=new window.PMOVozRespaldo(this.rtc,this.audio);
         }
         reproducirAudioRemoto(){
             if(!this.rtc.activa)return;

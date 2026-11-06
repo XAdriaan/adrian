@@ -34,6 +34,17 @@ class VideollamadaTest {
         mvc=MockMvcBuilders.standaloneSetup(video).addFilters(new AutenticacionTokenFilter(sesiones,new ObjectMapper())).build();
     }
     private String entrar(String sala,int usuario) {return (String)video.entrar(sala,usuario).get("conexion");}
+    @Test void respaldoSoloEntregaVozAlDestinatarioAutorizadoDeEsaSala() {
+        String a=entrar("10",7), b=entrar("10",8), c=entrar("20",9);
+        var envio=new VideollamadaController.EnvioVoz(a,List.of(b,c),"A".repeat(8192));
+        assertEquals(false,video.voz("10",envio,7).get("recibido"));
+        video.interaccion("10",new VideollamadaController.Interaccion(a,"estado",Map.of("audio",true,"video",false,"pantalla",false,"mano",false)),7);
+        assertThrows(ResponseStatusException.class,()->video.voz("10",envio,8));
+        assertEquals(true,video.voz("10",envio,7).get("recibido"));
+        assertEquals(1,((List<?>)video.eventos("10",b,0,8).get("voz")).size());
+        assertTrue(((List<?>)video.eventos("10",b,0,8).get("voz")).isEmpty());
+        assertTrue(((List<?>)video.eventos("20",c,0,9).get("voz")).isEmpty());
+    }
     @Test void generalPermiteUsuariosActivosSinAsignacion() {
         String a=entrar("general",7),b=entrar("general",9);
         assertEquals(2,((List<?>)video.eventos("general",a,0,7).get("participantes")).size());

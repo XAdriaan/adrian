@@ -29,6 +29,27 @@ class GrabacionTest {
     String inicio(String sala) throws Exception{return (String)api.iniciar(new GrabacionController.Inicio(sala,"Reunión de prueba"),7).get("id");}
     String guardar(String sala) throws Exception{String id=inicio(sala);api.parte(id,0,webm,7);api.finalizar(id,new GrabacionController.Fin(72),7);return id;}
     void estado(int esperado,org.junit.jupiter.api.function.Executable f){assertEquals(esperado,assertThrows(ResponseStatusException.class,f).getStatusCode().value());}
+    @Test void reintentoDesdeCopiaLocalConservaUnVideo() throws Exception {
+        String id=UUID.randomUUID().toString();
+        var entrada=new GrabacionController.Inicio("general","Prueba",id);
+        api.iniciar(entrada,7);
+        api.parte(id,0,webm,7);
+        assertEquals(1,api.iniciar(entrada,7).get("siguiente"));
+        api.finalizar(id,new GrabacionController.Fin(1),7);
+        assertTrue(api.iniciar(entrada,7).containsKey("grabacion"));
+        estado(409,()->api.iniciar(entrada,8));
+        assertEquals(1,((List<?>)api.listar(null,7).get("grabaciones")).size());
+    }
+    @Test void soloIntegrantesVenGrabacionPrivada() throws Exception {
+        String sala="privada-"+UUID.randomUUID();
+        var privadas=mock(SalasPrivadas.class);
+        org.springframework.test.util.ReflectionTestUtils.setField(api,"privadas",privadas);
+        when(privadas.integrante(sala,7)).thenReturn(true);
+        String id=guardar(sala);
+        estado(403,()->api.video(id,8));
+        assertTrue(((List<?>)api.listar(null,8).get("grabaciones")).isEmpty());
+        assertEquals(200,api.video(id,7).getStatusCode().value());
+    }
     @Test void requiereSesionYNoPermiteSalaAjena() {
         estado(401,()->api.listar(null,null));estado(403,()->api.iniciar(new GrabacionController.Inicio("9","Privada"),7));
     }

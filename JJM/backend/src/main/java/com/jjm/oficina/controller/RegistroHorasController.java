@@ -618,6 +618,59 @@ public class RegistroHorasController {
        SOLO ADMINISTRADOR
     ========================================================= */
 
+    private RegistroHoras aplicarValidacion(RegistroHoras registro, String estado, Integer idUsuarioActivo) {
+        String estadoAnterior = registro.getEstadoValidacion();
+
+        registro.setEstadoValidacion(estado);
+        registro.setIdUsuarioValidador(idUsuarioActivo);
+
+        RegistroHoras actualizado =
+                registroHorasRepository.save(registro);
+
+        recalcularHorasRegistradasTarea(
+                actualizado.getIdTarea()
+        );
+
+        bitacoraService.registrar(
+                idUsuarioActivo,
+                "HORAS",
+                "VALIDAR_REGISTRO",
+                "RegistroHoras",
+                actualizado.getId(),
+                "Se cambió la validación del registro de horas de " +
+                        estadoAnterior + " a " + estado + ".",
+                "Estado de validación: " + estadoAnterior,
+                "Estado de validación: " + estado
+        );
+
+        return actualizado;
+    }
+
+    @PutMapping("/aprobar-pendientes")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> aprobarPendientes(
+            @RequestHeader(value="X-Usuario-Id", required=false) Integer idUsuarioActivo,
+            @RequestBody List<Integer> seleccion) {
+        Usuario usuario = obtenerUsuario(idUsuarioActivo);
+        Map<String,Object> respuesta = new LinkedHashMap<>();
+        if (usuario == null) return respuestaError(respuesta, HttpStatus.UNAUTHORIZED, "Inicia sesión.");
+        if (!esAdministrador(usuario)) return respuestaError(respuesta, HttpStatus.FORBIDDEN, "Solo administración puede aprobar horas.");
+        if (seleccion == null || seleccion.isEmpty() || seleccion.stream().anyMatch(id -> id == null || id <= 0))
+            return respuestaError(respuesta, HttpStatus.BAD_REQUEST, "Selecciona registros válidos.");
+        List<Integer> ids = seleccion.stream().distinct().sorted().toList();
+        int aprobados = 0;
+        BigDecimal horas = BigDecimal.ZERO;
+        for (int inicio = 0; inicio < ids.size(); inicio += 500) {
+            var registros = registroHorasRepository.pendientesParaAprobar(ids.subList(inicio, Math.min(inicio + 500, ids.size())));
+            for (RegistroHoras registro : registros) {
+                aplicarValidacion(registro, "Aprobado", idUsuarioActivo);
+                aprobados++;
+                if (registro.getHorasTrabajadas() != null) horas = horas.add(registro.getHorasTrabajadas());
+            }
+        }
+        return ResponseEntity.ok(Map.of("aprobados", aprobados, "horas", horas, "omitidos", ids.size()-aprobados));
+    }
+
     @PutMapping("/{id}/validacion")
     @Transactional
     public ResponseEntity<Map<String, Object>> validarRegistro(
@@ -689,29 +742,7 @@ public class RegistroHorasController {
             );
         }
 
-        String estadoAnterior = registro.getEstadoValidacion();
-
-        registro.setEstadoValidacion(estado);
-        registro.setIdUsuarioValidador(usuario.getId());
-
-        RegistroHoras actualizado =
-                registroHorasRepository.save(registro);
-
-        recalcularHorasRegistradasTarea(
-                actualizado.getIdTarea()
-        );
-
-        bitacoraService.registrar(
-                idUsuarioActivo,
-                "HORAS",
-                "VALIDAR_REGISTRO",
-                "RegistroHoras",
-                actualizado.getId(),
-                "Se cambió la validación del registro de horas de " +
-                        estadoAnterior + " a " + estado + ".",
-                "Estado de validación: " + estadoAnterior,
-                "Estado de validación: " + estado
-        );
+        RegistroHoras actualizado = aplicarValidacion(registro, estado, idUsuarioActivo);
 
         respuesta.put("estado", "correcto");
         respuesta.put(

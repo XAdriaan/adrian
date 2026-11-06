@@ -21,6 +21,15 @@
         registros.forEach(r=>{const f=String(r.fecha||'').slice(0,10);if(!fechas.has(f))fechas.set(f,[]);fechas.get(f).push(r);});
         return [...fechas.entries()].sort(([a],[b])=>a.localeCompare(b)).flatMap(([fecha,lista])=>{
             const validos=lista.filter(valido);
+            const ajustePersonal=validos.some(r=>String(r.descripcion||'').startsWith('Ajuste personal autorizado Jonathan. Corte fijo 30/10/2026:'));
+            if (ajustePersonal && !validos.some(regularizado)) {
+                const observados=validos.filter(r=>r.horaEntrada||r.horaSalida);
+                return [{fecha, horaEntrada:observados.length===1?observados[0].horaEntrada:null,
+                    horaSalida:observados.length===1?observados[0].horaSalida:null,
+                    horasTrabajadas:validos.reduce((s,r)=>s+horas(r),0),
+                    horasAprobadas:validos.filter(r=>String(r.estadoValidacion).toLowerCase()==='aprobado').reduce((s,r)=>s+horas(r),0),
+                    incidente:'normal'}];
+            }
             if(!validos.some(regularizado))return lista.slice().sort((a,b)=>String(a.horaEntrada||'').localeCompare(String(b.horaEntrada||'')));
             // El horario reconocido se proyecta; los tiempos de conexión originales siguen en el historial.
             return [{fecha,regularizacionAdministrativa:true,horaEntrada:'07:00',horaSalida:'17:00',

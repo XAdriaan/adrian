@@ -362,6 +362,7 @@ function configurarEncabezado() {
 ========================================================= */
 
 function configurarEventos() {
+    document.getElementById("aprobarPendientes")?.addEventListener("click", aprobarPendientes);
     if (btnRegistrarHoras) {
         btnRegistrarHoras.addEventListener(
             "click",
@@ -498,6 +499,7 @@ async function cargarRegistrosHoras() {
             : [];
 
         mostrarRegistros();
+        actualizarAprobacionMasiva();
         actualizarEstadisticas();
         actualizarEstadoJornada();
 
@@ -514,6 +516,7 @@ async function cargarRegistrosHoras() {
             "No fue posible cargar los registros."
         );
 
+        actualizarAprobacionMasiva();
         actualizarEstadisticas();
         actualizarEstadoJornada();
     }
@@ -1665,6 +1668,45 @@ async function editarRegistro(id) {
     );
 
     modalHoras.classList.add("show");
+}
+
+function pendientesAprobables() {
+    return registrosHoras.filter(r => String(r.estadoValidacion).toLowerCase() === 'pendiente'
+        && !(String(r.tipoRegistro).toLowerCase() === 'jornada' && !r.horaSalida));
+}
+
+function actualizarAprobacionMasiva() {
+    const boton = document.getElementById('aprobarPendientes');
+    if (!boton) return;
+    boton.hidden = !(esAdministrador() && puedeValidarHorasGlobales());
+    boton.disabled = !pendientesAprobables().length || aprobandoPendientes;
+}
+
+let aprobandoPendientes = false;
+async function aprobarPendientes() {
+    if (aprobandoPendientes || !esAdministrador() || !puedeValidarHorasGlobales()) return;
+    const pendientes = pendientesAprobables();
+    const horas = pendientes.reduce((total,r) => total + Number(r.horasTrabajadas || 0), 0);
+    if (!pendientes.length || !confirm(`¿Aprobar ${horas.toFixed(2)} horas de ${pendientes.length} registros pendientes de todo el equipo?`)) return;
+    const estado = document.getElementById('resultadoAprobacion');
+    aprobandoPendientes = true;
+    actualizarAprobacionMasiva();
+    estado.textContent = 'Aprobando horas…';
+    try {
+        const r = await fetch(API_REGISTROS_HORAS + '/aprobar-pendientes', {
+            method:'PUT', headers:{...obtenerHeadersSesion(), 'Content-Type':'application/json'},
+            body:JSON.stringify(pendientes.map(registro => registro.id))
+        });
+        const datos = await obtenerRespuestaJSON(r);
+        if (!r.ok) throw Error(datos.mensaje || 'Falló la aprobación.');
+        estado.textContent = `${datos.horas} h aprobadas en ${datos.aprobados} registros.` +
+            (datos.omitidos ? ` Se omitieron ${datos.omitidos} registros que cambiaron.` : '');
+    } catch (e) { estado.textContent = e.message; }
+    finally {
+        await cargarRegistrosHoras();
+        aprobandoPendientes = false;
+        actualizarAprobacionMasiva();
+    }
 }
 
 async function validarRegistro(id, estadoValidacion) {
