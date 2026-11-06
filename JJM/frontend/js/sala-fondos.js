@@ -30,6 +30,18 @@
             this.detener();this.original=pista;this.modo=modo;
             if(modo==='ninguno'){await this.alCambiar(pista);return;}
             const epoca=++this.generacion;
+            if (/^jjm-(0[1-9]|1[0-5])$/.test(modo)) {
+                const imagen = new Image();
+                imagen.src = 'img/fondos-jjm/' + modo + '.jpg';
+                try {
+                    await imagen.decode();
+                } catch (error) {
+                    if (epoca !== this.generacion) return;
+                    throw new Error('No se pudo cargar el fondo JJM. Vuelve a seleccionarlo.');
+                }
+                if (epoca !== this.generacion) return;
+                this.fondoJJM = imagen;
+            }
             await this.preparar();if(epoca!==this.generacion || pista.readyState!=='live')return;
             this.video=document.createElement('video');this.video.muted=true;this.video.playsInline=true;this.video.srcObject=new MediaStream([pista]);
             await this.video.play();if(epoca!==this.generacion){this.video.srcObject=null;return;}
@@ -44,6 +56,15 @@
             const c=this.canvas.getContext('2d'),w=this.canvas.width,h=this.canvas.height;c.clearRect(0,0,w,h);
             // Nunca transmitir el cuarto antes de que el modelo entregue su primera máscara.
             if(this.modo==='desenfoque'){c.filter='blur(18px)';c.drawImage(this.video,-20,-20,w+40,h+40);c.filter='none';}
+            else if (this.fondoJJM) {
+                const imagen = this.fondoJJM;
+                const escala = Math.min(w / imagen.naturalWidth, h / imagen.naturalHeight);
+                const ancho = imagen.naturalWidth * escala;
+                const alto = imagen.naturalHeight * escala;
+                c.fillStyle = '#08172d';
+                c.fillRect(0, 0, w, h);
+                c.drawImage(imagen, (w - ancho) / 2, (h - alto) / 2, ancho, alto);
+            }
             else if(this.modo==='personalizado'&&this.imagen){const escala=Math.max(w/this.imagen.width,h/this.imagen.height);c.drawImage(this.imagen,(w-this.imagen.width*escala)/2,(h-this.imagen.height*escala)/2,this.imagen.width*escala,this.imagen.height*escala);}
             else{const g=c.createLinearGradient(0,0,w,h);g.addColorStop(0,this.modo==='bosque'?'#1b4e45':'#102443');g.addColorStop(1,this.modo==='bosque'?'#769572':'#386baa');c.fillStyle=g;c.fillRect(0,0,w,h);if(this.modo==='oficina'){c.fillStyle='#ffffff18';c.fillRect(40,40,180,260);c.fillRect(420,45,150,160);c.fillStyle='#edf4ff';c.font='bold 32px sans-serif';c.fillText('JJM',450,285);c.font='14px sans-serif';c.fillText('Oficina de Proyectos',380,310);}}
             if(!this.tieneMascara || !this.original.enabled)return;
@@ -69,7 +90,7 @@
             this.imagen?.close();this.imagen=imagen;
         }
         fallar(error){const original=this.original;this.detener();this.trabajador?.terminate();this.trabajador=null;this.modo='ninguno';this.alCambiar(original?.readyState==='live'?original:null).catch(()=>{});this.alError(error);}
-        detener(){++this.generacion;this.activa=false;clearTimeout(this.timer);clearTimeout(this.esperaMascara);this.pista?.stop();this.pista=null;this.flujo=null;if(this.video){this.video.pause();this.video.srcObject=null;}}
+        detener(){++this.generacion;this.fondoJJM=null;this.activa=false;clearTimeout(this.timer);clearTimeout(this.esperaMascara);this.pista?.stop();this.pista=null;this.flujo=null;if(this.video){this.video.pause();this.video.srcObject=null;}}
         cerrar(){this.detener();this.trabajador?.terminate();this.trabajador=null;this.imagen?.close();this.imagen=null;}
     }
     window.PMOFondosSala=FondosSala;

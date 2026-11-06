@@ -119,7 +119,25 @@
     </nav>
 </div>
 <div id="opcionesReacciones" class="sala-opciones" hidden><h2>Reaccionar</h2><div class="sala-emojis"><button data-reaccion="👍" aria-label="Me gusta">👍</button><button data-reaccion="👏" aria-label="Aplausos">👏</button><button data-reaccion="❤️" aria-label="Corazón">❤️</button><button data-reaccion="😂" aria-label="Risa">😂</button><button data-reaccion="🎉" aria-label="Celebrar">🎉</button><button data-reaccion="🤔" aria-label="Pensando">🤔</button></div></div>
-<div id="opcionesFondos" class="sala-opciones" hidden><div class="sala-panel-cabecera"><h2>Fondo de tu cámara</h2><button type="button" id="btnCerrarFondos" aria-label="Cerrar fondos">✕</button></div><button type="button" id="btnQuitarFondo">Quitar fondo</button><label for="fondoSala">Selecciona un fondo</label><select id="fondoSala"><option value="ninguno">Sin efecto</option><option value="desenfoque">Desenfocar fondo</option><option value="oficina">Oficina JJM</option><option value="azul">Azul</option><option value="bosque">Verde</option><option value="personalizado">Imagen propia</option></select><label for="imagenFondoSala">Imagen propia (JPG, PNG o WebP, hasta 5 MB)</label><input id="imagenFondoSala" type="file" accept="image/jpeg,image/png,image/webp"><p id="estadoFondoSala" role="status">Activa tu cámara para aplicar el efecto.</p></div>
+<div id="opcionesFondos" class="sala-opciones" hidden><div class="sala-panel-cabecera"><h2>Fondo de tu cámara</h2><button type="button" id="btnCerrarFondos" aria-label="Cerrar fondos">✕</button></div><button type="button" id="btnQuitarFondo">Quitar fondo</button><label for="fondoSala">Selecciona un fondo</label><select id="fondoSala"><option value="ninguno">Sin efecto</option><option value="desenfoque">Desenfocar fondo</option><option value="oficina">Oficina JJM</option><option value="azul">Azul</option><option value="bosque">Verde</option>
+<optgroup label="Fondos JJM">
+  <option value="jjm-01">Soluciones del mañana</option>
+  <option value="jjm-02">Horizonte nocturno</option>
+  <option value="jjm-03">Globo y volcán</option>
+  <option value="jjm-04">Plaza digital</option>
+  <option value="jjm-05">Amanecer blanco</option>
+  <option value="jjm-06">Escenario azul</option>
+  <option value="jjm-07">Portal al futuro</option>
+  <option value="jjm-08">Tecnología y familia</option>
+  <option value="jjm-09">Ciudad sustentable</option>
+  <option value="jjm-10">Generaciones conectadas</option>
+  <option value="jjm-11">Ciencia para la infancia</option>
+  <option value="jjm-12">Talento sin límites</option>
+  <option value="jjm-13">Mujeres que inspiran</option>
+  <option value="jjm-14">Campo y tecnología</option>
+  <option value="jjm-15">Clientes y colaboradores</option>
+</optgroup>
+<option value="personalizado">Imagen propia</option></select><label for="imagenFondoSala">Imagen propia (JPG, PNG o WebP, hasta 5 MB)</label><input id="imagenFondoSala" type="file" accept="image/jpeg,image/png,image/webp"><p id="estadoFondoSala" role="status">Activa tu cámara para aplicar el efecto.</p></div>
 <div id="opcionesCapturas" class="sala-opciones" hidden><h2>Fotos y capturas</h2><p>La imagen se descarga en tu equipo. Al capturar la reunión se avisa a todos los participantes.</p><button id="btnFotoCamara" class="meeting-btn" type="button">Tomar foto con mi cámara</button><button id="btnFotoReunion" class="meeting-btn secondary" type="button">Capturar reunión y presentación</button><p id="estadoCapturaSala" role="status"></p></div>
 <dialog id="listaParticipantesSala" aria-labelledby="tituloListaParticipantes"><header><h2 id="tituloListaParticipantes">Participantes de la llamada</h2><button type="button" id="cerrarListaParticipantes">Cerrar</button></header><div id="contenidoListaParticipantes"></div></dialog>
 <iframe id="oficinaDuranteLlamada" title="Oficina de Proyectos durante la llamada" hidden></iframe>
@@ -128,7 +146,7 @@
 <script src="js/api-config.js?v=20261026-v33"></script>
 <script src="js/voz-respaldo.js?v=38"></script>
 <script src="js/sala-webrtc.js?v=38"></script>
-<script src="js/sala-fondos.js?v=20261013-v20"></script>
+<script src="js/sala-fondos.js?v=20261106-v39"></script>
 <script src="js/sala-experiencia.js?v=38"></script>
 <script src="js/sala-panel-camaras.js?v=20261020-v30"></script>
 <script src="js/copias-grabacion.js?v=37"></script><script src="js/grabaciones.js?v=37"></script>
