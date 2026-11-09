@@ -305,6 +305,23 @@ function puedeExportarImprimirProyecto() {
 }
 
 function configurarPermisosVisuales() {
+    const eliminar = document.getElementById("eliminarProyectoDetalle");
+    if (eliminar) {
+        eliminar.hidden = !esAdministrador();
+        eliminar.onclick = async () => {
+            const {id,nombre} = proyectoActual;
+            if (!esAdministrador() || !confirm("¿Retirar «" + nombre + "» del portafolio? Se conservará su historial de horas y entregas.")) return;
+            eliminar.disabled = true;
+            try {
+                const respuesta = await fetch(API_PROYECTOS + "/" + id, {method:"DELETE",headers:obtenerHeadersSesion()});
+                if (!respuesta.ok) throw Error((await obtenerRespuestaJSON(respuesta)).mensaje || "No se pudo eliminar el proyecto.");
+                location.replace("proyectos.html");
+            } catch (error) {
+                alert(error.message);
+                eliminar.disabled = false;
+            }
+        };
+    }
     const btnAgregarMiembro =
         document.getElementById("btnAgregarMiembro");
 

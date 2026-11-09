@@ -22,7 +22,7 @@ public class EntregasTareasController {
     @GetMapping public Map<String,Object> listar(@PathVariable Integer proyecto,@RequestHeader(value="X-Usuario-Id",required=false) Integer id){
         var u=canales.acceso(proyecto,id);boolean revisor=canales.admin(u);
         var rows=db.queryForList("SELECT e.id,e.id_tarea AS idTarea,e.id_usuario AS idUsuario,e.comentario,e.nombre,e.estado,e.observaciones,e.entregado,e.revisado,CONCAT_WS(' ',u.nombre,u.apellido_paterno,u.apellido_materno) AS alumno FROM pmo_entregas_tareas e JOIN usuarios u ON u.id_usuario=e.id_usuario WHERE e.id_proyecto=?"+(revisor?"":" AND e.id_usuario=?")+" ORDER BY e.id DESC",revisor?new Object[]{proyecto}:new Object[]{proyecto,id});
-        return Map.of("entregas",rows,"puedeRevisar",revisor);
+        return Map.of("entregas",rows,"puedeRevisar",revisor,"idUsuarioSesion",id);
     }
     public record Entrada(Integer idTarea,String comentario,String nombre,String base64){}
     static byte[] archivo(Entrada e){
@@ -45,10 +45,29 @@ public class EntregasTareasController {
         String comentario=Objects.toString(e.comentario(),"").trim();if(comentario.length()>4000)throw fallo(400,"El comentario admite hasta 4000 caracteres.");
         byte[] bytes=archivo(e);if(comentario.isBlank()&&bytes==null)throw fallo(400,"Agrega tu trabajo o un comentario antes de entregar.");
         var prev=db.queryForList("SELECT estado FROM pmo_entregas_tareas WHERE id_tarea=? AND id_usuario=? ORDER BY id DESC LIMIT 1",e.idTarea(),id);
-        if(!prev.isEmpty()&&!"Devuelta".equals(prev.getFirst().get("estado")))throw fallo(409,"Ya entregaste esta tarea. Espera la revisión antes de volver a entregar.");
+        if(!prev.isEmpty()&&!Set.of("Devuelta","Anulada").contains(prev.getFirst().get("estado")))throw fallo(409,"Ya entregaste esta tarea. Espera la revisión antes de volver a entregar.");
         db.update("INSERT INTO pmo_entregas_tareas(id_proyecto,id_tarea,id_usuario,comentario,nombre,contenido,entregado) VALUES(?,?,?,?,?,?,?)",proyecto,e.idTarea(),id,comentario,bytes==null?null:e.nombre(),bytes,LocalDateTime.now(ZoneId.of("America/Mexico_City")));
         return Map.of("mensaje","Trabajo entregado. Queda pendiente de revisión.");
     }
+    @PostMapping("/{entrega}/anular") @Transactional
+    public Map<String,Object> anular(@PathVariable Integer proyecto, @PathVariable Long entrega,
+            @RequestHeader(value="X-Usuario-Id",required=false) Integer id) {
+        canales.acceso(proyecto,id);
+        int cambios = db.update("UPDATE pmo_entregas_tareas SET estado='Anulada' WHERE id=? AND id_proyecto=? AND id_usuario=? AND estado='Entregada'", entrega,proyecto,id);
+        if (cambios != 1) throw fallo(409,"Solo puedes anular una entrega tuya que siga pendiente de revisión.");
+        return Map.of("mensaje","Entrega anulada. Puedes enviar una nueva versión.");
+    }
+
+    @PostMapping("/{entrega}/anular-aprobacion") @Transactional
+    public Map<String,Object> anularAprobacion(@PathVariable Integer proyecto, @PathVariable Long entrega,
+            @RequestHeader(value="X-Usuario-Id",required=false) Integer id) {
+        var usuario = canales.acceso(proyecto,id);
+        if (!canales.admin(usuario)) throw fallo(403,"Solo administración puede anular una aprobación.");
+        int cambios = db.update("UPDATE pmo_entregas_tareas SET estado='Entregada', observaciones=CONCAT(COALESCE(observaciones,''), '\nAprobación anulada. Pendiente de nueva revisión.'), id_revisor=NULL, revisado=NULL WHERE id=? AND id_proyecto=? AND estado='Aprobada' AND id_usuario<>?", entrega,proyecto,id);
+        if (cambios != 1) throw fallo(409,"Esta entrega ya cambió o pertenece a tu cuenta.");
+        return Map.of("mensaje","Aprobación anulada. El trabajo vuelve a estar pendiente de revisión.");
+    }
+
     public record Revision(String estado,String observaciones){}
     @PutMapping("/{entrega}") @Transactional public Map<String,Object> revisar(@PathVariable Integer proyecto,@PathVariable Long entrega,@RequestHeader(value="X-Usuario-Id",required=false) Integer id,@RequestBody Revision e){
         var u=canales.acceso(proyecto,id);if(!canales.admin(u))throw fallo(403,"Solo administración puede revisar las entregas.");

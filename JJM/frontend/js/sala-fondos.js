@@ -30,7 +30,7 @@
             this.detener();this.original=pista;this.modo=modo;
             if(modo==='ninguno'){await this.alCambiar(pista);return;}
             const epoca=++this.generacion;
-            if (/^jjm-(0[1-9]|1[0-5])$/.test(modo)) {
+            if (/^jjm-(0[1-9]|1[0-9])$/.test(modo)) {
                 const imagen = new Image();
                 imagen.src = 'img/fondos-jjm/' + modo + '.jpg';
                 try {

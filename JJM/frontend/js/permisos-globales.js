@@ -2544,3 +2544,15 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 });
+
+
+// Acceso compartido a las plataformas sociales.
+document.addEventListener("DOMContentLoaded", () => {
+    const sidebar = document.querySelector(".sidebar");
+    if (!sidebar || sidebar.querySelector('a[href="redes-sociales.html"]')) return;
+    const link = document.createElement("a");
+    link.href = "redes-sociales.html";
+    link.textContent = "Redes sociales ↗";
+    link.style.cssText = "display:block;padding:12px 20px;color:inherit";
+    sidebar.appendChild(link);
+});

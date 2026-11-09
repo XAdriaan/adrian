@@ -16,4 +16,19 @@ class EntregasTareasTest {
  @Test void admiteCorregirDevuelta(){when(db.queryForList(contains("FROM tareas"),eq(3),eq(2))).thenReturn(List.of(Map.of("id_usuario",7)));when(db.queryForList(contains("SELECT estado"),eq(3),eq(7))).thenReturn(List.of(Map.of("estado","Devuelta")));assertEquals("Trabajo entregado. Queda pendiente de revisión.",c.entregar(2,7,new EntregasTareasController.Entrada(3,"Corrección",null,null)).get("mensaje"));verify(db).update(startsWith("INSERT INTO"),eq(2),eq(3),eq(7),eq("Corrección"),isNull(),isNull(),any());}
  @Test void noRevisaColaborador(){when(canales.acceso(2,7)).thenReturn(new Usuario());assertThrows(ResponseStatusException.class,()->c.revisar(2,1L,7,new EntregasTareasController.Revision("Aprobada","")));verifyNoInteractions(db);}
  @Test void noDescargaArchivoAjeno(){when(canales.acceso(2,7)).thenReturn(new Usuario());when(db.queryForList(contains("SELECT id_usuario"),eq(1L),eq(2))).thenReturn(List.of(Map.of("id_usuario",9,"nombre","x.txt","contenido",new byte[]{1})));assertThrows(ResponseStatusException.class,()->c.descargar(2,1L,7));}
+
+ @Test void noAnulaEntregaAjenaORevisada() {
+  assertThrows(ResponseStatusException.class,()->c.anular(2,1L,7));
+  verify(db).update(contains("AND id_usuario=? AND estado='Entregada'"),eq(1L),eq(2),eq(7));
+ }
+ @Test void noRevierteAprobacionColaborador() {
+  when(canales.acceso(2,7)).thenReturn(new Usuario());
+  assertThrows(ResponseStatusException.class,()->c.anularAprobacion(2,1L,7));
+  verifyNoInteractions(db);
+ }
+ @Test void permiteEntregarOtraVersionTrasAnular() {
+  when(db.queryForList(contains("FROM tareas"),eq(3),eq(2))).thenReturn(List.of(Map.of("id_usuario",7)));
+  when(db.queryForList(contains("SELECT estado"),eq(3),eq(7))).thenReturn(List.of(Map.of("estado","Anulada")));
+  assertEquals("Trabajo entregado. Queda pendiente de revisión.",c.entregar(2,7,new EntregasTareasController.Entrada(3,"Trabajo corregido",null,null)).get("mensaje"));
+ }
 }
