@@ -265,7 +265,7 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
         for(ProyectoCatalogo item:CATALOGO){
             if(item.alumnoFuente()==null)continue;
             List<String> esperados=tokens(normalizar(item.alumnoFuente()));
-            if(!"JJM-SD26-08".equals(item.codigo())&&(esperados.size()<3||!esperados.equals(tokens(normalizar(propia.getNombreCompleto())))))continue;
+            if(!"JJM-SD26-08".equals(item.codigo())&&(esperados.size()<3||!coincideNombre(propia,esperados)))continue;
             List<MiembroEquipo> iguales=buscarMiembros(item.alumnoFuente());
             if(iguales.size()!=1||!iguales.getFirst().getId().equals(propia.getId()))continue;
             Proyecto p=proyectoRepository.findByCodigo(item.codigo()).orElse(null);
@@ -464,7 +464,14 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
         // Los nombres parciales del PDF requieren confirmación del administrador.
         if (tokensFuente.size() < 3) return List.of();
         List<MiembroEquipo> miembros = miembroEquipoRepository.findAll();
-        return miembros.stream().filter(m -> tokens(normalizar(m.getNombreCompleto())).equals(tokensFuente)).toList();
+        return miembros.stream().filter(m -> coincideNombre(m,tokensFuente)).toList();
+    }
+
+    private boolean coincideNombre(MiembroEquipo miembro,List<String> esperados) {
+        if(tokens(normalizar(miembro.getNombreCompleto())).equals(esperados))return true;
+        var u=miembro.getUsuario();
+        return u!=null && tokens(normalizar(Objects.toString(u.getNombre(), "")+" "+
+            Objects.toString(u.getApellidoPaterno(), "")+" "+Objects.toString(u.getApellidoMaterno(), ""))).equals(esperados);
     }
 
     private boolean cuentaAlumnoActiva(MiembroEquipo miembro) {

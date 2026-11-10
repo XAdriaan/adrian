@@ -175,7 +175,7 @@ class CatalogoAsignacionesTest {
         assertEquals(21, enlaces.size());
         for (int id : List.of(2, 3, 4, 5, 9, 10, 11, 13, 14, 15))
             assertTrue(enlaces.stream().anyMatch(a -> a.getIdProyecto() == id && a.getIdMiembro() == id));
-        assertEquals(3, SeparacionProyectosService.visibles(catalogo.values().stream()
+        assertEquals(4, SeparacionProyectosService.visibles(catalogo.values().stream()
                 .filter(p -> enlaces.stream().anyMatch(a -> a.getIdProyecto().equals(p.getId()) && a.getIdMiembro() == 4)).toList()).size());
         assertTrue(enlaces.stream().allMatch(a -> a.getHorasAsignadas().signum() == 0));
         assertTrue(enlaces.stream().noneMatch(a -> a.getIdMiembro() == 7 || a.getIdMiembro() == 8));
@@ -199,5 +199,12 @@ class CatalogoAsignacionesTest {
         servicio.sincronizarCatalogo();servicio.sincronizarCuenta(108);servicio.sincronizarCatalogo();
         assertEquals(1,enlaces.size());assertEquals(8,enlaces.getFirst().getIdProyecto());assertEquals(8,enlaces.getFirst().getIdMiembro());
         assertEquals(8,actividades.get(8).getFirst().getIdMiembroAsignado());assertEquals(BigDecimal.valueOf(5),actividades.get(8).getFirst().getHorasRegistradas());
+    }
+    @Test void usaNombreCompletoDeCuentaCuandoPerfilDeEquipoEsAbreviado() {
+        MiembroEquipo m=alumno(15,"Adrian");
+        m.getUsuario().setNombre("Adrian");m.getUsuario().setApellidoPaterno("Villegas");m.getUsuario().setApellidoMaterno("Sierra");
+        when(miembros.findByUsuarioId(115)).thenReturn(Optional.of(m));
+        servicio.sincronizarCuenta(115);
+        assertTrue(enlaces.stream().anyMatch(a->a.getIdProyecto()==15 && a.getIdMiembro()==15));
     }
 }
