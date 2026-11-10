@@ -39,7 +39,7 @@ public class SeparacionProyectosService implements ApplicationRunner {
         catch(RuntimeException e){java.util.logging.Logger.getLogger(getClass().getName()).warning("No se pudo completar la asignación de cuentas nuevas; se reintentará conservando las asignaciones existentes.");}
     }
     public synchronized void sincronizar(){
-        for(Parte parte:PARTES){Proyecto padre=proyectos.findByCodigo(parte.origen()).orElse(null);if(padre==null)continue;Proyecto hijo=crear(parte,padre);for(MiembroProyecto a:asignaciones.findByIdProyectoOrderByFechaAsignacionDesc(padre.getId()))vincular(hijo,a);}
+        for(Parte parte:PARTES){Proyecto padre=proyectos.findByCodigo(parte.origen()).orElse(null);if(padre==null)continue;Proyecto hijo=crear(parte,padre);String clave=catalogo.obtenerClaveAsignada(hijo);if(!Objects.equals(hijo.getNombre(),clave)){hijo.setNombre(clave);proyectos.save(hijo);}for(MiembroProyecto a:asignaciones.findByIdProyectoOrderByFechaAsignacionDesc(padre.getId()))vincular(hijo,a);}
         if(proyectos.findByCodigo("JJM-SD26-AIKOI").isEmpty()){
             Proyecto p=new Proyecto();p.setCodigo("JJM-SD26-AIKOI");p.setNombre("14 Ai-Koi · Fundación");p.setDescripcion("Página web y aplicación móvil para ampliar las operaciones de la Fundación Ai-Koi, A.C., con chatbot e inteligencia artificial. El PDF no indica alumno ni equipo de septiembre: pendiente de asignación por Administración.");valoresIniciales(p);proyectos.save(p);
         }

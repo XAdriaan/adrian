@@ -138,7 +138,7 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
                     "JJM-SD26-10",
                     "Equipo 10 · QUANTUM TV",
                     "Propuesta Innovadora (solución Web y aplicación móvil) de una Plataforma Universal (libre y de paga) Inclusiva de Streaming que incluya navegación por voz inteligente, Chatbot e Inteligencia Artificial (IA) conversacional Multilenguaje accesible para cualquier tipo de televisor (con y sin Smart TV) y que se pueda ver y ejecutar desde la laptop, móvil, tablet y/o algún dispositivo similar para la Empresa JJM Tecnologías Innovadoras, S.A de C.V. en el 2026.",
-                    "Edgr Ivan Castañeda Juarez",
+                    "Edgar Ivan Castañeda Juarez",
                     "QUANTUM TV"
             ),
             new ProyectoCatalogo(
@@ -178,7 +178,7 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
                     "JJM-SD26-15",
                     "Equipo 15 · AION JULIUS",
                     "Autómata Inteligente de Operaciones Neurales que sea una Superinteligencia Artificial (ASI), capaz de crear diversas Inteligencias artificiales generales (AGIS) y que cada AGIS cree y administre las IA´s independientes y especializadas, autoaprendientes y especializadas, operando como sistema operativo independiente para soluciones universales en la empresa JJM Tecnologías Innovadoras, S.A de C.V. en el 2026",
-                    "Vilegas Sierra Adrián",
+                    "Villegas Sierra Adrian",
                     "AION JULIUS"
             )
     );
@@ -231,7 +231,7 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
 
             if (nuevo) {
                 proyecto.setCodigo(item.codigo());
-                proyecto.setNombre(item.etiquetaCorta());
+                proyecto.setNombre(item.clavesFuente());
                 proyecto.setDescripcion(item.nombreOficial());
                 proyecto.setClienteArea(item.clavesFuente());
                 proyecto.setClasificacionProyecto("Interno");
@@ -247,6 +247,10 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
                 );
             }
 
+            if (!Objects.equals(proyecto.getNombre(), item.clavesFuente())) {
+                proyecto.setNombre(item.clavesFuente());
+                proyectoRepository.save(proyecto);
+            }
             Proyecto guardado = nuevo ? proyectoRepository.save(proyecto) : proyecto;
             MiembroEquipo alumno = sincronizarAlumno(guardado, item);
             sincronizarTareasBase(guardado, item, alumno);
@@ -287,8 +291,10 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
                 return emily;
             }
         }
+
         List<MiembroEquipo> asignados = alumnosAsignados(proyecto.getId());
-        if (!asignados.isEmpty()) return asignados.size() == 1 ? asignados.get(0) : null;
+        if (!asignados.isEmpty() && !List.of("JJM-SD26-01","JJM-SD26-08","JJM-SD26-10","JJM-SD26-15").contains(item.codigo()))
+            return asignados.size() == 1 ? asignados.get(0) : null;
         if (item.alumnoFuente() == null || item.alumnoFuente().isBlank()) {
             LOGGER.info(
                     "Equipo " + item.equipo()
@@ -547,9 +553,7 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
             return null;
         }
 
-        return obtenerPorCodigo(proyecto.getCodigo())
-                .map(ProyectoCatalogo::nombreOficial)
-                .orElse(proyecto.getNombre());
+        return obtenerClaveAsignada(proyecto);
     }
 
     /** Clave de la columna Proyecto Asignado del PDF, independiente del ID interno. */
@@ -570,9 +574,7 @@ public class CatalogoProyectosSepDic2026Service implements ApplicationRunner {
             return null;
         }
 
-        return obtenerPorCodigo(proyecto.getCodigo())
-                .map(ProyectoCatalogo::etiquetaCorta)
-                .orElse(proyecto.getNombre());
+        return obtenerClaveAsignada(proyecto);
     }
 
     public Optional<ProyectoCatalogo> obtenerPorCodigo(String codigo) {

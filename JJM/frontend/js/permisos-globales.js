@@ -2403,6 +2403,7 @@ document.addEventListener("DOMContentLoaded", function () {
             ["tablero-tareas.html", "Mis tareas", "tareas"],
             ["mi-estadia.html", "Mi seguimiento de estadía", "estadia"],
             ["videollamadas.html", "Videollamadas", "video"],
+            ["redes-sociales.html", "Redes sociales", "proyectos"],
             ["control-horas.html", "Control de horas", "horas"]
         ];
         const encabezado = document.createElement("p");

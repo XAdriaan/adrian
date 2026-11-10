@@ -77,10 +77,10 @@ public class CanalProyectoController {
         var tareas=jdbc.queryForList("""
             SELECT t.id_tarea AS id,t.titulo,t.estado,t.fecha_limite AS fechaLimite,
               m.nombre_completo AS responsable,
-              (SELECT rt.avance FROM pmo_reporte_tarea rt JOIN pmo_reportes_actividad r ON r.id=rt.id_reporte
-               WHERE rt.id_tarea=t.id_tarea AND r.id_proyecto=t.id_proyecto ORDER BY r.fecha DESC,r.entregado_en DESC,r.id DESC LIMIT 1) AS avanceDeclarado,
-              (SELECT rt.avance FROM pmo_reporte_tarea rt JOIN pmo_reportes_actividad r ON r.id=rt.id_reporte
-               WHERE rt.id_tarea=t.id_tarea AND r.id_proyecto=t.id_proyecto AND r.estado='Aprobado' ORDER BY r.fecha DESC,r.entregado_en DESC,r.id DESC LIMIT 1) AS avanceAprobado
+              (CASE WHEN t.estado='Completada' THEN 100 ELSE (SELECT rt.avance FROM pmo_reporte_tarea rt JOIN pmo_reportes_actividad r ON r.id=rt.id_reporte
+               WHERE rt.id_tarea=t.id_tarea AND r.id_proyecto=t.id_proyecto ORDER BY r.fecha DESC,r.entregado_en DESC,r.id DESC LIMIT 1) END) AS avanceDeclarado,
+              (CASE WHEN t.estado='Completada' THEN 100 ELSE (SELECT rt.avance FROM pmo_reporte_tarea rt JOIN pmo_reportes_actividad r ON r.id=rt.id_reporte
+               WHERE rt.id_tarea=t.id_tarea AND r.id_proyecto=t.id_proyecto AND r.estado='Aprobado' ORDER BY r.fecha DESC,r.entregado_en DESC,r.id DESC LIMIT 1) END) AS avanceAprobado
             FROM tareas t LEFT JOIN miembros_equipo m ON m.id_miembro=t.id_miembro_asignado
             WHERE t.id_proyecto=? ORDER BY t.id_tarea
             """,proyecto);

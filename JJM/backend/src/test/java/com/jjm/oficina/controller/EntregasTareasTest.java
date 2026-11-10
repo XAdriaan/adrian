@@ -31,4 +31,18 @@ class EntregasTareasTest {
   when(db.queryForList(contains("SELECT estado"),eq(3),eq(7))).thenReturn(List.of(Map.of("estado","Anulada")));
   assertEquals("Trabajo entregado. Queda pendiente de revisión.",c.entregar(2,7,new EntregasTareasController.Entrada(3,"Trabajo corregido",null,null)).get("mensaje"));
  }
+ @Test void aprobarCompletaTareaYRecalculaProyecto() {
+  Usuario admin=new Usuario();when(canales.acceso(2,7)).thenReturn(admin);when(canales.admin(admin)).thenReturn(true);
+  when(db.update(startsWith("UPDATE pmo_entregas_tareas SET estado=?"),any(Object[].class))).thenReturn(1);
+  c.revisar(2,1L,7,new EntregasTareasController.Revision("Aprobada","Correcto"));
+  verify(db).update(startsWith("UPDATE tareas SET estado=?"),eq("Completada"),eq(2),eq(1L),eq(2));
+  verify(db).update(contains("UPDATE proyectos SET porcentaje_avance="),eq(2),eq(2));
+ }
+ @Test void anularAprobacionReabreTareaYRecalculaProyecto() {
+  Usuario admin=new Usuario();when(canales.acceso(2,7)).thenReturn(admin);when(canales.admin(admin)).thenReturn(true);
+  when(db.update(startsWith("UPDATE pmo_entregas_tareas SET estado='Entregada'"),eq(1L),eq(2),eq(7))).thenReturn(1);
+  c.anularAprobacion(2,1L,7);
+  verify(db).update(startsWith("UPDATE tareas SET estado=?"),eq("En progreso"),eq(2),eq(1L),eq(2));
+  verify(db).update(contains("UPDATE proyectos SET porcentaje_avance="),eq(2),eq(2));
+ }
 }

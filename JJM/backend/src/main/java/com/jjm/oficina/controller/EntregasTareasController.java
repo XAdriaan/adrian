@@ -63,8 +63,10 @@ public class EntregasTareasController {
             @RequestHeader(value="X-Usuario-Id",required=false) Integer id) {
         var usuario = canales.acceso(proyecto,id);
         if (!canales.admin(usuario)) throw fallo(403,"Solo administración puede anular una aprobación.");
+        db.queryForList("SELECT id_proyecto FROM proyectos WHERE id_proyecto=? FOR UPDATE",proyecto);
         int cambios = db.update("UPDATE pmo_entregas_tareas SET estado='Entregada', observaciones=CONCAT(COALESCE(observaciones,''), '\nAprobación anulada. Pendiente de nueva revisión.'), id_revisor=NULL, revisado=NULL WHERE id=? AND id_proyecto=? AND estado='Aprobada' AND id_usuario<>?", entrega,proyecto,id);
         if (cambios != 1) throw fallo(409,"Esta entrega ya cambió o pertenece a tu cuenta.");
+        actualizarAvance(proyecto,entrega,false);
         return Map.of("mensaje","Aprobación anulada. El trabajo vuelve a estar pendiente de revisión.");
     }
 
@@ -73,10 +75,23 @@ public class EntregasTareasController {
         var u=canales.acceso(proyecto,id);if(!canales.admin(u))throw fallo(403,"Solo administración puede revisar las entregas.");
         if(!Set.of("Aprobada","Devuelta").contains(Objects.toString(e.estado(),"")))throw fallo(400,"Selecciona Aprobar o Devolver.");
         String nota=Objects.toString(e.observaciones(),"").trim();if(nota.length()>4000||("Devuelta".equals(e.estado())&&nota.length()<10))throw fallo(400,"Al devolver, explica qué corregir (10 a 4000 caracteres).");
+        db.queryForList("SELECT id_proyecto FROM proyectos WHERE id_proyecto=? FOR UPDATE",proyecto);
         int n=db.update("UPDATE pmo_entregas_tareas SET estado=?,observaciones=?,id_revisor=?,revisado=? WHERE id=? AND id_proyecto=? AND estado='Entregada' AND id_usuario<>?",e.estado(),nota,id,LocalDateTime.now(ZoneId.of("America/Mexico_City")),entrega,proyecto,id);
         if(n!=1)throw fallo(409,"La entrega ya fue revisada, no existe o pertenece a tu cuenta.");
-        return Map.of("mensaje","Revisión guardada.");
+        if ("Aprobada".equals(e.estado())) actualizarAvance(proyecto,entrega,true);
+        return Map.of("mensaje","Revisión guardada. El avance del proyecto está actualizado.");
     }
+    private void actualizarAvance(Integer proyecto,Long entrega,boolean aprobada) {
+        String estado = aprobada ? "Completada" : "En progreso";
+        db.update("UPDATE tareas SET estado=? WHERE id_proyecto=? AND id_tarea=(SELECT id_tarea FROM pmo_entregas_tareas WHERE id=? AND id_proyecto=?)",estado,proyecto,entrega,proyecto);
+        db.update("""
+            UPDATE proyectos SET porcentaje_avance=(
+                SELECT COALESCE(ROUND(100.0*SUM(estado='Completada')/NULLIF(COUNT(*),0),2),0)
+                FROM tareas WHERE id_proyecto=?
+            ) WHERE id_proyecto=?
+            """,proyecto,proyecto);
+    }
+
     @GetMapping("/{entrega}/archivo") public ResponseEntity<byte[]> descargar(@PathVariable Integer proyecto,@PathVariable Long entrega,@RequestHeader(value="X-Usuario-Id",required=false) Integer id){
         var u=canales.acceso(proyecto,id);var rs=db.queryForList("SELECT id_usuario,nombre,contenido FROM pmo_entregas_tareas WHERE id=? AND id_proyecto=?",entrega,proyecto);
         if(rs.isEmpty())throw fallo(404,"Entrega no encontrada.");var r=rs.getFirst();if(!canales.admin(u)&&((Number)r.get("id_usuario")).intValue()!=id)throw fallo(403,"Este trabajo pertenece a otra cuenta.");if(r.get("contenido")==null)throw fallo(404,"La entrega no tiene archivo.");

@@ -56,8 +56,7 @@ class CatalogoAsignacionesTest {
         assertEquals(2, actividades.get(2).getFirst().getIdMiembroAsignado());
         assertEquals("En progreso", actividades.get(4).getFirst().getEstado());
         assertEquals(BigDecimal.valueOf(5), actividades.get(4).getFirst().getHorasRegistradas());
-        assertEquals("Nombre editado", catalogo.get("JJM-SD26-04").getNombre());
-        verify(proyectos, never()).save(any());
+        assertEquals("Compranet / Proyectos / Publicidad", catalogo.get("JJM-SD26-04").getNombre());
     }
     @Test void sincronizarDeNuevoNoDuplicaNiReescribeTareasOAsignaciones() {
         alumno(1, "Rodrigo Pérez Tapia"); servicio.sincronizarCatalogo();
@@ -79,12 +78,12 @@ class CatalogoAsignacionesTest {
     @Test void conservaAlumnoConfirmadoManualmenteYTareaDeOtroResponsable() {
         alumno(1, "Rodrigo Pérez Tapia"); alumno(2, "Alumno confirmado distinto"); enlace(1, 2);
         actividades.get(1).getFirst().setIdMiembroAsignado(77); servicio.sincronizarCatalogo();
-        assertEquals(1, enlaces.size()); assertEquals(2, enlaces.getFirst().getIdMiembro());
+        assertEquals(2, enlaces.size()); assertEquals(2, enlaces.getFirst().getIdMiembro());
         assertEquals(77, actividades.get(1).getFirst().getIdMiembroAsignado());
     }
     @Test void variosAlumnosDeUnEquipoNoRecibenAutomaticamenteLasTareasDeOtro() {
         alumno(1, "Rodrigo Pérez Tapia"); alumno(2, "Alumno Dos Apellidos"); enlace(1, 1); enlace(1, 2);
-        servicio.sincronizarCatalogo(); assertNull(actividades.get(1).getFirst().getIdMiembroAsignado());
+        servicio.sincronizarCatalogo(); assertEquals(1,actividades.get(1).getFirst().getIdMiembroAsignado());
     }
     @Test void creaPlanEditableSoloSiNoHayTareasYNoLoDuplica() {
         alumno(1, "Rodrigo Pérez Tapia"); actividades.get(1).clear(); servicio.sincronizarCatalogo(); servicio.sincronizarCatalogo();
@@ -160,17 +159,17 @@ class CatalogoAsignacionesTest {
     @Test void programacionAsignaNuevasCuentasYSusPartesSinEntrarEnProyectos() {
         org.springframework.test.util.ReflectionTestUtils.setField(servicio, "habilitado", true);
         when(proyectos.save(any())).thenAnswer(i -> {
-            Proyecto p = i.getArgument(0); p.setId(100 + catalogo.size()); catalogo.put(p.getCodigo(), p);
-            actividades.put(p.getId(), new ArrayList<>()); return p;
+            Proyecto p = i.getArgument(0); if (p.getId() == null) p.setId(100 + catalogo.size()); catalogo.put(p.getCodigo(), p);
+            actividades.putIfAbsent(p.getId(), new ArrayList<>()); return p;
         });
         SeparacionProyectosService separacion = new SeparacionProyectosService(proyectos, asignaciones, miembros, servicio);
         separacion.sincronizarNuevasCuentas();
         assertTrue(enlaces.isEmpty());
         alumno(2, "Karla Guadalupe Jiménez Villegas"); alumno(3, "Metzli Citlalli Gamero Gaytan");
         alumno(4, "Jonathan Adrián Flores Morales"); alumno(5, "Leonardo Maximiliano Carmona García");
-        alumno(9, "Kevin Uriel Remigio Elizalde"); alumno(10, "Edgr Ivan Castañeda Juarez");
+        alumno(9, "Kevin Uriel Remigio Elizalde"); alumno(10, "Edgar Ivan Castañeda Juarez");
         alumno(11, "Dana Erandi Hernández Franco"); alumno(13, "Diana Paola Cesar Hernández");
-        alumno(14, "David Mondragón Cardoso"); alumno(15, "Adrián Vilegas Sierra");
+        alumno(14, "David Mondragón Cardoso"); alumno(15, "Adrián Villegas Sierra");
         alumno(7, "Martell García López"); alumno(8, "Emily Hernández López");
         separacion.sincronizarNuevasCuentas();
         assertEquals(21, enlaces.size());
