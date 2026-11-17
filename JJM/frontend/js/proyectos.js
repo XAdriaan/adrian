@@ -532,6 +532,8 @@ function normalizarProyecto(proyecto) {
 
         organizacionNombre: proyecto.organizacionNombre || "",
         responsableNombre: proyecto.responsableNombre || "",
+        alumnosAsignados: Array.isArray(proyecto.alumnosAsignados) ? proyecto.alumnosAsignados : [],
+        alumnosAsignadosTexto: proyecto.alumnosAsignadosTexto || (Array.isArray(proyecto.alumnosAsignados) ? proyecto.alumnosAsignados.join(", ") : ""),
 
         fechaCreacion: proyecto.fechaCreacion || "",
         fechaActualizacion: proyecto.fechaActualizacion || ""

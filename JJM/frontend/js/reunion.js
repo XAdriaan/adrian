@@ -139,6 +139,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             experienciaSala.minimizar(destino.pathname+destino.search+destino.hash,true);return true;
         };
         fondosSala=new window.PMOFondosSala({alCambiar:async pista=>{if(rtc?.activa){await rtc.cambiar('video',pista);actualizarMediosSala();}},alError:e=>{avisoMediosSala(e.message);document.getElementById('fondoSala').value='ninguno';}});
+        await restaurarFondoPreferido();
         meetingLoadingMessage.textContent = (esPrivada ? "Acceso con sesión y enlace de invitación." : esSalaGeneral ? "Todos los usuarios con sesión pueden entrar." : "Acceso exclusivo para administración y miembros asignados al proyecto.")
             + " Pulsa Entrar para habilitar la escucha. Entras con micrófono y cámara apagados; los alumnos tienen cinco minutos para encender la cámara. Si usas dos dispositivos cercanos, utiliza audífonos para evitar eco.";
         btnEntrarSala.hidden = false; estadoReunion.textContent = "Sala lista. Pulsa Entrar a la sala.";
@@ -234,7 +235,7 @@ function configurarEventos() {
     document.getElementById('fondoSala').addEventListener('change',aplicarFondoSala);
     document.getElementById('btnQuitarFondo')?.addEventListener('click',async()=>{document.getElementById('fondoSala').value='ninguno';await aplicarFondoSala();experienciaSala?.cerrarOpciones();});
     document.getElementById('imagenFondoSala').addEventListener('change',async e=>{
-        try{await fondosSala.cargarImagen(e.target.files[0]);document.getElementById('fondoSala').value='personalizado';await aplicarFondoSala();}catch(error){document.getElementById('estadoFondoSala').textContent=error.message;}
+        try{await fondosSala.cargarImagen(e.target.files[0]);await guardarImagenPreferida(e.target.files[0]);document.getElementById('fondoSala').value='personalizado';await aplicarFondoSala();}catch(error){document.getElementById('estadoFondoSala').textContent=error.message;}
     });
     btnReconectar.addEventListener('click',async()=>{await rtc.salir(); restablecerControles(); btnEntrarSala.click();});
     btnCopiarEnlace.addEventListener('click',copiarInvitacion); btnColgarReunion.addEventListener('click',colgarVideollamada);
@@ -298,7 +299,8 @@ async function probarMicrofonoSala(){
 }
 async function aplicarFondoSala(){
     const selector=document.getElementById('fondoSala'),aviso=document.getElementById('estadoFondoSala');
-    if(!camaraPropia || camaraPropia.readyState!=='live'){aviso.textContent='Activa tu cámara para aplicar el fondo seleccionado.';return;}
+    if(selector.value!=='personalizado'||fondosSala.imagen){try{localStorage.setItem('pmo:fondo:'+usuarioActivo.id,selector.value);}catch(_){}}
+    if(!camaraPropia || camaraPropia.readyState!=='live'){aviso.textContent='Fondo seleccionado. Se aplicará al encender tu cámara.';return;}
     if(selector.disabled)return;selector.disabled=true;
     try{if(selector.value==='personalizado'&&!fondosSala.imagen)throw new Error('Selecciona primero una imagen propia.');aviso.textContent='Preparando fondo…';await fondosSala.iniciar(camaraPropia,selector.value);aviso.textContent=selector.value==='ninguno'?'Cámara sin efecto.':'Fondo activo; los demás participantes verán este efecto.';}
     catch(e){fondosSala.detener();selector.value='ninguno';if(rtc?.activa)await rtc.cambiar('video',camaraPropia);aviso.textContent=e.message;}
@@ -726,4 +728,31 @@ function formatearFechaHora(valor) {
     const fecha = new Date(valor);
     if (Number.isNaN(fecha.getTime())) return String(valor);
     return fecha.toLocaleString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+// La preferencia pertenece a la cuenta y no a una sala determinada.
+async function imagenPreferida(archivo){
+    if(!window.indexedDB)return null;
+    return new Promise((resolve,reject)=>{
+        const limite=setTimeout(()=>reject(new Error('No se pudo abrir el almacenamiento del fondo.')),2500);
+        const solicitud=indexedDB.open('pmo-fondos',1);
+        solicitud.onupgradeneeded=()=>solicitud.result.createObjectStore('imagenes');
+        solicitud.onerror=()=>{clearTimeout(limite);reject(solicitud.error);};
+        solicitud.onblocked=()=>reject(new Error('Almacenamiento ocupado'));
+        solicitud.onsuccess=()=>{const db=solicitud.result;const tx=db.transaction('imagenes',archivo?'readwrite':'readonly');
+            const op=archivo?tx.objectStore('imagenes').put(archivo,String(usuarioActivo.id)):tx.objectStore('imagenes').get(String(usuarioActivo.id));
+            tx.oncomplete=()=>{clearTimeout(limite);db.close();resolve(op.result);};tx.onerror=()=>{clearTimeout(limite);db.close();reject(tx.error);};
+        };
+    });
+}
+async function guardarImagenPreferida(archivo){
+    try{await imagenPreferida(archivo);}catch(_){avisoMediosSala('El fondo funciona en esta llamada, pero el navegador no permitió guardarlo.');}
+}
+async function restaurarFondoPreferido(){
+    const selector=document.getElementById('fondoSala');
+    try{const modo=localStorage.getItem('pmo:fondo:'+usuarioActivo.id);
+        if(!modo||!Array.from(selector.options).some(o=>o.value===modo))return;
+        if(modo==='personalizado'){const archivo=await imagenPreferida();if(!archivo)return;await fondosSala.cargarImagen(archivo);}
+        selector.value=modo;
+    }catch(_){selector.value='ninguno';}
 }
