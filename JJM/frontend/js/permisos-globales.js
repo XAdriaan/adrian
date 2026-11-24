@@ -2402,6 +2402,7 @@ document.addEventListener("DOMContentLoaded", function () {
             ["proyectos.html", "Proyectos", "proyectos"],
             ["tablero-tareas.html", "Mis tareas", "tareas"],
             ["mi-estadia.html", "Mi seguimiento de estadía", "estadia"],
+            ["dual.html", "Dual", "estadia"],
             ["videollamadas.html", "Videollamadas", "video"],
             ["redes-sociales.html", "Redes sociales", "proyectos"],
             ["control-horas.html", "Control de horas", "horas"]
