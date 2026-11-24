@@ -86,9 +86,9 @@ public class DualController {
                 WHERE m.id_usuario=d.alumno AND h.fecha BETWEEN d.inicio AND d.fin
                 AND h.estado_validacion='Aprobado') horas
             FROM pmo_dual d JOIN usuarios u ON u.id_usuario=d.alumno
-            JOIN proyectos p ON p.id_proyecto=d.proyecto
+            LEFT JOIN proyectos p ON p.id_proyecto=d.proyecto
             """+filtro+" ORDER BY d.inicio DESC,u.nombre,d.id DESC",admin(u)?new Object[]{}:new Object[]{uid,uid,uid});
-        return Map.of("expedientes",filas,"puedeGestionar",admin(u));
+        return Map.of("expedientes",filas,"puedeGestionar",admin(u),"puedeInscribirse",com.jjm.oficina.servicio.AsistenciaAutomaticaService.esAlumno(u),"usuarioId",uid);
     }
     @GetMapping("/opciones") public Map<String,Object> opciones(@RequestHeader("X-Usuario-Id") Integer uid) {
         gestionar(usuario(uid));
@@ -110,7 +110,9 @@ public class DualController {
     }
     public record Entrada(Integer alumno,Integer proyecto,String cliente,String empresa,String convenio,String universidad,
         String carrera,String generacion,String cuatrimestre,String matricula,String inicio,String fin,Integer meta,
-        String entrada,String salida,Integer asesorEmpresa,Integer asesorUniversidad,String materias,String estado) {}
+        String entrada,String salida,Integer asesorEmpresa,Integer asesorUniversidad,String materias,String estado,String tipoPeriodo,String universidadClave) {
+        public Entrada(Integer alumno,Integer proyecto,String cliente,String empresa,String convenio,String universidad,String carrera,String generacion,String cuatrimestre,String matricula,String inicio,String fin,Integer meta,String entrada,String salida,Integer asesorEmpresa,Integer asesorUniversidad,String materias,String estado){this(alumno,proyecto,cliente,empresa,convenio,universidad,carrera,generacion,cuatrimestre,matricula,inicio,fin,meta,entrada,salida,asesorEmpresa,asesorUniversidad,materias,estado,null,null);}
+    }
     static String texto(String s,int max,boolean requerido) {
         s=s==null?"":s.trim();
         if(s.length()>max||(requerido&&s.isEmpty()))throw error(400,"Revisa los campos obligatorios y su longitud.");
@@ -128,23 +130,32 @@ public class DualController {
     @PutMapping("/{id}") @Transactional public Map<String,Object> editar(@PathVariable long id,@RequestHeader("X-Usuario-Id") Integer uid,@RequestBody Entrada e) {return guardar(id,usuario(uid),e);}
     Map<String,Object> guardar(Long id,Usuario u,Entrada e) {
         gestionar(u); validarPeriodo(e);
-        if(e.alumno()==null||e.proyecto()==null)throw error(400,"Selecciona un alumno y su proyecto.");
+        if(e.tipoPeriodo()!=null&&!"Personalizado".equals(e.tipoPeriodo())){
+            int meses=DualAlumnoController.duracion(e.tipoPeriodo());LocalDate inicio=LocalDate.parse(e.inicio());
+            if(inicio.getDayOfMonth()!=1||(inicio.getMonthValue()-1)%meses!=0||!inicio.plusMonths(meses).minusDays(1).equals(LocalDate.parse(e.fin())))throw error(400,"Las fechas no corresponden al tipo de periodo seleccionado.");
+        }
+        if(e.universidadClave()!=null&&!e.universidadClave().isBlank())DualAlumnoController.universidad(e.universidadClave());
+        if(e.alumno()==null)throw error(400,"Selecciona un alumno.");
+        usuario(e.alumno());
+        jdbc.queryForList("SELECT id_usuario FROM usuarios WHERE id_usuario=? FOR UPDATE",e.alumno());
         if(id!=null){
             var anterior=acceso(id,u);
-            if(!coincide(anterior.get("alumno"),e.alumno())||!coincide(anterior.get("proyecto"),e.proyecto()))
+            if(!coincide(anterior.get("alumno"),e.alumno())||(anterior.get("proyecto")!=null&&(e.proyecto()==null||!coincide(anterior.get("proyecto"),e.proyecto()))))
                 throw error(400,"El alumno y proyecto de un expediente no se pueden sustituir. Crea otro expediente para conservar su historial.");
         }
-        if(jdbc.queryForList("SELECT mp.id_miembro FROM miembros_proyecto mp JOIN miembros_equipo m ON m.id_miembro=mp.id_miembro JOIN proyectos p ON p.id_proyecto=mp.id_proyecto JOIN usuarios u ON u.id_usuario=m.id_usuario WHERE m.id_usuario=? AND mp.id_proyecto=? AND p.eliminado_en IS NULL AND u.estado='Activo'",e.alumno(),e.proyecto()).isEmpty())throw error(400,"El alumno debe estar asignado a ese proyecto y activo.");
+        if(e.proyecto()!=null&&jdbc.queryForList("SELECT mp.id_miembro FROM miembros_proyecto mp JOIN miembros_equipo m ON m.id_miembro=mp.id_miembro JOIN proyectos p ON p.id_proyecto=mp.id_proyecto JOIN usuarios u ON u.id_usuario=m.id_usuario WHERE m.id_usuario=? AND mp.id_proyecto=? AND p.eliminado_en IS NULL AND u.estado='Activo'",e.alumno(),e.proyecto()).isEmpty())throw error(400,"El alumno debe estar asignado a ese proyecto y activo.");
         for(Integer asesor:Arrays.asList(e.asesorEmpresa(),e.asesorUniversidad()))if(asesor!=null)usuario(asesor);
-        if(!jdbc.queryForList("SELECT id FROM pmo_dual WHERE alumno=? AND proyecto=? AND inicio=? AND id<>?",e.alumno(),e.proyecto(),e.inicio(),id==null?0:id).isEmpty())throw error(409,"Ya existe un expediente para ese alumno, proyecto y fecha de inicio.");
+        if(!jdbc.queryForList("SELECT id FROM pmo_dual WHERE alumno=? AND proyecto<=>? AND inicio=? AND id<>?",e.alumno(),e.proyecto(),e.inicio(),id==null?0:id).isEmpty())throw error(409,"Ya existe un expediente para ese alumno, proyecto y fecha de inicio.");
         List<Object> valores=new ArrayList<>(Arrays.asList(e.alumno(),e.proyecto(),texto(e.cliente(),200,true),texto(e.empresa(),200,true),texto(e.convenio(),200,true),texto(e.universidad(),200,true),texto(e.carrera(),200,true),texto(e.generacion(),80,false),texto(e.cuatrimestre(),40,false),texto(e.matricula(),80,false),e.inicio(),e.fin(),e.meta(),e.entrada(),e.salida(),e.asesorEmpresa(),e.asesorUniversidad(),texto(e.materias(),6000,false),e.estado()));
         if(id==null){
             jdbc.update("INSERT INTO pmo_dual(alumno,proyecto,cliente,empresa,convenio,universidad,carrera,generacion,cuatrimestre,matricula,inicio,fin,meta,entrada,salida,asesor_empresa,asesor_universidad,materias,estado,actualizado) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())",valores.toArray());
-            id=((Number)jdbc.queryForList("SELECT id FROM pmo_dual WHERE alumno=? AND proyecto=? AND inicio=?",e.alumno(),e.proyecto(),e.inicio()).getFirst().get("id")).longValue();
+            id=((Number)jdbc.queryForList("SELECT id FROM pmo_dual WHERE alumno=? AND proyecto<=>? AND inicio=?",e.alumno(),e.proyecto(),e.inicio()).getFirst().get("id")).longValue();
         }else{
             valores.add(id);
             jdbc.update("UPDATE pmo_dual SET alumno=?,proyecto=?,cliente=?,empresa=?,convenio=?,universidad=?,carrera=?,generacion=?,cuatrimestre=?,matricula=?,inicio=?,fin=?,meta=?,entrada=?,salida=?,asesor_empresa=?,asesor_universidad=?,materias=?,estado=?,actualizado=NOW() WHERE id=?",valores.toArray());
         }
+        if(e.tipoPeriodo()!=null)jdbc.update("UPDATE pmo_dual SET tipo_periodo=? WHERE id=?",e.tipoPeriodo(),id);
+        if(e.universidadClave()!=null&&!e.universidadClave().isBlank())jdbc.update("UPDATE pmo_dual SET universidad_clave=?,universidad=? WHERE id=?",e.universidadClave(),DualAlumnoController.universidad(e.universidadClave()),id);
         jdbc.update("INSERT INTO pmo_dual_notas(dual_id,autor,tipo,detalle,fecha) VALUES(?,?,'Expediente',?,NOW())",id,u.getId(),"Expediente guardado. Estado: "+e.estado()+". Meta: "+e.meta()+" horas. Periodo: "+e.inicio()+" a "+e.fin());
         return Map.of("id",id,"mensaje","Expediente Dual guardado.");
     }
@@ -153,7 +164,7 @@ public class DualController {
         YearMonth periodo;try{periodo=mes==null?YearMonth.now():YearMonth.parse(mes);}catch(Exception e){throw error(400,"Mes no válido.");}
         LocalDate desde=periodo.atDay(1),hasta=periodo.atEndOfMonth();
         var horas=jdbc.queryForList("SELECT h.fecha,h.hora_entrada,h.hora_salida,h.horas_trabajadas,h.estado_validacion FROM registros_horas h JOIN miembros_equipo m ON m.id_miembro=h.id_miembro WHERE m.id_usuario=? AND h.fecha BETWEEN ? AND ? AND h.fecha BETWEEN ? AND ? ORDER BY h.fecha DESC,h.id_registro DESC",f.get("alumno"),desde,hasta,f.get("inicio"),f.get("fin"));
-        var reportes=jdbc.queryForList("SELECT id,fecha,actividad,resultado,estado,horas FROM pmo_reportes_actividad WHERE id_usuario=? AND id_proyecto=? AND fecha BETWEEN ? AND ? AND fecha BETWEEN ? AND ? ORDER BY fecha DESC",f.get("alumno"),f.get("proyecto"),desde,hasta,f.get("inicio"),f.get("fin"));
+        var reportes=jdbc.queryForList("SELECT id,fecha,actividad,resultado,estado,horas,evidencia,fase,bloqueos,observaciones,id_archivo FROM pmo_reportes_actividad WHERE id_usuario=? AND id_proyecto=? AND fecha BETWEEN ? AND ? AND fecha BETWEEN ? AND ? ORDER BY fecha DESC",f.get("alumno"),f.get("proyecto"),desde,hasta,f.get("inicio"),f.get("fin"));
         var notas=jdbc.queryForList("SELECT n.id,n.tipo,n.detalle,n.fecha,CONCAT_WS(' ',u.nombre,u.apellido_paterno,u.apellido_materno) autor FROM pmo_dual_notas n JOIN usuarios u ON u.id_usuario=n.autor WHERE n.dual_id=? ORDER BY n.id DESC LIMIT 100",id);
         var documentos=jdbc.queryForList("SELECT id,nombre,fecha FROM pmo_dual_documentos WHERE dual_id=? ORDER BY id DESC",id);
         var asesores=jdbc.queryForList("SELECT id_usuario id,CONCAT_WS(' ',nombre,apellido_paterno,apellido_materno) nombre FROM usuarios WHERE id_usuario=? OR id_usuario=?",f.get("asesor_empresa"),f.get("asesor_universidad"));
@@ -168,7 +179,8 @@ public class DualController {
     }
     public record Documento(String nombre,String base64){}
     @PostMapping("/{id}/documentos") public Map<String,Object> subir(@PathVariable long id,@RequestHeader("X-Usuario-Id") Integer uid,@RequestBody Documento d) {
-        Usuario u=usuario(uid);gestionar(u);acceso(id,u);
+        Usuario u=usuario(uid);var expediente=acceso(id,u);
+        if(!admin(u)&&!coincide(expediente.get("alumno"),uid))throw error(403,"Solo el alumno o administración pueden agregar documentos.");
         String nombre=texto(d.nombre(),180,true);
         if(d.base64()==null||d.base64().length()>5592410)throw error(400,"El PDF admite hasta 4 MB.");
         byte[] bytes;try{bytes=Base64.getDecoder().decode(d.base64());}catch(Exception e){throw error(400,"El archivo no se pudo leer.");}

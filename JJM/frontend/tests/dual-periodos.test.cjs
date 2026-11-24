@@ -1,0 +1,5 @@
+const test=require('node:test'),assert=require('node:assert/strict'),P=require('../js/dual-periodos.js');
+test('cada modalidad separa el año completo sin repetir meses',()=>{for(const [tipo,n] of Object.entries(P.duraciones)){const ps=P.periodos(tipo,2026);assert.equal(ps.length,12/n);const meses=ps.flatMap(p=>p.meses);assert.equal(new Set(meses).size,12);assert.equal(meses[0],'2026-01');assert.equal(meses.at(-1),'2026-12');assert(ps.every(p=>p.meses.length===n));}});
+test('febrero bisiesto y fin de año',()=>{assert.equal(P.periodos('Bimestral',2028)[0].fin,'2028-02-29');assert.equal(P.periodos('Semestral',2026)[1].fin,'2026-12-31');});
+test('periodos históricos parciales conservan sus meses',()=>{assert.deepEqual(P.mesesPeriodo('2026-11-15','2027-02-05').map(m=>m.valor),['2026-11','2026-12','2027-01','2027-02']);assert.deepEqual(P.periodos('Trimestral',1900),[]);assert.deepEqual(P.mesesPeriodo('incorrecto','2026-12-01'),[]);});
+test('incluye las cinco universidades solicitadas',()=>assert.deepEqual(Object.keys(P.universidades),['UAM','UPT','UTT','IPN','UNAM']));

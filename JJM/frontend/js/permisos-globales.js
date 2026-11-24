@@ -487,6 +487,7 @@ function debeCompletarDatosAcademicosGlobal(usuario, paginaActual, esAdmin) {
     const paginasLibres = [
         "login.html",
         "register.html",
+        "dual.html",
         "datos-academicos.html"
     ];
 
